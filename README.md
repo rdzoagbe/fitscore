@@ -84,3 +84,4 @@ Railway gives you a public URL like `fitscore-production.up.railway.app`
 - Uses only publicly available job offer text + your own CV
 - No data stored — analysis happens in real time
 - API key stored securely as Railway environment variable, never in code
+# v3
