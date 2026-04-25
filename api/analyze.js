@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js"
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
@@ -8,7 +9,6 @@ function getSupabase() {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key || !url.startsWith('http')) return null
-  const { createClient } = require('@supabase/supabase-js')
   return createClient(url, key)
 }
 
