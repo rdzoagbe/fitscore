@@ -4,7 +4,6 @@ import mammoth from 'mammoth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// Lazy supabase init — won't crash if env vars missing
 function getSupabase() {
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -13,22 +12,50 @@ function getSupabase() {
   return createClient(url, key)
 }
 
-const SYSTEM = `You are an expert ATS (Applicant Tracking System) analyzer and career coach.
-Analyze the CV against the job offer and return ONLY a valid JSON object (no markdown, no backticks, no text outside JSON):
+const SYSTEM = `You are an expert recruiter and ATS specialist with 15 years of experience using Workday, Greenhouse, Lever, Taleo, and SAP SuccessFactors.
+
+Analyze the CV against the job offer like a real ATS system would. Return ONLY a valid JSON object (no markdown, no backticks):
+
 {
-  "score": <integer 0-100>,
-  "job_title": "<extract job title from the offer, max 6 words>",
-  "verdict": "<one punchy sentence verdict, max 12 words>",
-  "categories": { "keywords": <0-100>, "skills": <0-100>, "experience": <0-100>, "education": <0-100> },
-  "found_keywords": ["keyword1", ...],
-  "missing_keywords": ["keyword1", ...],
-  "advice": [
-    {"type": "add", "text": "..."},
-    {"type": "reword", "text": "..."},
-    {"type": "remove", "text": "..."}
-  ]
+  "job_title": "<extracted job title, max 6 words>",
+  "verdict": "<one honest sentence, max 12 words>",
+
+  "keyword_match": {
+    "score": <0-100>,
+    "found": ["exact keywords from job offer found verbatim in CV, max 10"],
+    "missing_required": ["critical required keywords completely absent from CV, max 6"],
+    "missing_nice": ["nice-to-have keywords absent from CV, max 4"]
+  },
+
+  "requirements_check": {
+    "score": <0-100>,
+    "met": ["specific requirements from job offer the candidate meets, max 5"],
+    "unmet": ["specific requirements from job offer the candidate does NOT meet, max 4"]
+  },
+
+  "format_warnings": [
+    "<specific ATS formatting issue found in CV if any — e.g. likely uses tables, columns, headers, graphics, or missing contact info. Max 3 warnings. Empty array if CV format looks clean.>"
+  ],
+
+  "critical_gaps": [
+    "<the 1-3 things that would DEFINITELY get this CV auto-filtered by ATS. Be specific and brutal. Empty array if no critical gaps.>"
+  ],
+
+  "quick_wins": [
+    "<specific, actionable 1-sentence fix that would immediately improve ATS ranking. Max 5. Be concrete — name the exact keyword or section to change.>"
+  ],
+
+  "overall_verdict": "<one of: 'likely_filtered' | 'borderline' | 'likely_passed'>",
+  "overall_reason": "<one sentence explaining the overall verdict>"
 }
-Rules: found_keywords max 10, missing_keywords max 8, advice exactly 5 items, type: "add"|"reword"|"remove", Score 80+ = strong ATS match.`
+
+Rules:
+- Be honest and specific — vague advice is useless
+- Base keyword matching on EXACT words/phrases from the job offer
+- Format warnings should be inferred from CV text structure
+- Critical gaps = things that trigger automatic rejection (missing mandatory degree, certification, years of experience, etc.)
+- Quick wins = copy-paste ready fixes, not generic advice
+- overall_verdict: 'likely_filtered' if major required elements missing, 'borderline' if close but gaps exist, 'likely_passed' if strong match`
 
 async function fetchJobText(url) {
   const res = await fetch(url, {
@@ -38,7 +65,7 @@ async function fetchJobText(url) {
       'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
     }
   })
-  if (!res.ok) throw new Error(`Could not fetch job page (${res.status}). Try a different job board URL.`)
+  if (!res.ok) throw new Error(`Could not fetch job page (${res.status}). Try Indeed or Welcome to the Jungle instead.`)
   const html = await res.text()
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -82,7 +109,7 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
+      max_tokens: 1500,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]
     })
@@ -90,7 +117,10 @@ export default async function handler(req, res) {
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     const analysis = JSON.parse(raw)
 
-    // Save to Supabase if available and user is logged in
+    // Compute a display score from keyword + requirements
+    analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
+
+    // Save to Supabase if available
     try {
       const supabase = getSupabase()
       if (supabase && userId) {
@@ -106,7 +136,7 @@ export default async function handler(req, res) {
           user_id: userId,
           job_url: jobUrl,
           job_title: analysis.job_title || null,
-          score: analysis.score,
+          score: analysis.display_score,
           result: analysis,
           cv_file_path: cvStoragePath,
           cv_file_name: cvFileName || null

@@ -4,10 +4,7 @@ import { useAnalyze } from './hooks/useAnalyze'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import PrivacyPage from './pages/PrivacyPage'
-import ScoreRing from './components/ScoreRing'
-import CategoryBars from './components/CategoryBars'
-import KeywordTags from './components/KeywordTags'
-import AdviceList from './components/AdviceList'
+import ResultsView from './components/ResultsView'
 
 const LOADING_MSGS = [
   'Fetching job posting...',
@@ -51,7 +48,10 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  const handleReset = () => { reset(); setJobUrl(''); setCvFile(null); setMsgIdx(0); setViewingAnalysis(null); onClearPrefill && onClearPrefill() }
+  const handleReset = () => {
+    reset(); setJobUrl(''); setCvFile(null); setMsgIdx(0)
+    setViewingAnalysis(null); onClearPrefill && onClearPrefill()
+  }
 
   const displayData = viewingAnalysis?.result || data
   const displayStatus = viewingAnalysis ? 'done' : status
@@ -59,7 +59,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
 
   return (
     <div style={{ minHeight: '100dvh', background: '#0f0f0f' }}>
-      <header style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 480, margin: '0 auto' }}>
+      <header style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 520, margin: '0 auto' }}>
         <div>
           <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: '#f0f0f0' }}>
             Fit<span style={{ color: '#c8f542' }}>Score</span>
@@ -74,12 +74,12 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
         </div>
       </header>
 
-      <main style={{ padding: '24px 20px 40px', maxWidth: 480, margin: '0 auto' }}>
+      <main style={{ padding: '24px 20px 40px', maxWidth: 520, margin: '0 auto' }}>
         {displayStatus !== 'done' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
             {status === 'idle' && (
               <p style={{ fontSize: 14, color: '#666', marginBottom: 28, lineHeight: 1.7 }}>
-                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Paste a job URL and upload your CV for an instant ATS score.
+                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Paste a job URL and upload your CV for a real ATS check.
               </p>
             )}
 
@@ -94,7 +94,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
                 />
               </div>
               {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: '#ff7070', marginTop: 6 }}>Please enter a valid URL including https://</p>}
-              <p style={{ fontSize: 11, color: '#444', marginTop: 6 }}>Works with LinkedIn, Indeed, WTTJ, Glassdoor, and most job boards.</p>
+              <p style={{ fontSize: 11, color: '#444', marginTop: 6 }}>Works with Indeed, WTTJ, Glassdoor. LinkedIn may block access.</p>
             </div>
 
             <div style={{ marginBottom: 24 }}>
@@ -132,60 +132,21 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
             {status === 'error' && (
               <div style={{ background: 'rgba(255,79,79,0.08)', border: '1px solid rgba(255,79,79,0.2)', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: '#ff7070', lineHeight: 1.5 }}>⚠ {error}</p>
-                <p style={{ fontSize: 12, color: '#666', marginTop: 6 }}>Some job boards block automated access. Try copying the full job description text instead.</p>
+                <p style={{ fontSize: 12, color: '#666', marginTop: 6 }}>Try Indeed or Welcome to the Jungle — LinkedIn blocks automated access.</p>
               </div>
             )}
 
             {status !== 'loading' && (
               <button onClick={handleAnalyze} disabled={!canAnalyze} style={{ width: '100%', padding: '16px', borderRadius: 14, background: canAnalyze ? '#c8f542' : 'rgba(255,255,255,0.06)', color: canAnalyze ? '#0f0f0f' : '#444', border: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, cursor: canAnalyze ? 'pointer' : 'not-allowed', letterSpacing: '-0.01em', transition: 'all 0.2s' }}>
-                Analyze my CV →
+                Run ATS check →
               </button>
             )}
           </div>
         )}
 
         {displayStatus === 'done' && displayData && (
-          <div ref={resultRef} style={{ animation: 'fadeUp 0.5s ease' }}>
-            <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '28px 20px', marginBottom: 14, textAlign: 'center' }}>
-              <ScoreRing score={displayData.score} />
-              {displayData.verdict && <p style={{ fontSize: 14, color: '#888', marginTop: 14, lineHeight: 1.5, maxWidth: 280, margin: '14px auto 0' }}>{displayData.verdict}</p>}
-            </div>
-
-            {displayData.score < 80 ? (
-              <div style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span>⚡</span>
-                <p style={{ fontSize: 13, color: '#f5a623', lineHeight: 1.5 }}>You need <strong>80%+</strong> to pass most ATS filters. Follow the recommendations below.</p>
-              </div>
-            ) : (
-              <div style={{ background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span>✓</span>
-                <p style={{ fontSize: 13, color: '#4caf7d', lineHeight: 1.5 }}>Strong match — you're ready to apply!</p>
-              </div>
-            )}
-
-            <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px', marginBottom: 14 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Score breakdown</p>
-              <CategoryBars categories={displayData.categories} />
-            </div>
-
-            <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px', marginBottom: 14 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Keywords</p>
-              <KeywordTags found={displayData.found_keywords} missing={displayData.missing_keywords} />
-            </div>
-
-            <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '20px', marginBottom: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Recommendations</p>
-              <AdviceList advice={displayData.advice} />
-            </div>
-
-            <div style={{ background: 'rgba(200,245,66,0.06)', border: '1px solid rgba(200,245,66,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span>💾</span>
-              <p style={{ fontSize: 13, color: '#888' }}>Analysis saved to your history.</p>
-            </div>
-
-            <button onClick={handleReset} style={{ width: '100%', padding: '15px', borderRadius: 14, background: '#c8f542', color: '#0f0f0f', border: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
-              Analyze another job →
-            </button>
+          <div ref={resultRef}>
+            <ResultsView data={displayData} onReset={handleReset} />
           </div>
         )}
 
@@ -215,7 +176,6 @@ export default function App() {
     return <PrivacyPage onBack={() => window.history.back()} />
   }
 
-  // 👇 KEY CHANGE: if not logged in, always show auth page first
   if (!user) return <AuthPage />
 
   if (page === 'dashboard') {
