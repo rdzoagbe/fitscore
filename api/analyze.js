@@ -23,18 +23,12 @@ Analyze the CV against the job offer like a real ATS system would. Return ONLY a
     "met": ["specific requirements from job offer the candidate meets, max 5"],
     "unmet": ["specific requirements from job offer the candidate does NOT meet, max 4"]
   },
-  "format_warnings": ["<ATS formatting issue found in CV if any, max 3. Empty array if clean.>"],
+  "format_warnings": ["<ATS formatting issue if any, max 3. Empty array if clean.>"],
   "critical_gaps": ["<things that would DEFINITELY get this CV auto-filtered. Max 3. Empty array if none.>"],
-  "quick_wins": ["<specific 1-sentence fix that would immediately improve ATS ranking. Max 4. Be concrete.>"],
+  "quick_wins": ["<specific 1-sentence fix. Max 4. Be concrete.>"],
   "overall_verdict": "<one of: 'likely_filtered' | 'borderline' | 'likely_passed'>",
   "overall_reason": "<one sentence explaining the overall verdict>"
-}
-
-Rules:
-- Be honest and specific
-- Base keyword matching on EXACT words/phrases from the job offer
-- Critical gaps = things that trigger automatic rejection
-- Quick wins = concrete fixes, not generic advice`
+}`
 
 async function fetchJobText(url) {
   const res = await fetch(url, {
@@ -74,8 +68,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    const { jobUrl, cvBase64, cvMimeType, userId, cvFileName } = req.body
+    const { jobUrl, cvBase64, cvMimeType, userId, cvFileName, accessToken } = req.body
     if (!jobUrl || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
+
+    console.log('Request received. userId:', userId, 'hasToken:', !!accessToken, 'SUPABASE_URL:', process.env.SUPABASE_URL ? 'set' : 'MISSING', 'SERVICE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'MISSING')
 
     const [jobText, cvText] = await Promise.all([
       fetchJobText(jobUrl),
@@ -98,21 +94,33 @@ export default async function handler(req, res) {
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
     analysis.job_url = jobUrl
 
-    // Save to Supabase
-    console.log('Attempting DB save. userId:', userId, 'SUPABASE_URL:', process.env.SUPABASE_URL ? 'set' : 'MISSING')
-    if (userId && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    // Try to save — use service role key to bypass RLS
+    const supabaseUrl = process.env.SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    console.log('Attempting save. userId:', userId, 'supabaseUrl set:', !!supabaseUrl, 'serviceKey set:', !!serviceKey)
+
+    if (userId && supabaseUrl && serviceKey) {
       try {
-        const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+        const adminSupabase = createClient(supabaseUrl, serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false }
+        })
+
+        // Verify user exists
+        const { data: userData, error: userError } = await adminSupabase.auth.admin.getUserById(userId)
+        console.log('User lookup:', userData?.user?.email || 'NOT FOUND', userError?.message || 'no error')
+
         let cvStoragePath = null
         if (cvBase64 && cvFileName) {
           const buffer = Buffer.from(cvBase64, 'base64')
           const filePath = `${userId}/${Date.now()}_${cvFileName}`
-          const { data: storageData, error: storageError } = await supabase.storage
+          const { data: storageData, error: storageErr } = await adminSupabase.storage
             .from('cvs').upload(filePath, buffer, { contentType: cvMimeType, upsert: false })
-          if (storageError) console.log('Storage error:', storageError.message)
-          if (storageData) cvStoragePath = storageData.path
+          if (storageErr) console.log('Storage error:', storageErr.message)
+          else cvStoragePath = storageData?.path
         }
-        const { error: dbError } = await supabase.from('analyses').insert({
+
+        const { data: insertData, error: dbError } = await adminSupabase.from('analyses').insert({
           user_id: userId,
           job_url: jobUrl,
           job_title: analysis.job_title || null,
@@ -120,14 +128,15 @@ export default async function handler(req, res) {
           result: analysis,
           cv_file_path: cvStoragePath,
           cv_file_name: cvFileName || null
-        })
-        if (dbError) console.log('DB insert error:', dbError.message)
-        else console.log('DB save successful')
+        }).select()
+
+        if (dbError) console.log('DB insert error:', dbError.message, dbError.code)
+        else console.log('DB save SUCCESS. Row id:', insertData?.[0]?.id)
       } catch (dbErr) {
-        console.log('DB save exception:', dbErr.message)
+        console.log('DB exception:', dbErr.message)
       }
     } else {
-      console.log('Skipping DB save. userId:', userId, 'env vars present:', !!process.env.SUPABASE_URL)
+      console.log('Skipping save - missing:', !userId ? 'userId' : !supabaseUrl ? 'SUPABASE_URL' : 'SERVICE_KEY')
     }
 
     return res.status(200).json({ success: true, analysis })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null })
@@ -15,6 +16,12 @@ export function useAnalyze() {
         reader.readAsDataURL(cvFile)
       })
 
+      // Get fresh session token to send to server
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token || null
+
+      console.log('Sending userId:', user?.id, 'hasToken:', !!accessToken)
+
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -23,7 +30,8 @@ export function useAnalyze() {
           cvBase64,
           cvMimeType: cvFile.type,
           cvFileName: cvFile.name,
-          userId: user?.id || null
+          userId: user?.id || null,
+          accessToken
         })
       })
 
