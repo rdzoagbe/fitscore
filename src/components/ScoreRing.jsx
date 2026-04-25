@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 
-export default function ScoreRing({ score }) {
+export default function ScoreRing({ score, size = 130 }) {
   const [displayed, setDisplayed] = useState(0)
-  const r = 54
+  const r = (size / 2) - 10
   const circ = 2 * Math.PI * r
   const fill = (displayed / 100) * circ
-  const color = score >= 80 ? '#4caf7d' : score >= 60 ? '#f5a623' : '#ff4f4f'
-  const label = score >= 80 ? 'Strong match' : score >= 60 ? 'Partial match' : 'Low match'
+  const color = score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff4f4f'
+  const fontSize = size < 120 ? 20 : 28
+  const subSize = size < 120 ? 10 : 11
 
   useEffect(() => {
     let start = null
@@ -21,24 +22,21 @@ export default function ScoreRing({ score }) {
     requestAnimationFrame(step)
   }, [score])
 
+  const cx = size / 2
+  const cy = size / 2
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <svg width="130" height="130" viewBox="0 0 130 130">
-        <circle cx="65" cy="65" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
-        <circle
-          cx="65" cy="65" r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={`${fill} ${circ}`}
-          strokeDashoffset={circ / 4}
-          style={{ transition: 'stroke 0.3s' }}
-        />
-        <text x="65" y="58" textAnchor="middle" fill="#f0f0f0" fontSize="28" fontWeight="600" fontFamily="Syne, sans-serif">{displayed}%</text>
-        <text x="65" y="76" textAnchor="middle" fill="#888" fontSize="11" fontFamily="DM Sans, sans-serif">ATS Score</text>
-      </svg>
-      <span style={{ fontSize: 13, fontWeight: 500, color, letterSpacing: '0.03em' }}>{label}</span>
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+      <circle
+        cx={cx} cy={cy} r={r}
+        fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
+        strokeDasharray={`${fill} ${circ}`}
+        strokeDashoffset={circ / 4}
+        style={{ transition: 'stroke 0.3s' }}
+      />
+      <text x={cx} y={cy - 4} textAnchor="middle" fill="#f0f0f0" fontSize={fontSize} fontWeight="600" fontFamily="Syne, sans-serif">{displayed}%</text>
+      <text x={cx} y={cy + subSize + 2} textAnchor="middle" fill="#888" fontSize={subSize} fontFamily="DM Sans, sans-serif">ATS Score</text>
+    </svg>
   )
 }
