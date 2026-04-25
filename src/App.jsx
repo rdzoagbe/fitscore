@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useAnalyze } from './hooks/useAnalyze'
-import { supabase } from './lib/supabase'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
 import PrivacyPage from './pages/PrivacyPage'
@@ -18,7 +17,7 @@ const LOADING_MSGS = [
 ]
 const ACCEPTED = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
 
-function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
+function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
   const [jobUrl, setJobUrl] = useState('')
   const [cvFile, setCvFile] = useState(null)
   const [dragging, setDragging] = useState(false)
@@ -28,8 +27,6 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
   const fileInputRef = useRef(null)
   const { user, signOut } = useAuth()
   const { status, data, error, analyze, reset } = useAnalyze()
-
-  // If coming from dashboard with a saved analysis, show it directly
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
 
   const isValidUrl = (str) => { try { new URL(str); return true } catch { return false } }
@@ -54,7 +51,7 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  const handleReset = () => { reset(); setJobUrl(''); setCvFile(null); setMsgIdx(0); setViewingAnalysis(null) }
+  const handleReset = () => { reset(); setJobUrl(''); setCvFile(null); setMsgIdx(0); setViewingAnalysis(null); onClearPrefill && onClearPrefill() }
 
   const displayData = viewingAnalysis?.result || data
   const displayStatus = viewingAnalysis ? 'done' : status
@@ -73,23 +70,19 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
           {displayStatus === 'done' && (
             <button onClick={handleReset} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '7px 14px', color: '#888', fontSize: 13, cursor: 'pointer' }}>New</button>
           )}
-          {user && (
-            <button onClick={onViewDashboard} style={{ background: 'rgba(200,245,66,0.1)', border: '1px solid rgba(200,245,66,0.2)', borderRadius: 20, padding: '7px 14px', color: '#c8f542', fontSize: 13, cursor: 'pointer' }}>History</button>
-          )}
+          <button onClick={onViewDashboard} style={{ background: 'rgba(200,245,66,0.1)', border: '1px solid rgba(200,245,66,0.2)', borderRadius: 20, padding: '7px 14px', color: '#c8f542', fontSize: 13, cursor: 'pointer' }}>History</button>
         </div>
       </header>
 
       <main style={{ padding: '24px 20px 40px', maxWidth: 480, margin: '0 auto' }}>
-
         {displayStatus !== 'done' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
             {status === 'idle' && (
               <p style={{ fontSize: 14, color: '#666', marginBottom: 28, lineHeight: 1.7 }}>
-                {user ? `Welcome back! ` : ''}Paste a job URL and upload your CV — instant ATS score and recommendations.
+                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Paste a job URL and upload your CV for an instant ATS score.
               </p>
             )}
 
-            {/* Job URL */}
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Job offer URL</label>
               <div style={{ position: 'relative' }}>
@@ -104,7 +97,6 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
               <p style={{ fontSize: 11, color: '#444', marginTop: 6 }}>Works with LinkedIn, Indeed, WTTJ, Glassdoor, and most job boards.</p>
             </div>
 
-            {/* CV Upload */}
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>Your CV</label>
               {!cvFile ? (
@@ -149,16 +141,9 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
                 Analyze my CV →
               </button>
             )}
-
-            {!user && (
-              <p style={{ fontSize: 12, color: '#444', textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
-                <span style={{ color: '#c8f542' }}>Sign up free</span> to save your analyses and track progress over time.
-              </p>
-            )}
           </div>
         )}
 
-        {/* Results */}
         {displayStatus === 'done' && displayData && (
           <div ref={resultRef} style={{ animation: 'fadeUp 0.5s ease' }}>
             <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: '28px 20px', marginBottom: 14, textAlign: 'center' }}>
@@ -193,12 +178,10 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
               <AdviceList advice={displayData.advice} />
             </div>
 
-            {user && (
-              <div style={{ background: 'rgba(200,245,66,0.06)', border: '1px solid rgba(200,245,66,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span>💾</span>
-                <p style={{ fontSize: 13, color: '#888' }}>Analysis saved to your history.</p>
-              </div>
-            )}
+            <div style={{ background: 'rgba(200,245,66,0.06)', border: '1px solid rgba(200,245,66,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span>💾</span>
+              <p style={{ fontSize: 13, color: '#888' }}>Analysis saved to your history.</p>
+            </div>
 
             <button onClick={handleReset} style={{ width: '100%', padding: '15px', borderRadius: 14, background: '#c8f542', color: '#0f0f0f', border: 'none', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em' }}>
               Analyze another job →
@@ -206,11 +189,9 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
           </div>
         )}
 
-        {/* Footer links */}
         <div style={{ marginTop: 32, textAlign: 'center', display: 'flex', justifyContent: 'center', gap: 20 }}>
           <a href="/privacy" style={{ fontSize: 11, color: '#444', textDecoration: 'none' }}>Privacy & RGPD</a>
-          {user && <button onClick={signOut} style={{ fontSize: 11, color: '#444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Sign out</button>}
-          {!user && <a href="#" onClick={e => { e.preventDefault(); onBack() }} style={{ fontSize: 11, color: '#c8f542', textDecoration: 'none' }}>Sign in / Sign up</a>}
+          <button onClick={signOut} style={{ fontSize: 11, color: '#444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Sign out</button>
         </div>
       </main>
     </div>
@@ -219,7 +200,7 @@ function AnalyzerPage({ onBack, onViewDashboard, prefillAnalysis }) {
 
 export default function App() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState('analyzer') // 'analyzer' | 'dashboard' | 'privacy'
+  const [page, setPage] = useState('analyzer')
   const [selectedAnalysis, setSelectedAnalysis] = useState(null)
 
   if (loading) {
@@ -230,14 +211,14 @@ export default function App() {
     )
   }
 
-  // Handle /privacy route
   if (window.location.pathname === '/privacy') {
     return <PrivacyPage onBack={() => window.history.back()} />
   }
 
-  if (page === 'auth' && !user) return <AuthPage />
+  // 👇 KEY CHANGE: if not logged in, always show auth page first
+  if (!user) return <AuthPage />
 
-  if (page === 'dashboard' && user) {
+  if (page === 'dashboard') {
     return (
       <Dashboard
         onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }}
@@ -248,9 +229,9 @@ export default function App() {
 
   return (
     <AnalyzerPage
-      onBack={() => setPage('auth')}
       onViewDashboard={() => setPage('dashboard')}
       prefillAnalysis={selectedAnalysis}
+      onClearPrefill={() => setSelectedAnalysis(null)}
     />
   )
 }
