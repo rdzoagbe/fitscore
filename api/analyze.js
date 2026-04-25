@@ -1,10 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
-import { createClient } from '@supabase/supabase-js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+// Lazy supabase init — won't crash if env vars missing
+function getSupabase() {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key || !url.startsWith('http')) return null
+  const { createClient } = require('@supabase/supabase-js')
+  return createClient(url, key)
+}
 
 const SYSTEM = `You are an expert ATS (Applicant Tracking System) analyzer and career coach.
 Analyze the CV against the job offer and return ONLY a valid JSON object (no markdown, no backticks, no text outside JSON):
@@ -31,7 +38,7 @@ async function fetchJobText(url) {
       'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
     }
   })
-  if (!res.ok) throw new Error(`Could not fetch job page (${res.status})`)
+  if (!res.ok) throw new Error(`Could not fetch job page (${res.status}). Try a different job board URL.`)
   const html = await res.text()
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -39,7 +46,7 @@ async function fetchJobText(url) {
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
     .replace(/\s{2,}/g, ' ').trim()
-  if (text.length < 100) throw new Error('Could not extract text from this page.')
+  if (text.length < 100) throw new Error('Could not extract text from this page. Try Indeed or Welcome to the Jungle instead.')
   return text.slice(0, 6000)
 }
 
@@ -83,28 +90,30 @@ export default async function handler(req, res) {
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     const analysis = JSON.parse(raw)
 
-    // Store CV file in Supabase Storage if user is logged in
-    let cvStoragePath = null
-    if (userId && cvBase64 && cvFileName) {
-      const buffer = Buffer.from(cvBase64, 'base64')
-      const filePath = `${userId}/${Date.now()}_${cvFileName}`
-      const { data: storageData } = await supabase.storage
-        .from('cvs')
-        .upload(filePath, buffer, { contentType: cvMimeType, upsert: false })
-      if (storageData) cvStoragePath = storageData.path
-    }
-
-    // Save analysis to database if user is logged in
-    if (userId) {
-      await supabase.from('analyses').insert({
-        user_id: userId,
-        job_url: jobUrl,
-        job_title: analysis.job_title || null,
-        score: analysis.score,
-        result: analysis,
-        cv_file_path: cvStoragePath,
-        cv_file_name: cvFileName || null
-      })
+    // Save to Supabase if available and user is logged in
+    try {
+      const supabase = getSupabase()
+      if (supabase && userId) {
+        let cvStoragePath = null
+        if (cvBase64 && cvFileName) {
+          const buffer = Buffer.from(cvBase64, 'base64')
+          const filePath = `${userId}/${Date.now()}_${cvFileName}`
+          const { data: storageData } = await supabase.storage
+            .from('cvs').upload(filePath, buffer, { contentType: cvMimeType, upsert: false })
+          if (storageData) cvStoragePath = storageData.path
+        }
+        await supabase.from('analyses').insert({
+          user_id: userId,
+          job_url: jobUrl,
+          job_title: analysis.job_title || null,
+          score: analysis.score,
+          result: analysis,
+          cv_file_path: cvStoragePath,
+          cv_file_name: cvFileName || null
+        })
+      }
+    } catch (dbErr) {
+      console.error('DB save failed (non-fatal):', dbErr.message)
     }
 
     return res.status(200).json({ success: true, analysis })
