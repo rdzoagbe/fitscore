@@ -120,6 +120,7 @@ export default async function handler(req, res) {
     // Compute a display score from keyword + requirements
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
 
+    console.log("userId received:", userId)
     // Save to Supabase if available
     try {
       const supabase = getSupabase()
