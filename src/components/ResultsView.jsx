@@ -15,7 +15,7 @@ const Tag = ({ label, type }) => {
 }
 
 const MiniCard = ({ title, children, accent }) => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   return (
     <div onClick={() => setOpen(!open)} style={{ background: '#181818', border: `1px solid ${open ? (accent || 'rgba(255,255,255,0.15)') : 'rgba(255,255,255,0.06)'}`, borderRadius: 14, overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.2s' }}>
       <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
