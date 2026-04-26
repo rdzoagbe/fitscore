@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import ScoreRing from './ScoreRing'
 import VerdictBadge from './VerdictBadge'
+import JobContextCard from './JobContextCard'
+import MatchProbability from './MatchProbability'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -39,11 +41,9 @@ export default function ResultsView({ data, onReset }) {
       const { error } = await supabase.from('analyses').insert({
         user_id: user.id,
         job_url: jobUrl || '',
-        job_title: data.job_title || null,
+        job_title: data.job_context?.title || data.job_title || null,
         score,
-        result: data,
-        cv_file_path: null,
-        cv_file_name: null
+        result: data
       })
       setSaveStatus(error ? 'error' : 'saved')
     } catch { setSaveStatus('error') }
@@ -52,12 +52,19 @@ export default function ResultsView({ data, onReset }) {
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
 
-      {/* TOP CARD */}
+      {/* JOB CONTEXT — shown first so users know they're looking at the right job */}
+      <JobContextCard
+        context={data.job_context}
+        summary={data.job_summary}
+        jobUrl={jobUrl}
+        redFlags={data.red_flags}
+        salary={data.salary_assessment}
+      />
+
+      {/* SCORE CARD */}
       <div className="card" style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
-          <div style={{ flexShrink: 0 }}>
-            <ScoreRing score={score} size={100} />
-          </div>
+          <div style={{ flexShrink: 0 }}><ScoreRing score={score} size={100} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>ATS Score</p>
             <p style={{ fontSize: 'clamp(22px,5vw,28px)', fontWeight: 700, fontFamily: 'Syne, sans-serif', color: score>=70?'#4caf7d':score>=50?'#f5a623':'#ff4f4f', marginBottom: 6, animation: 'pop 0.5s ease' }}>{score}%</p>
@@ -67,6 +74,9 @@ export default function ResultsView({ data, onReset }) {
         <VerdictBadge verdict={data.overall_verdict} reason={data.overall_reason} />
       </div>
 
+      {/* MATCH PROBABILITY */}
+      <MatchProbability probability={data.match_probability} reasoning={data.match_reasoning} />
+
       {/* Apply if passed */}
       {isPassed && jobUrl && (
         <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '14px', borderRadius: 14, marginBottom: 10, background: '#4caf7d', color: '#fff', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
@@ -74,7 +84,7 @@ export default function ResultsView({ data, onReset }) {
         </a>
       )}
 
-      {/* 4 MINI CARDS — always open */}
+      {/* 4 MINI CARDS */}
       <div className="mini-cards" style={{ marginBottom: 10 }}>
 
         <MiniCard title="Score" accent="#7b8cff">
