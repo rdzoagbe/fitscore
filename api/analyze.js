@@ -2,60 +2,78 @@ import { createClient } from "@supabase/supabase-js"
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
+import crypto from 'crypto'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const SYSTEM = `You are an expert recruiter, ATS specialist, and job market analyst with 15+ years of experience. You evaluate CV-to-job-offer fit honestly and identify red flags in job postings.
+// DETERMINISTIC scoring rubric — same inputs always produce same output
+const SYSTEM = `You are an ATS specialist running a DETERMINISTIC analysis. Same CV + same job MUST always yield the same score.
 
-Analyze the CV against the job offer and return ONLY a valid JSON object (no markdown, no backticks, no preamble):
+Apply this RIGID scoring rubric exactly:
+
+KEYWORD MATCH SCORE (0-100):
+- Extract ALL technical skills, tools, methodologies, certifications, and domain terms from the job offer (the "required keyword set")
+- Count how many appear VERBATIM (case-insensitive) in the CV
+- Score = (matched_count / total_required_count) * 100, rounded to nearest integer
+- "Required" keywords are those in must-have sections; "nice-to-have" are bonus and counted at half weight
+
+REQUIREMENTS MATCH SCORE (0-100):
+- Identify ALL hard requirements (years of experience, education, certifications, language fluency, location, work authorization)
+- For each, score 100 if met, 50 if partially met, 0 if absent
+- Score = average of all hard requirements
+
+OVERALL VERDICT:
+- "likely_passed" if BOTH keyword_match.score >= 70 AND requirements_check.score >= 70 AND no critical_gaps
+- "borderline" if keyword_match.score >= 50 AND requirements_check.score >= 50
+- "likely_filtered" otherwise
+
+MATCH PROBABILITY (0-100):
+- Based STRICTLY on: (display_score * 0.5) + (requirements_score * 0.5) - (10 * critical_gaps_count)
+- Bounded 0-100
+
+Return ONLY a JSON object — no markdown, no preamble:
 
 {
   "job_context": {
-    "title": "<exact job title>",
-    "company": "<company/employer name, or 'Not specified'>",
+    "title": "<exact job title from offer>",
+    "company": "<company name, or 'Not specified'>",
     "location": "<city, country, or 'Remote' or 'Not specified'>",
-    "work_mode": "<one of: 'remote' | 'hybrid' | 'onsite' | 'unknown'>",
-    "contract_type": "<one of: 'CDI' | 'CDD' | 'freelance' | 'internship' | 'apprenticeship' | 'temp' | 'unknown'>",
-    "salary_range": "<exact salary mentioned with currency, or 'Not specified'>",
-    "experience_required": "<e.g. '3-5 years' or 'Junior' or 'Senior' or 'Not specified'>",
-    "posted_date": "<date if mentioned, else 'Unknown'>",
-    "languages_required": ["language1", "language2"]
+    "work_mode": "<remote | hybrid | onsite | unknown>",
+    "contract_type": "<CDI | CDD | freelance | internship | apprenticeship | temp | unknown>",
+    "salary_range": "<exact salary with currency, or 'Not specified'>",
+    "experience_required": "<e.g. '3-5 years' or 'Not specified'>",
+    "posted_date": "<date or 'Unknown'>",
+    "languages_required": ["language1"]
   },
-  "job_summary": "<2-sentence punchy summary of the role>",
-  "match_probability": <integer 0-100 — your honest estimate of interview chances>,
-  "match_reasoning": "<one sentence explaining the probability>",
-  "red_flags": [
-    "<job posting red flag if any: vague description, unrealistic requirements, no salary, ghost job patterns, etc. Max 3. Empty array if none.>"
-  ],
+  "job_summary": "<2 sentences max>",
+  "match_probability": <integer 0-100, computed by formula above>,
+  "match_reasoning": "<one sentence>",
+  "red_flags": ["<posting red flag if any, max 3>"],
   "salary_assessment": {
     "specified": <true|false>,
-    "assessment": "<one of: 'below_market' | 'market' | 'above_market' | 'unknown' | 'not_specified'>",
-    "comment": "<brief honest comment about the salary>"
+    "assessment": "<below_market | market | above_market | unknown | not_specified>",
+    "comment": "<brief>"
   },
-  "verdict": "<one honest sentence verdict, max 12 words>",
+  "verdict": "<one sentence, max 12 words>",
   "keyword_match": {
-    "score": <0-100>,
-    "found": ["exact keywords from job offer found verbatim in CV, max 10"],
-    "missing_required": ["critical required keywords completely absent from CV, max 6"],
-    "missing_nice": ["nice-to-have keywords absent from CV, max 4"]
+    "score": <0-100, computed by rubric>,
+    "found": ["max 10 keywords found verbatim in CV"],
+    "missing_required": ["max 6 critical missing keywords"],
+    "missing_nice": ["max 4 nice-to-have missing"]
   },
   "requirements_check": {
-    "score": <0-100>,
-    "met": ["specific requirements the candidate meets, max 5"],
-    "unmet": ["specific requirements the candidate does NOT meet, max 4"]
+    "score": <0-100, computed by rubric>,
+    "met": ["max 5 requirements met"],
+    "unmet": ["max 4 requirements not met"]
   },
-  "format_warnings": ["<ATS formatting issue if any, max 3. Empty array if clean.>"],
-  "critical_gaps": ["<things that would DEFINITELY get this CV auto-filtered. Max 3. Empty array if none.>"],
-  "quick_wins": ["<specific 1-sentence fix. Max 4. Be concrete.>"],
-  "overall_verdict": "<one of: 'likely_filtered' | 'borderline' | 'likely_passed'>",
-  "overall_reason": "<one sentence explaining the overall verdict>"
+  "format_warnings": ["<max 3, empty if clean>"],
+  "critical_gaps": ["<max 3, empty if none>"],
+  "quick_wins": ["<exactly 4 specific copy-paste-ready fixes>"],
+  "overall_verdict": "<likely_filtered | borderline | likely_passed>",
+  "overall_reason": "<one sentence>"
 }
 
-Rules:
-- Extract job_context fields from the actual job offer text. Never invent data — use 'Not specified' or 'unknown' when info is missing.
-- match_probability differs from ATS score: it's your holistic gut check including soft fit.
-- red_flags should call out: vague responsibilities, missing salary, "rockstar/ninja" buzzwords, unrealistic requirement combos, expired postings.
-- salary_assessment: be honest — if salary is missing, that's a yellow flag in the EU job market.`
+CRITICAL: Apply the rubric mechanically. Do not introduce subjective judgment. Same input = same output.`
 
 async function fetchJobText(url) {
   const res = await fetch(url, {
@@ -84,6 +102,10 @@ async function extractCvText(base64Data, mimeType) {
   throw new Error('Unsupported file type. Please upload a PDF or Word document.')
 }
 
+function hashContent(...parts) {
+  return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -101,9 +123,34 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     }
 
+    // CACHE: same CV + same job URL = same result (deterministic)
+    const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
+    let supabaseClient = null
+    try {
+      const url = process.env.SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (url && key) supabaseClient = createClient(url, key, { auth: { persistSession: false } })
+    } catch {}
+
+    if (supabaseClient && userId) {
+      const { data: cached } = await supabaseClient
+        .from('analyses')
+        .select('result, created_at')
+        .eq('user_id', userId)
+        .eq('cache_key', cacheKey)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (cached?.result) {
+        console.log('Cache hit — returning identical result')
+        return res.status(200).json({ success: true, analysis: cached.result, cached: true })
+      }
+    }
+
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
+      temperature: 0, // DETERMINISTIC
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]
     })
@@ -112,22 +159,20 @@ export default async function handler(req, res) {
     const analysis = JSON.parse(raw)
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
     analysis.job_url = jobUrl
-    analysis.job_title = analysis.job_context?.title || analysis.job_title || null
+    analysis.job_title = analysis.job_context?.title || null
 
-    // Try save (best effort)
+    // Save with cache_key for deduplication
     try {
-      const url = process.env.SUPABASE_URL
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-      if (userId && url && key) {
-        const supabase = createClient(url, key, { auth: { persistSession: false } })
-        await supabase.from('analyses').insert({
+      if (supabaseClient && userId) {
+        await supabaseClient.from('analyses').insert({
           user_id: userId,
           job_url: jobUrl,
           job_title: analysis.job_context?.title || null,
           score: analysis.display_score,
           result: analysis,
           cv_file_path: null,
-          cv_file_name: cvFileName || null
+          cv_file_name: cvFileName || null,
+          cache_key: cacheKey
         })
       }
     } catch (e) { console.log('Save failed:', e.message) }
