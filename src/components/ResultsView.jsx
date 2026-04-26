@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import ScoreRing from './ScoreRing'
 import VerdictBadge from './VerdictBadge'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 const Tag = ({ label, type }) => {
   const styles = {
@@ -26,25 +28,53 @@ const MiniCard = ({ title, children, accent }) => {
 }
 
 export default function ResultsView({ data, onReset }) {
+  const { user } = useAuth()
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
   const jobUrl = data.job_url || null
   const isPassed = data.overall_verdict === 'likely_passed'
 
+  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | error
+
+  const handleSave = async () => {
+    if (!user) return
+    setSaveStatus('saving')
+    try {
+      const { error } = await supabase.from('analyses').insert({
+        user_id: user.id,
+        job_url: jobUrl || '',
+        job_title: data.job_title || null,
+        score: score,
+        result: data,
+        cv_file_path: null,
+        cv_file_name: null
+      })
+      if (error) {
+        console.error('Save error:', error.message)
+        setSaveStatus('error')
+      } else {
+        setSaveStatus('saved')
+      }
+    } catch (e) {
+      console.error('Save exception:', e.message)
+      setSaveStatus('error')
+    }
+  }
+
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
 
-      {/* TOP CARD — ring left, text right */}
-      <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 'clamp(16px,4vw,28px)', marginBottom: 10 }}>
+      {/* TOP CARD */}
+      <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 'clamp(16px,4vw,24px)', marginBottom: 10 }}>
         <div className="top-card-inner" style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16 }}>
           <div style={{ flexShrink: 0 }}>
-            <ScoreRing score={score} size={clamp(90, 110)} />
+            <ScoreRing score={score} size={100} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: '#555', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>ATS Score</p>
-            <p style={{ fontSize: 'clamp(20px, 5vw, 28px)', fontWeight: 700, fontFamily: 'Syne, sans-serif', color: score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff4f4f', marginBottom: 6 }}>{score}%</p>
-            {data.verdict && <p style={{ fontSize: 'clamp(12px, 3vw, 14px)', color: '#888', lineHeight: 1.5, margin: 0 }}>{data.verdict}</p>}
+            <p style={{ fontSize: 'clamp(20px,5vw,26px)', fontWeight: 700, fontFamily: 'Syne, sans-serif', color: score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff4f4f', marginBottom: 6 }}>{score}%</p>
+            {data.verdict && <p style={{ fontSize: 13, color: '#888', lineHeight: 1.5, margin: 0 }}>{data.verdict}</p>}
           </div>
         </div>
         <VerdictBadge verdict={data.overall_verdict} reason={data.overall_reason} />
@@ -52,13 +82,13 @@ export default function ResultsView({ data, onReset }) {
 
       {/* Apply button if passed */}
       {isPassed && jobUrl && (
-        <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', padding: '14px', borderRadius: 14, marginBottom: 10, background: '#4caf7d', color: '#fff', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(13px,3.5vw,15px)', fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
+        <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', padding: '14px', borderRadius: 14, marginBottom: 10, background: '#4caf7d', color: '#fff', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, textAlign: 'center', textDecoration: 'none' }}>
           Apply for this job →
         </a>
       )}
 
-      {/* 4 MINI CARDS — 2x2 responsive grid */}
-      <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+      {/* 4 MINI CARDS */}
+      <div className="mini-cards" style={{ marginBottom: 10 }}>
 
         <MiniCard title="Score" accent="#7b8cff">
           <div style={{ marginTop: 10 }}>
@@ -83,7 +113,7 @@ export default function ResultsView({ data, onReset }) {
                 <span style={{ color: '#ff4f4f', flexShrink: 0, fontSize: 11 }}>✗</span>
                 <p style={{ fontSize: 11, color: '#aaa', lineHeight: 1.5, margin: 0 }}>{g}</p>
               </div>
-            )) : <p style={{ fontSize: 11, color: '#4caf7d', marginTop: 8 }}>✓ No critical gaps found</p>}
+            )) : <p style={{ fontSize: 11, color: '#4caf7d', marginTop: 8 }}>✓ No critical gaps</p>}
           </div>
         </MiniCard>
 
@@ -91,13 +121,13 @@ export default function ResultsView({ data, onReset }) {
           <div style={{ marginTop: 10 }}>
             {km.found?.length > 0 && <div style={{ marginBottom: 8 }}>
               <p style={{ fontSize: 10, color: '#4caf7d', marginBottom: 4, fontWeight: 600 }}>FOUND</p>
-              {km.found.slice(0, 5).map(k => <Tag key={k} label={k} type="found" />)}
+              {km.found.slice(0, 6).map(k => <Tag key={k} label={k} type="found" />)}
             </div>}
-            {km.missing_required?.length > 0 && <div>
+            {km.missing_required?.length > 0 && <div style={{ marginBottom: 8 }}>
               <p style={{ fontSize: 10, color: '#ff7070', marginBottom: 4, fontWeight: 600 }}>MISSING</p>
-              {km.missing_required.slice(0, 4).map(k => <Tag key={k} label={k} type="missing" />)}
+              {km.missing_required.slice(0, 5).map(k => <Tag key={k} label={k} type="missing" />)}
             </div>}
-            {km.missing_nice?.length > 0 && <div style={{ marginTop: 8 }}>
+            {km.missing_nice?.length > 0 && <div>
               <p style={{ fontSize: 10, color: '#f5a623', marginBottom: 4, fontWeight: 600 }}>NICE TO HAVE</p>
               {km.missing_nice.slice(0, 3).map(k => <Tag key={k} label={k} type="nice" />)}
             </div>}
@@ -128,15 +158,15 @@ export default function ResultsView({ data, onReset }) {
         </MiniCard>
       </div>
 
-      {/* QUICK WINS — full width */}
+      {/* QUICK WINS */}
       {data.quick_wins?.length > 0 && (
         <div style={{ background: '#181818', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: '16px', marginBottom: 10 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#555', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Quick wins</p>
-          <div className="quick-wins-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div className="qw-grid">
             {data.quick_wins.map((w, i) => (
               <div key={i} style={{ background: 'rgba(200,245,66,0.05)', border: '1px solid rgba(200,245,66,0.12)', borderRadius: 10, padding: '10px 12px' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#c8f542', display: 'block', marginBottom: 4 }}>#{i + 1}</span>
-                <p style={{ fontSize: 'clamp(11px,2.5vw,13px)', color: '#aaa', lineHeight: 1.5, margin: 0 }}>{w}</p>
+                <p style={{ fontSize: 12, color: '#aaa', lineHeight: 1.5, margin: 0 }}>{w}</p>
               </div>
             ))}
           </div>
@@ -156,28 +186,48 @@ export default function ResultsView({ data, onReset }) {
         </div>
       )}
 
-      {/* Saved */}
-      <div style={{ background: 'rgba(200,245,66,0.04)', border: '1px solid rgba(200,245,66,0.1)', borderRadius: 10, padding: '9px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span>💾</span>
-        <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Saved to your history.</p>
-      </div>
+      {/* SAVE TO HISTORY button */}
+      {user && saveStatus !== 'saved' && (
+        <button
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          style={{
+            width: '100%', padding: '13px', borderRadius: 12, marginBottom: 10,
+            background: saveStatus === 'error' ? 'rgba(255,79,79,0.1)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${saveStatus === 'error' ? 'rgba(255,79,79,0.3)' : 'rgba(255,255,255,0.12)'}`,
+            color: saveStatus === 'error' ? '#ff7070' : '#888',
+            fontSize: 13, cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
+            fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}
+        >
+          {saveStatus === 'saving' ? (
+            <><div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.1)', borderTop: '2px solid #888', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />Saving...</>
+          ) : saveStatus === 'error' ? (
+            '⚠ Save failed — tap to retry'
+          ) : (
+            '💾 Save to history'
+          )}
+        </button>
+      )}
+
+      {saveStatus === 'saved' && (
+        <div style={{ background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.2)', borderRadius: 12, padding: '11px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#4caf7d' }}>✓</span>
+          <p style={{ fontSize: 13, color: '#4caf7d', margin: 0 }}>Saved to your history.</p>
+        </div>
+      )}
 
       {/* BOTTOM BUTTONS */}
-      <div className="btn-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button onClick={onReset} style={{ padding: 'clamp(12px,3vw,15px)', borderRadius: 12, background: '#c8f542', color: '#0f0f0f', border: 'none', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(13px,3vw,15px)', fontWeight: 700, cursor: 'pointer' }}>
+      <div className="btn-row">
+        <button onClick={onReset} style={{ padding: '14px', borderRadius: 12, background: '#c8f542', color: '#0f0f0f', border: 'none', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           New analysis
         </button>
         {jobUrl && (
-          <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ padding: 'clamp(12px,3vw,15px)', borderRadius: 12, background: isPassed ? '#4caf7d' : 'transparent', color: isPassed ? '#fff' : '#888', border: isPassed ? 'none' : '1px solid rgba(255,255,255,0.12)', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(13px,3vw,15px)', fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '14px', borderRadius: 12, background: isPassed ? '#4caf7d' : 'transparent', color: isPassed ? '#fff' : '#888', border: isPassed ? 'none' : '1px solid rgba(255,255,255,0.12)', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {isPassed ? 'Apply now →' : 'View job'}
           </a>
         )}
       </div>
     </div>
   )
-}
-
-function clamp(min, max) {
-  if (typeof window === 'undefined') return max
-  return Math.min(max, Math.max(min, window.innerWidth * 0.28))
 }
