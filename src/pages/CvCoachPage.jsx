@@ -156,11 +156,13 @@ function AnalysisCoach({ analysis, t }) {
 
 export default function CvCoachPage() {
   const { user } = useAuth()
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [coverLetter, setCoverLetter] = useState('')
+  const [tone, setTone] = useState('professional')
+  const [genError, setGenError] = useState('')
   const [genLoading, setGenLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -180,42 +182,24 @@ export default function CvCoachPage() {
     setGenLoading(true)
     setCoverLetter('')
     try {
-      const r = selected.result
-      const prompt = `Write a professional cover letter for this job application.
-
-JOB: ${r.job_context?.title || 'Position'} at ${r.job_context?.company || 'the company'}
-LOCATION: ${r.job_context?.location || 'Not specified'}
-CONTRACT: ${r.job_context?.contract_type || 'Not specified'}
-
-JOB SUMMARY: ${r.job_summary || ''}
-
-CANDIDATE STRENGTHS (from CV analysis):
-${(r.interview_prep?.your_edges || []).map(e => '- ' + e).join('\n')}
-
-KEYWORDS TO INCLUDE:
-${(r.keyword_match?.found || []).slice(0, 8).join(', ')}
-
-Write a concise, professional cover letter (3 short paragraphs). 
-- Opening: express interest and top qualification
-- Middle: 2-3 specific achievements matching the role requirements  
-- Closing: call to action
-Do NOT include date, address blocks, or placeholders like [Your Name]. Just the letter body.
-Tone: confident and professional but not stiff. Maximum 220 words.`
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 600,
-          messages: [{ role: 'user', content: prompt }]
+          analysis: selected.result,
+          lang,
+          tone
         })
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `Server error ${res.status}`)
+      }
       const data = await res.json()
-      const text = data.content?.map(b => b.text||'').join('') || ''
-      setCoverLetter(text.trim())
+      setCoverLetter(data.letter || '')
     } catch (e) {
-      setCoverLetter('Error generating cover letter. Please try again.')
+      setCoverLetter('')
+      setGenError(e.message || 'Could not generate cover letter. Please try again.')
     }
     setGenLoading(false)
   }
@@ -307,12 +291,38 @@ Tone: confident and professional but not stiff. Maximum 220 words.`
 
             <div style={{ padding: 16 }}>
               {!coverLetter && !genLoading && (
-                <div style={{ textAlign: 'center', padding: '24px 16px' }}>
-                  <div style={{ fontSize: 36, marginBottom: 12 }}>✉️</div>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.6 }}>
-                    {t('cover_letter_prompt') || 'Generate a professional cover letter tailored to this job based on your CV analysis.'}
+                <div style={{ padding: '8px 4px' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.6, textAlign: 'center' }}>
+                    ✉️ {t('cover_letter_prompt') || 'Generate a professional cover letter tailored to this job based on your CV analysis.'}
                   </p>
-                  <button onClick={generateCoverLetter} disabled={!selected} className="btn-primary" style={{ width: '100%' }}>
+
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {t('cover_letter_tone') || 'Tone'}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 16 }}>
+                    {[
+                      { v: 'professional', label: t('tone_professional') || 'Professional' },
+                      { v: 'warm', label: t('tone_warm') || 'Warm' },
+                      { v: 'formal', label: t('tone_formal') || 'Formal' },
+                      { v: 'enthusiastic', label: t('tone_enthusiastic') || 'Enthusiastic' }
+                    ].map(o => (
+                      <button key={o.v} onClick={() => setTone(o.v)} style={{
+                        padding: '8px 10px', borderRadius: 10,
+                        border: `1px solid ${tone === o.v ? 'var(--accent)' : 'var(--border)'}`,
+                        background: tone === o.v ? 'var(--accent-bg)' : 'var(--bg-input)',
+                        color: tone === o.v ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === o.v ? 600 : 400
+                      }}>{o.label}</button>
+                    ))}
+                  </div>
+
+                  {genError && (
+                    <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 10, padding: '9px 12px', background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10 }}>
+                      ⚠ {genError}
+                    </p>
+                  )}
+
+                  <button onClick={() => { setGenError(''); generateCoverLetter() }} disabled={!selected} className="btn-primary" style={{ width: '100%' }}>
                     {t('generate_letter') || 'Generate cover letter →'}
                   </button>
                 </div>
@@ -332,9 +342,14 @@ Tone: confident and professional but not stiff. Maximum 220 words.`
                   <pre style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, background: 'var(--bg-input)', borderRadius: 10, padding: '14px 16px', maxHeight: 420, overflowY: 'auto' }}>
                     {coverLetter}
                   </pre>
-                  <button onClick={generateCoverLetter} style={{ marginTop: 10, width: '100%', padding: '10px', borderRadius: 10, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    ↺ {t('regenerate') || 'Regenerate'}
-                  </button>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+                    <button onClick={copyLetter} style={{ padding: '10px', borderRadius: 10, background: copied ? 'rgba(76,175,125,0.15)' : 'var(--accent)', border: copied ? '1px solid rgba(76,175,125,0.3)' : 'none', color: copied ? '#4caf7d' : '#1A1B22', fontSize: 12, cursor: 'pointer', fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>
+                      {copied ? '✓ ' + (t('copied') || 'Copied') : '📋 ' + (t('copy') || 'Copy')}
+                    </button>
+                    <button onClick={() => { setGenError(''); generateCoverLetter() }} style={{ padding: '10px', borderRadius: 10, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      ↺ {t('regenerate') || 'Regenerate'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
