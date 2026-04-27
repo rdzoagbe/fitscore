@@ -4,21 +4,56 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
 function QuickWinCard({ win, index }) {
-  const [copied, setCopied] = useState(false)
-  const copy = () => {
-    navigator.clipboard.writeText(win)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+  const [copiedTip, setCopiedTip] = useState(false)
+  const [copiedExample, setCopiedExample] = useState(false)
+  // Support both old (string) and new ({tip, example}) format
+  const tip = typeof win === 'string' ? win : win?.tip || ''
+  const example = typeof win === 'object' ? win?.example : null
+
+  const copyTip = () => {
+    navigator.clipboard.writeText(tip)
+    setCopiedTip(true)
+    setTimeout(() => setCopiedTip(false), 1500)
   }
+  const copyExample = () => {
+    if (!example) return
+    navigator.clipboard.writeText(example)
+    setCopiedExample(true)
+    setTimeout(() => setCopiedExample(false), 1500)
+  }
+
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-bg)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', fontFamily: 'Syne, sans-serif' }}>{index+1}</span>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-bg)', border: '1px solid var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', fontFamily: 'Syne, sans-serif' }}>{index+1}</span>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6, flex: 1, margin: 0, fontWeight: example ? 600 : 400 }}>{tip}</p>
+        {!example && (
+          <button onClick={copyTip} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: copiedTip ? '#4caf7d' : 'var(--text-muted)', flexShrink: 0, padding: '2px 4px' }} title="Copy">
+            {copiedTip ? '✓' : '📋'}
+          </button>
+        )}
       </div>
-      <p style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6, flex: 1, margin: 0 }}>{win}</p>
-      <button onClick={copy} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: copied ? '#4caf7d' : 'var(--text-muted)', flexShrink: 0, padding: '2px 4px' }} title="Copy">
-        {copied ? '✓' : '📋'}
-      </button>
+      {example && (
+        <div style={{ background: 'var(--bg-input)', borderLeft: '3px solid var(--accent)', borderRadius: 8, padding: '8px 10px', marginLeft: 36 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Example</span>
+            <button onClick={copyExample} style={{
+              background: copiedExample ? 'rgba(76,175,125,0.15)' : 'var(--bg-card)',
+              border: `1px solid ${copiedExample ? 'rgba(76,175,125,0.3)' : 'var(--border)'}`,
+              borderRadius: 14, padding: '2px 8px', cursor: 'pointer',
+              fontSize: 10, fontWeight: 600, color: copiedExample ? '#4caf7d' : 'var(--text-secondary)',
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3
+            }}>
+              {copiedExample ? '✓ Copied' : '📋 Copy'}
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+            "{example}"
+          </p>
+        </div>
+      )}
     </div>
   )
 }
