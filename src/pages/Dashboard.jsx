@@ -31,6 +31,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('recent') // 'recent' | 'priority'
   const [search, setSearch] = useState('')
 
   useEffect(() => { fetchAnalyses() }, [])
@@ -60,6 +61,15 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     const matchFilter = filter === 'all' || a.result?.overall_verdict === filter
     const matchSearch = !search || (a.job_title||'').toLowerCase().includes(search.toLowerCase()) || (a.job_url||'').toLowerCase().includes(search.toLowerCase())
     return matchFilter && matchSearch
+  }).sort((a, b) => {
+    if (sortBy === 'priority') {
+      // Priority = score, but unapplied jobs first within same score band
+      const aApplied = a.application_status && a.application_status !== 'rejected' && a.application_status !== 'withdrawn' ? 1 : 0
+      const bApplied = b.application_status && b.application_status !== 'rejected' && b.application_status !== 'withdrawn' ? 1 : 0
+      if (aApplied !== bApplied) return aApplied - bApplied
+      return b.score - a.score
+    }
+    return new Date(b.created_at) - new Date(a.created_at)
   })
 
   const FILTERS = [
@@ -143,16 +153,26 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
 
             <input type="text" placeholder={t('search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {FILTERS.map(f => (
-                <button key={f.value} onClick={() => setFilter(f.value)} style={{
-                  padding: '5px 12px', borderRadius: 20,
-                  border: `1px solid ${filter===f.value?'var(--accent)':'var(--border)'}`,
-                  background: filter===f.value?'var(--accent-bg)':'var(--bg-input)',
-                  color: filter===f.value?'var(--accent)':'var(--text-secondary)',
-                  fontSize: 12, cursor: 'pointer', transition: 'all 0.2s'
-                }}>{f.label}</button>
-              ))}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {FILTERS.map(f => (
+                  <button key={f.value} onClick={() => setFilter(f.value)} style={{
+                    padding: '5px 12px', borderRadius: 20,
+                    border: `1px solid ${filter===f.value?'var(--accent)':'var(--border)'}`,
+                    background: filter===f.value?'var(--accent-bg)':'var(--bg-input)',
+                    color: filter===f.value?'var(--accent)':'var(--text-secondary)',
+                    fontSize: 12, cursor: 'pointer', transition: 'all 0.2s'
+                  }}>{f.label}</button>
+                ))}
+              </div>
+              <button onClick={() => setSortBy(s => s === 'recent' ? 'priority' : 'recent')} style={{
+                padding: '5px 12px', borderRadius: 20,
+                border: '1px solid var(--border)', background: 'var(--bg-input)',
+                color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 5
+              }}>
+                {sortBy === 'priority' ? '⭐ ' + (t('sort_priority') || 'Priority') : '🕐 ' + (t('sort_recent') || 'Recent')}
+              </button>
             </div>
           </div>
         )}

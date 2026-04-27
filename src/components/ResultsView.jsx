@@ -3,10 +3,13 @@ import ScoreRing from './ScoreRing'
 import VerdictBadge from './VerdictBadge'
 import JobContextCard from './JobContextCard'
 import MatchProbability from './MatchProbability'
+import FitScoreCard from './FitScoreCard'
+import { useScoreDelta } from '../hooks/useScoreDelta'
 import SeniorityCard from './SeniorityCard'
 import SmartApplyBtn from './SmartApplyBtn'
 import InterviewPrepCard from './InterviewPrepCard'
 import QuickWinsCard from './QuickWinsCard'
+import CvCoachPreview from './CvCoachPreview'
 import CvPreview from './CvPreview'
 import StatusPill from './StatusPill'
 import { supabase } from '../lib/supabase'
@@ -35,6 +38,7 @@ const MiniCard = ({ title, children, accent }) => (
 export default function ResultsView({ data, onReset, onGoCoach }) {
   const { user } = useAuth()
   const { t } = useLang()
+  const scoreDelta = useScoreDelta(analysisRow || data)
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
@@ -94,31 +98,23 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
         salary={data.salary_assessment}
       />
 
-      {/* SCORE CARD with auto-save indicator + status pill */}
-      <div className="card" style={{ marginBottom: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
-          <div style={{ flexShrink: 0 }}><ScoreRing score={score} size={100} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{t('ats_score')}</p>
-              {autoSaveStatus === 'saving' && (
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 8, height: 8, border: '1.5px solid var(--border)', borderTop: '1.5px solid var(--text-muted)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                  {t('auto_saving') || 'saving...'}
-                </span>
-              )}
-              {autoSaveStatus === 'saved' && analysisRow && (
-                <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
-              )}
-            </div>
-            <p style={{ fontSize: 'clamp(22px,5vw,28px)', fontWeight: 700, fontFamily: 'Syne, sans-serif', color: score>=70?'#4caf7d':score>=50?'#f5a623':'#ff6b6b', marginBottom: 6, animation: 'pop 0.5s ease' }}>{score}%</p>
-            {data.verdict && <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{data.verdict}</p>}
-          </div>
+      {/* Auto-save + status row */}
+      {(autoSaveStatus === 'saving' || (autoSaveStatus === 'saved' && analysisRow)) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
+          {autoSaveStatus === 'saving' ? (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, border: '1.5px solid var(--border)', borderTop: '1.5px solid var(--text-muted)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+              {t('auto_saving') || 'saving...'}
+            </span>
+          ) : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>✓ {t('saved_to_history') || 'Saved'}</span>}
+          {autoSaveStatus === 'saved' && analysisRow && (
+            <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
+          )}
         </div>
-        <VerdictBadge verdict={data.overall_verdict} reason={data.overall_reason} />
-      </div>
+      )}
 
-      <MatchProbability probability={data.match_probability} reasoning={data.match_reasoning} />
+      {/* Unified FitScore card */}
+      <FitScoreCard data={data} scoreDelta={scoreDelta} />
       <SeniorityCard seniority={data.seniority} />
       <InterviewPrepCard prep={data.interview_prep} score={score} />
 
@@ -186,6 +182,9 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
 
       {/* QUICK WINS — now with example sentences */}
       <QuickWinsCard wins={data.quick_wins} />
+
+      {/* CV Coach inline preview */}
+      {onGoCoach && <CvCoachPreview data={data} onGoCoach={onGoCoach} />}
 
       {/* Format warnings */}
       {data.format_warnings?.filter(w => w?.length > 5).length > 0 && (
