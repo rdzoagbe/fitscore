@@ -4,6 +4,7 @@ import VerdictBadge from './VerdictBadge'
 import JobContextCard from './JobContextCard'
 import MatchProbability from './MatchProbability'
 import SeniorityCard from './SeniorityCard'
+import InterviewPrepCard from './InterviewPrepCard'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
@@ -78,11 +79,7 @@ export default function ResultsView({ data, onReset }) {
 
       <SeniorityCard seniority={data.seniority} />
 
-      {isPassed && jobUrl && (
-        <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '14px', borderRadius: 14, marginBottom: 10, background: '#4caf7d', color: '#fff', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
-          {t('apply_for_job')}
-        </a>
-      )}
+      <InterviewPrepCard prep={data.interview_prep} score={score} />
 
       <div className="mini-cards" style={{ marginBottom: 10 }}>
         <MiniCard title={t('score_breakdown')} accent="#7b8cff">

@@ -87,10 +87,29 @@ Return ONLY a JSON object — no markdown, no preamble:
   "critical_gaps": ["<max 3, empty if none>"],
   "quick_wins": ["<exactly 4 specific copy-paste-ready fixes>"],
   "overall_verdict": "<likely_filtered | borderline | likely_passed>",
-  "overall_reason": "<one sentence>"
+  "overall_reason": "<one sentence>",
+  "interview_prep": {
+    "likely_questions": [
+      "<5 specific interview questions tailored to THIS role + THIS candidate's CV gaps. Not generic ('Tell me about yourself'). Be specific — reference actual technologies, gaps, or experience from CV/job. E.g. 'How would you handle the React migration mentioned in the JD given your Vue background?'>"
+    ],
+    "your_edges": [
+      "<3 things from candidate CV that EXCEED what the role requires. These are selling points to lean on in interview. Each: one concrete sentence quoting CV evidence.>"
+    ],
+    "weak_spots": [
+      "<3 areas where candidate will be challenged in interview. Each item: one object {area: '<weak area>', prep_tip: '<concrete prep advice, 1 sentence>'}>"
+    ],
+    "salary_negotiation_hint": "<one sentence strategic advice based on salary range + candidate level. If salary not specified, advise asking range early.>",
+    "show_prep": <boolean — true if display_score >= 50, else false>
+  }
 }
 
-CRITICAL: Apply the rubric mechanically. Do not introduce subjective judgment. Same input = same output.`
+CRITICAL: Apply the rubric mechanically. Do not introduce subjective judgment. Same input = same output.
+
+For interview_prep:
+- likely_questions: think like a real hiring manager. Reference specific tech/gaps/CV items by name.
+- your_edges: only include if genuinely above requirement. If candidate is junior for the role, this array can be smaller or focus on transferable strengths.
+- weak_spots: be honest. Each weak spot must have a concrete prep_tip the candidate can act on.
+- show_prep should be true if display_score >= 50 (worth interviewing for), else false.`
 
 async function fetchJobText(url) {
   const res = await fetch(url, {
@@ -205,7 +224,7 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2500,
+      max_tokens: 3500,
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]
