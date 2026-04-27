@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null })
   const { user } = useAuth()
 
-  const analyze = async (jobUrl, cvFile) => {
+  // jobUrl OR jobText — one must be provided
+  const analyze = async (jobUrl, cvFile, jobText = null) => {
     setState({ status: 'loading', data: null, error: null })
     try {
       const cvBase64 = await new Promise((resolve, reject) => {
@@ -16,22 +16,16 @@ export function useAnalyze() {
         reader.readAsDataURL(cvFile)
       })
 
-      // Get fresh session token to send to server
-      const { data: { session } } = await supabase.auth.getSession()
-      const accessToken = session?.access_token || null
-
-      console.log('Sending userId:', user?.id, 'hasToken:', !!accessToken)
-
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          jobUrl,
+          jobUrl: jobUrl || null,
+          jobText: jobText || null,
           cvBase64,
           cvMimeType: cvFile.type,
           cvFileName: cvFile.name,
-          userId: user?.id || null,
-          accessToken
+          userId: user?.id || null
         })
       })
 

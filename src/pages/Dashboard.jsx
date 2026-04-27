@@ -3,32 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import UserMenu from '../components/UserMenu'
+import ScoreHistoryChart from '../components/ScoreHistoryChart'
+import NewAnalysisMenu from '../components/NewAnalysisMenu'
 import LangSelector from '../components/LangSelector'
 
-function ScoreChart({ analyses, t }) {
-  if (analyses.length < 2) return null
-  const recent = [...analyses].reverse().slice(-8)
-  const w = 280 / (recent.length - 1)
-  return (
-    <div>
-      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>{t('score_history')}</p>
-      <svg viewBox="0 0 280 70" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-        {[25,50,75].map(y => <line key={y} x1="0" y1={70-(y/100)*60} x2="280" y2={70-(y/100)*60} stroke="var(--border)" strokeWidth="1"/>)}
-        <polyline fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round"
-          points={recent.map((a,i) => `${i*w},${70-(a.score/100)*60}`).join(' ')} />
-        {recent.map((a,i) => {
-          const color = a.score>=70?'#4caf7d':a.score>=50?'#f5a623':'#ff6b6b'
-          return (
-            <g key={i}>
-              <circle cx={i*w} cy={70-(a.score/100)*60} r="4" fill={color} stroke="var(--bg-card)" strokeWidth="1.5"/>
-              <text x={i*w} y={70-(a.score/100)*60-9} textAnchor="middle" fill="var(--text-muted)" fontSize="8">{a.score}%</text>
-            </g>
-          )
-        })}
-      </svg>
-    </div>
-  )
-}
+
 
 function ProgressBar({ label, value, color }) {
   return (
@@ -100,9 +79,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
           <div className="tagline">{t('tagline')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button onClick={onNewAnalysis} style={{ background: 'var(--accent)', border: 'none', borderRadius: 20, padding: '9px 20px', color: '#1A1B22', fontSize: 13, fontFamily: 'Syne, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
-            + {t('new_analysis')}
-          </button>
+          <NewAnalysisMenu onNewWithCv={onNewAnalysis} onUploadNew={onNewAnalysis} />
           <UserMenu onViewDashboard={() => {}} />
         </div>
       </header>
@@ -143,7 +120,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
         {/* Chart + breakdown side by side on desktop */}
         {!loading && analyses.length >= 2 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px,1fr))', gap: 8, marginBottom: 20 }}>
-            <div className="card"><ScoreChart analyses={analyses} t={t} /></div>
+            <div className="card"><ScoreHistoryChart analyses={analyses} t={t} /></div>
             <div className="card">
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>{t('verdict_breakdown')}</p>
               <ProgressBar label={t('likely_passed')} value={Math.round((analyses.filter(a=>a.result?.overall_verdict==='likely_passed').length/analyses.length)*100)} color="#4caf7d" />
@@ -209,34 +186,41 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
               const title = a.job_title || (() => { try { return new URL(a.job_url).hostname.replace('www.','') } catch { return 'Job' } })()
 
               return (
-                <div key={a.id} onClick={() => onSelectAnalysis(a)}
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 'clamp(12px,3vw,16px)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14, transition: 'all 0.15s' }}
+                <div key={a.id}
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.15s' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor='var(--border-focus)'; e.currentTarget.style.transform='translateY(-1px)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='none' }}
                 >
-                  <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}12` }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'Syne, sans-serif', lineHeight: 1 }}>{a.score}%</span>
-                  </div>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</p>
-                    {a.result?.job_context?.company && a.result.job_context.company !== 'Not specified' && (
-                      <p style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@ {a.result.job_context.company}</p>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: `${color}18`, color, border: `1px solid ${color}30` }}>{verdict}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{date}</span>
-                      {a.result?.job_context?.location && a.result.job_context.location !== 'Not specified' && (
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· 📍 {a.result.job_context.location.split(',')[0]}</span>
-                      )}
+                  <div style={{ padding: 'clamp(12px,3vw,16px)', display: 'flex', alignItems: 'center', gap: 14 }} onClick={() => onSelectAnalysis(a)}>
+                    <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}12` }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'Syne, sans-serif', lineHeight: 1 }}>{a.score}%</span>
                     </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</p>
+                      {a.result?.job_context?.company && a.result.job_context.company !== 'Not specified' && (
+                        <p style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@ {a.result.job_context.company}</p>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: `${color}18`, color, border: `1px solid ${color}30` }}>{verdict}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{date}</span>
+                        {a.result?.job_context?.location && a.result.job_context.location !== 'Not specified' && (
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· 📍 {a.result.job_context.location.split(',')[0]}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button onClick={e => deleteAnalysis(a.id, e)} disabled={deleting===a.id}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-hint)', cursor: 'pointer', fontSize: 18, padding: '4px 6px', flexShrink: 0, lineHeight: 1 }}
+                      onMouseEnter={e => e.currentTarget.style.color='#ff6b6b'}
+                      onMouseLeave={e => e.currentTarget.style.color='var(--text-hint)'}
+                    >×</button>
                   </div>
-
-                  <button onClick={e => deleteAnalysis(a.id, e)} disabled={deleting===a.id}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-hint)', cursor: 'pointer', fontSize: 18, padding: '4px 6px', flexShrink: 0, transition: 'color 0.15s', lineHeight: 1 }}
-                    onMouseEnter={e => e.currentTarget.style.color='#ff6b6b'}
-                    onMouseLeave={e => e.currentTarget.style.color='var(--text-hint)'}
-                  >×</button>
+                  {a.score < 70 && (
+                    <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-input)' }}>
+                      <button onClick={() => onSelectAnalysis(a)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 20, background: 'var(--accent)', color: '#1A1B22', border: 'none', cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
+                        {t('improve_optimize') || 'IMPROVE & OPTIMIZE'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}

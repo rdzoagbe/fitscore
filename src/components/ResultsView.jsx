@@ -4,6 +4,7 @@ import VerdictBadge from './VerdictBadge'
 import JobContextCard from './JobContextCard'
 import MatchProbability from './MatchProbability'
 import SeniorityCard from './SeniorityCard'
+import SmartApplyBtn from './SmartApplyBtn'
 import InterviewPrepCard from './InterviewPrepCard'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -28,14 +29,13 @@ const MiniCard = ({ title, children, accent }) => (
   </div>
 )
 
-export default function ResultsView({ data, onReset }) {
+export default function ResultsView({ data, onReset, onGoCoach }) {
   const { user } = useAuth()
   const { t } = useLang()
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
   const jobUrl = data.job_url || null
-  const isPassed = data.overall_verdict === 'likely_passed'
   const [saveStatus, setSaveStatus] = useState('idle')
 
   const handleSave = async () => {
@@ -190,14 +190,8 @@ export default function ResultsView({ data, onReset }) {
         </div>
       )}
 
-      <div className="btn-row">
-        <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>{t('new_analysis')}</button>
-        {jobUrl && (
-          <a href={jobUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '14px', borderRadius: 12, background: isPassed ? '#4caf7d' : 'transparent', color: isPassed ? '#fff' : 'var(--text-secondary)', border: isPassed ? 'none' : '1px solid var(--border)', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 600, textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {isPassed ? t('apply_now') : t('view_job')}
-          </a>
-        )}
-      </div>
+      <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
+      <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>{t('new_analysis')}</button>
     </div>
   )
 }

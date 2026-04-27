@@ -51,7 +51,9 @@ Return ONLY a JSON object — no markdown, no preamble:
     "salary_range": "<exact salary with currency, or 'Not specified'>",
     "experience_required": "<e.g. '3-5 years' or 'Not specified'>",
     "posted_date": "<date or 'Unknown'>",
-    "languages_required": ["language1"]
+    "languages_required": ["language1"],
+    "apply_url": "<direct application URL if found in job posting, else null>",
+    "easy_apply": <true if job has LinkedIn Easy Apply or Indeed Apply button, else false>
   },
   "job_summary": "<2 sentences max>",
   "match_probability": <integer 0-100>,
@@ -177,8 +179,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    const { jobUrl, cvBase64, cvMimeType, userId, cvFileName } = req.body
-    if (!jobUrl || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body
+    if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
 
     // Setup admin Supabase client
     let supabaseClient = null
@@ -197,7 +199,7 @@ export default async function handler(req, res) {
     }
 
     const [jobText, cvText] = await Promise.all([
-      fetchJobText(jobUrl),
+      providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
 
@@ -206,7 +208,7 @@ export default async function handler(req, res) {
     }
 
     // CACHE: same content = same result
-    const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
+    const cacheKey = hashContent(cvText.slice(0, 4000), resolvedJobText.slice(0, 4000))
 
     if (supabaseClient && userId) {
       const { data: cached } = await supabaseClient
@@ -227,13 +229,14 @@ export default async function handler(req, res) {
       max_tokens: 3000,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]
+      messages: [{ role: 'user', content: `JOB OFFER:\n${resolvedJobText}\n\n---\n\nCV:\n${cvText}` }]
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     const analysis = JSON.parse(raw)
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
-    analysis.job_url = jobUrl
+    analysis.job_url = jobUrl || null
+    analysis.job_source = jobUrl ? 'url' : 'pasted'
     analysis.job_title = analysis.job_context?.title || null
 
     // Save with cache_key
@@ -241,7 +244,7 @@ export default async function handler(req, res) {
       if (supabaseClient && userId) {
         await supabaseClient.from('analyses').insert({
           user_id: userId,
-          job_url: jobUrl,
+          job_url: jobUrl || 'manual_paste',
           job_title: analysis.job_context?.title || null,
           score: analysis.display_score,
           result: analysis,
