@@ -63,13 +63,19 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  // Watch for blocking errors and auto-switch to paste mode (only once per error)
+  const autoSwitchedForErrorRef = useRef(null)
+  // Watch for blocking errors and auto-switch to paste mode (only ONCE per error)
   useEffect(() => {
-    if (status !== 'error' || !error) return
+    if (status !== 'error' || !error) {
+      autoSwitchedForErrorRef.current = null
+      return
+    }
     if (userToggledMode) return  // Respect user's manual choice
+    if (autoSwitchedForErrorRef.current === error) return  // Already switched for this exact error
     const lower = error.toLowerCase()
     const isBlocked = lower.includes('blocked') || lower.includes('blocking') || lower.includes('paste') || lower.includes('authwall')
     if (isBlocked && !showTextPaste) {
+      autoSwitchedForErrorRef.current = error
       const timer = setTimeout(() => {
         setShowTextPaste(true)
         setTimeout(() => {
@@ -79,7 +85,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
       }, 800)
       return () => clearTimeout(timer)
     }
-  }, [status, error])
+  }, [status, error, userToggledMode, showTextPaste])
 
   useEffect(() => {
     if (data?.display_score >= 80) {
@@ -131,7 +137,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                 <>
                   <div style={{ position: 'relative' }}>
                     <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)' }}>🔗</span>
-                    <input type="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)}
+                    <input type="url" value={jobUrl} onChange={e => { setJobUrl(e.target.value); if (status === 'error') reset() }}
                       placeholder={t('job_url_placeholder')} disabled={status === 'loading'}
                       style={{ paddingLeft: 40, borderColor: isValidUrl(jobUrl) ? 'var(--accent)' : undefined }}
                     />
