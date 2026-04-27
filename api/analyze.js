@@ -163,20 +163,19 @@ async function fetchJobText(url) {
     throw new Error('This site is blocking automated access. Please copy the job description text and paste it instead.')
   }
 
-  // Try to extract just the main content area first (better quality)
-  let mainContent = html
-  const mainMatch = html.match(/<main[\s\S]*?<\/main>/i) ||
-                     html.match(/<article[\s\S]*?<\/article>/i) ||
-                     html.match(/<div[^>]*class="[^"]*(?:job|description|posting|content)[^"]*"[\s\S]*?<\/div>/i)
-  if (mainMatch && mainMatch[0].length > 500) mainContent = mainMatch[0]
+  // Try to find <main> or <article> first — they usually contain the job content
+  let target = html
+  const mainMatch = html.match(/<main\b[\s\S]*?<\/main>/i)
+  const articleMatch = html.match(/<article\b[\s\S]*?<\/article>/i)
+  if (mainMatch && mainMatch[0].length > 800) target = mainMatch[0]
+  else if (articleMatch && articleMatch[0].length > 800) target = articleMatch[0]
 
-  const text = mainContent
+  // Strip non-content blocks (broad and safe — never narrows by class)
+  const text = target
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-    .replace(/<header[\s\S]*?<\/header>/gi, '')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/\s{2,}/g, ' ').trim()
