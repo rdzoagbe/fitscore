@@ -25,6 +25,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const [jobUrl, setJobUrl] = useState('')
   const [jobText, setJobText] = useState('')
   const [showTextPaste, setShowTextPaste] = useState(false)
+  const [userToggledMode, setUserToggledMode] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [msgIdx, setMsgIdx] = useState(0)
   const [uploadTrigger, setUploadTrigger] = useState(0)
@@ -62,16 +63,15 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  // Watch for blocking errors and auto-switch to paste mode
+  // Watch for blocking errors and auto-switch to paste mode (only once per error)
   useEffect(() => {
     if (status !== 'error' || !error) return
+    if (userToggledMode) return  // Respect user's manual choice
     const lower = error.toLowerCase()
     const isBlocked = lower.includes('blocked') || lower.includes('blocking') || lower.includes('paste') || lower.includes('authwall')
     if (isBlocked && !showTextPaste) {
-      // Auto-switch after a short pause so the user sees the error first
       const timer = setTimeout(() => {
         setShowTextPaste(true)
-        // Focus the textarea
         setTimeout(() => {
           const ta = document.querySelector('textarea[placeholder*="job description" i], textarea[placeholder*="description" i]')
           ta?.focus()
@@ -79,7 +79,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
       }, 800)
       return () => clearTimeout(timer)
     }
-  }, [status, error, showTextPaste])
+  }, [status, error])
 
   useEffect(() => {
     if (data?.display_score >= 80) {
@@ -91,6 +91,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const handleReset = () => {
     reset(); setJobUrl(''); setJobText(''); setMsgIdx(0)
     setViewingAnalysis(null); onClearPrefill?.()
+    setUserToggledMode(false); setShowTextPaste(false)
   }
 
   const canAnalyze = cvFile !== null && (
@@ -146,7 +147,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                         <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
                           {t('risky_hint_desc') || 'For best results, copy the job description directly from the page and paste it below.'}
                         </p>
-                        <button onClick={() => setShowTextPaste(true)} style={{ background: 'none', border: 'none', color: '#f5a623', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                        <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ background: 'none', border: 'none', color: '#f5a623', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
                           {t('switch_to_paste') || 'Switch to paste mode →'}
                         </button>
                       </div>
@@ -211,7 +212,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             {/* OR toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              <button onClick={() => setShowTextPaste(s => !s)} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', fontWeight: 500 }}>
+              <button onClick={() => { setShowTextPaste(s => !s); setUserToggledMode(true); reset() }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', fontWeight: 500 }}>
                 {showTextPaste ? `↑ ${t('use_url') || 'Use URL instead'}` : (t('or_paste_text') || 'OR paste job description')}
               </button>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
@@ -234,7 +235,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
                 <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
                 {!showTextPaste && (
-                  <button onClick={() => setShowTextPaste(true)} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
+                  <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
                     {t('try_paste_instead') || '→ Try pasting the job description instead'}
                   </button>
                 )}
