@@ -38,7 +38,6 @@ const MiniCard = ({ title, children, accent }) => (
 export default function ResultsView({ data, onReset, onGoCoach }) {
   const { user } = useAuth()
   const { t } = useLang()
-  const scoreDelta = useScoreDelta(analysisRow || data)
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
@@ -46,6 +45,7 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
   const [analysisRow, setAnalysisRow] = useState(null) // saved row from DB
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle') // idle | saving | saved | error
   const savedRef = useRef(false) // prevents double-save in React strict mode
+  const scoreDelta = useScoreDelta(analysisRow || data)
 
   // AUTO-SAVE on first render — opt-out, not opt-in
   useEffect(() => {

@@ -88,12 +88,11 @@ Return ONLY a JSON object — no markdown, no preamble:
   "format_warnings": ["<max 3, empty if clean>"],
   "critical_gaps": ["<max 3, empty if none>"],
   "quick_wins": [
-    {
-      "tip": "<the action to take, max 12 words>",
-      "example": "<a concrete sentence the user can copy-paste into their CV. Use realistic numbers/details. Max 25 words.>"
-    }
+    { "tip": "<action 1, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
+    { "tip": "<action 2, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
+    { "tip": "<action 3, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
+    { "tip": "<action 4, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" }
   ],
-  "_quick_wins_count": "exactly 4 quick_wins required",
   "overall_verdict": "<likely_filtered | borderline | likely_passed>",
   "overall_reason": "<one sentence>",
   "interview_prep": {
@@ -290,11 +289,30 @@ export default async function handler(req, res) {
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
-    const analysis = JSON.parse(raw)
+
+    let analysis
+    try {
+      analysis = JSON.parse(raw)
+    } catch (parseErr) {
+      console.error('JSON parse failed. Raw output (first 500):', raw.slice(0, 500))
+      throw new Error('AI returned malformed JSON. This is usually transient — please try again.')
+    }
+
+    // Validate critical fields
+    if (!analysis?.keyword_match?.score && analysis?.keyword_match?.score !== 0) {
+      throw new Error('AI response missing keyword_match.score. Please try again.')
+    }
+    if (!analysis?.requirements_check?.score && analysis?.requirements_check?.score !== 0) {
+      throw new Error('AI response missing requirements_check.score. Please try again.')
+    }
+
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
     analysis.job_url = jobUrl || null
     analysis.job_source = jobUrl ? 'url' : 'pasted'
     analysis.job_title = analysis.job_context?.title || null
+    // CV text preview (first 800 chars) so user can verify what AI is reading
+    analysis.cv_preview = cvText.trim().slice(0, 800).replace(/\s+/g, ' ').trim()
+    analysis.cv_preview_truncated = cvText.trim().length > 800
 
     // Save with cache_key
     try {
