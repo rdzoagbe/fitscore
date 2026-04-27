@@ -197,7 +197,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                   <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
                     {t('paste_job_label') || 'Job description text'}
                   </label>
-                  <textarea value={jobText} onChange={e => setJobText(e.target.value)}
+                  <textarea value={jobText} onChange={e => { setJobText(e.target.value); if (status === 'error') reset() }}
                     placeholder={t('paste_job_placeholder') || 'Paste the full job description here...'}
                     rows={7} maxLength={8000} disabled={status === 'loading'}
                     style={{ borderColor: jobText.length > 100 ? 'var(--accent)' : undefined }}
@@ -231,14 +231,13 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               </div>
             )}
 
-            {status === 'error' && (
+            {/* Hide red error if we've already switched to paste mode (green banner shows there instead) */}
+            {status === 'error' && !showTextPaste && (
               <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
                 <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
-                {!showTextPaste && (
-                  <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
-                    {t('try_paste_instead') || '→ Try pasting the job description instead'}
-                  </button>
-                )}
+                <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
+                  {t('try_paste_instead') || '→ Try pasting the job description instead'}
+                </button>
               </div>
             )}
 
