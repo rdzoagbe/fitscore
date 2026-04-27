@@ -1,23 +1,26 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* DEFAULT = LIGHT (overridden by ThemeContext) */
-  --bg: #fafafa;
-  --bg-card: #ffffff;
-  --bg-input: #f0f0f0;
-  --border: rgba(0,0,0,0.08);
-  --border-focus: rgba(0,0,0,0.25);
-  --text-primary: #111111;
-  --text-secondary: #555555;
-  --text-muted: #888888;
-  --text-hint: #aaaaaa;
-  --shadow: rgba(0,0,0,0.08);
-  --accent: #8aaa28;
-  --accent-bg: rgba(138,170,40,0.1);
-  --red: #d63838;
-  --amber: #c97a0e;
-  --green: #2d8a5b;
-  --blue: #5468d1;
+  /* DEFAULT = DARK (overridden by ThemeContext) */
+  --bg: #1A1B22;
+  --bg-card: #23252E;
+  --bg-input: #2A2C36;
+  --border: rgba(255,255,255,0.07);
+  --border-focus: rgba(255,255,255,0.22);
+  --text-primary: #ECECEF;
+  --text-secondary: #A8A8B5;
+  --text-muted: #888896;
+  --text-hint: #5A5A66;
+  --shadow: rgba(0,0,0,0.4);
+  --accent: #FF8E6B;
+  --accent-bg: rgba(255,142,107,0.12);
+  --accent-text: #FF8E6B;
+  --slate: #8DA3BD;
+  --slate-bg: rgba(141,163,189,0.12);
+  --red: #ff6b6b;
+  --amber: #f5a623;
+  --green: #4caf7d;
+  --blue: #7b8cff;
   --font-display: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
 }
@@ -34,20 +37,16 @@ body {
 #root { min-height: 100dvh; }
 input, textarea, button, select { font-family: var(--font-body); color: var(--text-primary); }
 
-/* Page layout */
 .page { min-height: 100dvh; background: var(--bg); transition: background 0.3s; }
 .page-header { display: flex; align-items: center; justify-content: space-between; padding: clamp(16px,4vw,28px) clamp(16px,5vw,48px) 0; max-width: 900px; margin: 0 auto; gap: 12px; flex-wrap: wrap; }
 .page-main { padding: clamp(20px,4vw,36px) clamp(16px,5vw,48px) 80px; max-width: 900px; margin: 0 auto; }
 
-/* Logo */
 .logo { font-family: 'Syne', sans-serif; font-size: clamp(18px,4vw,22px); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
 .logo .acc { color: var(--accent); }
 .tagline { font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; margin-top: 2px; }
 
-/* Cards */
 .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: clamp(14px,3vw,20px); transition: background 0.3s, border-color 0.2s; box-shadow: 0 1px 3px var(--shadow); }
 
-/* Inputs */
 input[type="url"], input[type="email"], input[type="password"], input[type="text"] {
   width: 100%; background: var(--bg-input); border: 1px solid var(--border);
   border-radius: 10px; color: var(--text-primary); font-size: 14px;
@@ -61,15 +60,11 @@ textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--bor
 textarea:focus { border-color: var(--border-focus); }
 textarea::placeholder { color: var(--text-muted); }
 
-/* Buttons */
-.btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 12px; padding: 14px 24px; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+.btn-primary { background: var(--accent); color: #1A1B22; border: none; border-radius: 12px; padding: 14px 24px; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
 .btn-primary:hover:not(:disabled) { opacity: 0.9; }
 .btn-primary:active:not(:disabled) { transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-.btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 14px 24px; font-size: 14px; cursor: pointer; transition: border-color 0.2s; }
-.btn-outline:hover { border-color: var(--border-focus); }
 
-/* Grids */
 .mini-cards { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
 .qw-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
 .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -89,9 +84,7 @@ textarea::placeholder { color: var(--text-muted); }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
 
-/* Animations */
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 @keyframes spin { to { transform:rotate(360deg); } }

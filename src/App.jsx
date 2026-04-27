@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
+import { useLang } from './context/LangContext'
 import { useAnalyze } from './hooks/useAnalyze'
 import { useCvPersist } from './hooks/useCvPersist'
 import { useJobUrlHistory } from './hooks/useJobUrlHistory'
@@ -11,27 +12,9 @@ import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import ThemeToggle from './components/ThemeToggle'
+import LangSelector from './components/LangSelector'
 
-const LOADING_MSGS = [
-  'Fetching job posting...',
-  'Reading your CV...',
-  'Running ATS simulation...',
-  'Calculating your score...'
-]
-const ACCEPTED = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/msword'
-]
-
-function Logo() {
-  return (
-    <div>
-      <div className="logo">Fit<span className="acc">Score</span></div>
-      <div className="tagline">KNOW BEFORE YOU APPLY</div>
-    </div>
-  )
-}
+const ACCEPTED = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
 
 function ChipBtn({ onClick, children, accent }) {
   return (
@@ -40,13 +23,13 @@ function ChipBtn({ onClick, children, accent }) {
       border: `1px solid ${accent ? 'var(--accent)' : 'var(--border)'}`,
       borderRadius: 20, padding: '7px 16px',
       color: accent ? 'var(--accent)' : 'var(--text-secondary)',
-      fontSize: 13, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
-      transition: 'all 0.2s'
+      fontSize: 13, cursor: 'pointer', transition: 'all 0.2s'
     }}>{children}</button>
   )
 }
 
 function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
+  const { t } = useLang()
   const [jobUrl, setJobUrl] = useState('')
   const [dragging, setDragging] = useState(false)
   const [msgIdx, setMsgIdx] = useState(0)
@@ -61,12 +44,13 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
   const [showConfetti, setShowConfetti] = useState(false)
 
+  const LOADING_MSGS = [t('loading_fetch'), t('loading_cv'), t('loading_ats'), t('loading_score')]
   const isValidUrl = (str) => { try { new URL(str); return true } catch { return false } }
 
   const handleFile = (file) => {
     if (!file) return
-    if (!ACCEPTED.includes(file.type)) { alert('Please upload a PDF or Word (.docx) file.'); return }
-    if (file.size > 10 * 1024 * 1024) { alert('File too large. Maximum 10MB.'); return }
+    if (!ACCEPTED.includes(file.type)) { alert(t('drop_cv')); return }
+    if (file.size > 10 * 1024 * 1024) { alert('Max 10MB'); return }
     saveCv(file)
   }
 
@@ -88,10 +72,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
     }
   }, [data])
 
-  const handleReset = () => {
-    reset(); setJobUrl(''); setMsgIdx(0)
-    setViewingAnalysis(null); onClearPrefill?.()
-  }
+  const handleReset = () => { reset(); setJobUrl(''); setMsgIdx(0); setViewingAnalysis(null); onClearPrefill?.() }
 
   const canAnalyze = isValidUrl(jobUrl) && cvFile !== null
   const displayData = viewingAnalysis?.result || data
@@ -102,11 +83,15 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
       <Confetti active={showConfetti} />
 
       <header className="page-header">
-        <Logo />
+        <div>
+          <div className="logo">Fit<span className="acc">Score</span></div>
+          <div className="tagline">{t('tagline')}</div>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <LangSelector />
           <ThemeToggle />
-          {displayStatus === 'done' && <ChipBtn onClick={handleReset}>New</ChipBtn>}
-          <ChipBtn onClick={onViewDashboard} accent>History</ChipBtn>
+          {displayStatus === 'done' && <ChipBtn onClick={handleReset}>{t('new')}</ChipBtn>}
+          <ChipBtn onClick={onViewDashboard} accent>{t('history')}</ChipBtn>
         </div>
       </header>
 
@@ -115,34 +100,31 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
           <div style={{ maxWidth: 560, animation: 'fadeUp 0.4s ease' }}>
             {status === 'idle' && (
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.7 }}>
-                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! {cvFile ? 'Your CV is ready — just paste a job URL.' : 'Upload your CV once, then test against any job offer.'}
+                {t('welcome_back')}{user?.email ? `, ${user.email.split('@')[0]}` : ''}! {cvFile ? t('welcome_cv_ready') : t('welcome_no_cv')}
               </p>
             )}
 
-            {/* Job URL */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Job offer URL</label>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('job_url_label')}</label>
                 {urlHistory.length > 0 && (
                   <button onClick={() => setShowHistory(s => !s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 500 }}>
-                    {showHistory ? 'Hide recent' : '↺ Recent jobs'}
+                    {showHistory ? t('hide_recent') : t('recent_jobs')}
                   </button>
                 )}
               </div>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)' }}>🔗</span>
                 <input type="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)}
-                  placeholder="https://linkedin.com/jobs/... or indeed.com/..."
-                  disabled={status === 'loading'}
+                  placeholder={t('job_url_placeholder')} disabled={status === 'loading'}
                   style={{ paddingLeft: 40, borderColor: isValidUrl(jobUrl) ? 'var(--accent)' : undefined }}
                 />
               </div>
 
-              {/* Recent URLs dropdown */}
               {showHistory && urlHistory.length > 0 && (
                 <div style={{ marginTop: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 6, maxHeight: 200, overflowY: 'auto' }}>
                   {urlHistory.map((h, i) => {
-                    const color = h.score >= 70 ? '#4caf7d' : h.score >= 50 ? '#f5a623' : '#ff4f4f'
+                    const color = h.score >= 70 ? '#4caf7d' : h.score >= 50 ? '#f5a623' : '#ff6b6b'
                     return (
                       <button key={i} onClick={() => { setJobUrl(h.job_url); setShowHistory(false) }}
                         style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
@@ -164,17 +146,16 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
                 </div>
               )}
 
-              {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 5 }}>Please enter a valid URL including https://</p>}
-              <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 5 }}>Works with Indeed, WTTJ, Glassdoor. LinkedIn may block access.</p>
+              {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 5 }}>{t('job_url_invalid')}</p>}
+              <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 5 }}>{t('job_url_hint')}</p>
             </div>
 
-            {/* CV section */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Your CV</label>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('your_cv')}</label>
                 {cvFile && (
                   <button onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 500 }}>
-                    ↻ Change
+                    {t('change_cv')}
                   </button>
                 )}
               </div>
@@ -186,9 +167,9 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
                   onClick={() => fileInputRef.current?.click()}
                   style={{ border: `1.5px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 14, padding: 'clamp(24px,5vw,40px) 20px', textAlign: 'center', cursor: 'pointer', background: dragging ? 'var(--accent-bg)' : 'var(--bg-input)', transition: 'all 0.2s' }}>
                   <div style={{ fontSize: 28, marginBottom: 10 }}>📎</div>
-                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>Drop your CV here or tap to browse</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>PDF or Word (.docx) · Max 10MB</p>
-                  <p style={{ fontSize: 11, color: 'var(--accent)', marginTop: 8 }}>✓ Saved on your device — uploaded once, ready for every job</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('drop_cv')}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('cv_format')}</p>
+                  <p style={{ fontSize: 11, color: 'var(--accent)', marginTop: 8 }}>{t('cv_saved')}</p>
                 </div>
               ) : (
                 <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 12, padding: '13px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -196,10 +177,10 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{cvFile.type === 'application/pdf' ? '📄' : '📝'}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cvFile.name}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(cvFile.size / 1024).toFixed(0)} KB · saved on device</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(cvFile.size / 1024).toFixed(0)} KB · {t('saved_on_device')}</p>
                     </div>
                   </div>
-                  <button onClick={clearCv} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, padding: '4px 8px', flexShrink: 0 }}>×</button>
+                  <button onClick={clearCv} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, padding: '4px 8px' }}>×</button>
                 </div>
               )}
               <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
@@ -213,15 +194,14 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
             )}
 
             {status === 'error' && (
-              <div style={{ background: 'rgba(255,79,79,0.08)', border: '1px solid rgba(255,79,79,0.25)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
-                <p style={{ fontSize: 13, color: 'var(--red)', lineHeight: 1.5 }}>⚠ {error}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>Try Indeed or WTTJ — LinkedIn may block automated access.</p>
+              <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
               </div>
             )}
 
             {status !== 'loading' && (
               <button onClick={handleAnalyze} disabled={!canAnalyze} className="btn-primary" style={{ width: '100%' }}>
-                Run ATS check →
+                {t('run_ats')}
               </button>
             )}
           </div>
@@ -234,8 +214,8 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
         )}
 
         <div style={{ marginTop: 36, display: 'flex', gap: 20, alignItems: 'center' }}>
-          <a href="/privacy" style={{ fontSize: 11, color: 'var(--text-hint)', textDecoration: 'none' }}>Privacy & RGPD</a>
-          <button onClick={signOut} style={{ fontSize: 11, color: 'var(--text-hint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Sign out</button>
+          <a href="/privacy" style={{ fontSize: 11, color: 'var(--text-hint)', textDecoration: 'none' }}>{t('privacy')}</a>
+          <button onClick={signOut} style={{ fontSize: 11, color: 'var(--text-hint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{t('sign_out')}</button>
         </div>
       </main>
 
@@ -267,10 +247,7 @@ export default function App() {
     <>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded', 'true'); setShowOnboarding(false) }} />}
       {page === 'dashboard' ? (
-        <Dashboard
-          onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }}
-          onSelectAnalysis={(a) => { setSelectedAnalysis(a); setPage('analyzer') }}
-        />
+        <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={(a) => { setSelectedAnalysis(a); setPage('analyzer') }} />
       ) : (
         <AnalyzerPage onViewDashboard={() => setPage('dashboard')} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       )}
