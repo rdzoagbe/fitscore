@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ScoreRing from './ScoreRing'
 import VerdictBadge from './VerdictBadge'
 import JobContextCard from './JobContextCard'
@@ -6,6 +6,9 @@ import MatchProbability from './MatchProbability'
 import SeniorityCard from './SeniorityCard'
 import SmartApplyBtn from './SmartApplyBtn'
 import InterviewPrepCard from './InterviewPrepCard'
+import QuickWinsCard from './QuickWinsCard'
+import CvPreview from './CvPreview'
+import StatusPill from './StatusPill'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
@@ -36,25 +39,53 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
   const jobUrl = data.job_url || null
-  const [saveStatus, setSaveStatus] = useState('idle')
+  const [analysisRow, setAnalysisRow] = useState(null) // saved row from DB
+  const [autoSaveStatus, setAutoSaveStatus] = useState('idle') // idle | saving | saved | error
+  const savedRef = useRef(false) // prevents double-save in React strict mode
 
-  const handleSave = async () => {
+  // AUTO-SAVE on first render — opt-out, not opt-in
+  useEffect(() => {
+    if (!user || savedRef.current) return
+    // Skip if this is a viewing-only mode (data already has an `id` from history)
+    if (data.id) { setAnalysisRow(data); setAutoSaveStatus('saved'); savedRef.current = true; return }
+    savedRef.current = true
+    saveAnalysis()
+  }, [])
+
+  const saveAnalysis = async () => {
     if (!user) return
-    setSaveStatus('saving')
+    setAutoSaveStatus('saving')
     try {
-      const { error } = await supabase.from('analyses').insert({
-        user_id: user.id,
-        job_url: jobUrl || '',
-        job_title: data.job_context?.title || data.job_title || null,
-        score,
-        result: data
-      })
-      setSaveStatus(error ? 'error' : 'saved')
-    } catch { setSaveStatus('error') }
+      const { data: inserted, error } = await supabase
+        .from('analyses')
+        .insert({
+          user_id: user.id,
+          job_url: jobUrl || '',
+          job_title: data.job_context?.title || data.job_title || null,
+          score,
+          result: data
+        })
+        .select()
+        .single()
+      if (error) {
+        console.error('Auto-save error:', error.message)
+        setAutoSaveStatus('error')
+      } else {
+        setAnalysisRow(inserted)
+        setAutoSaveStatus('saved')
+      }
+    } catch (e) {
+      setAutoSaveStatus('error')
+    }
   }
+
+  const handleStatusUpdate = (updated) => setAnalysisRow(updated)
 
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
+      {/* CV PREVIEW — shown FIRST so users immediately see what was extracted */}
+      <CvPreview preview={data.cv_preview} truncated={data.cv_preview_truncated} />
+
       <JobContextCard
         context={data.job_context}
         summary={data.job_summary}
@@ -63,11 +94,23 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
         salary={data.salary_assessment}
       />
 
+      {/* SCORE CARD with auto-save indicator + status pill */}
       <div className="card" style={{ marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 14 }}>
           <div style={{ flexShrink: 0 }}><ScoreRing score={score} size={100} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{t('ats_score')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{t('ats_score')}</p>
+              {autoSaveStatus === 'saving' && (
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 8, height: 8, border: '1.5px solid var(--border)', borderTop: '1.5px solid var(--text-muted)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  {t('auto_saving') || 'saving...'}
+                </span>
+              )}
+              {autoSaveStatus === 'saved' && analysisRow && (
+                <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
+              )}
+            </div>
             <p style={{ fontSize: 'clamp(22px,5vw,28px)', fontWeight: 700, fontFamily: 'Syne, sans-serif', color: score>=70?'#4caf7d':score>=50?'#f5a623':'#ff6b6b', marginBottom: 6, animation: 'pop 0.5s ease' }}>{score}%</p>
             {data.verdict && <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{data.verdict}</p>}
           </div>
@@ -76,11 +119,10 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
       </div>
 
       <MatchProbability probability={data.match_probability} reasoning={data.match_reasoning} />
-
       <SeniorityCard seniority={data.seniority} />
-
       <InterviewPrepCard prep={data.interview_prep} score={score} />
 
+      {/* 4 MINI CARDS */}
       <div className="mini-cards" style={{ marginBottom: 10 }}>
         <MiniCard title={t('score_breakdown')} accent="#7b8cff">
           {[[t('keywords_60'), km.score??0, '#7b8cff'], [t('requirements_40'), req.score??0, '#4caf7d']].map(([label, val, color]) => (
@@ -142,20 +184,10 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
         </MiniCard>
       </div>
 
-      {data.quick_wins?.length > 0 && (
-        <div className="card" style={{ marginBottom: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>{t('quick_wins')}</p>
-          <div className="qw-grid">
-            {data.quick_wins.map((w, i) => (
-              <div key={i} style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent)', borderRadius: 10, padding: '10px 12px', opacity: 0.95 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', display: 'block', marginBottom: 4 }}>#{i+1}</span>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{w}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* QUICK WINS — now with example sentences */}
+      <QuickWinsCard wins={data.quick_wins} />
 
+      {/* Format warnings */}
       {data.format_warnings?.filter(w => w?.length > 5).length > 0 && (
         <div style={{ background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#f5a623', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{t('format_warnings')}</p>
@@ -168,30 +200,27 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
         </div>
       )}
 
-      {user && saveStatus !== 'saved' && (
-        <button onClick={handleSave} disabled={saveStatus === 'saving'} style={{
-          width: '100%', padding: '13px', borderRadius: 12, marginBottom: 10,
-          background: saveStatus === 'error' ? 'rgba(255,107,107,0.1)' : 'var(--bg-input)',
-          border: `1px solid ${saveStatus === 'error' ? 'rgba(255,107,107,0.3)' : 'var(--border)'}`,
-          color: saveStatus === 'error' ? '#ff6b6b' : 'var(--text-secondary)',
-          fontSize: 13, cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+      {/* Auto-save error fallback */}
+      {autoSaveStatus === 'error' && (
+        <button onClick={saveAnalysis} style={{
+          width: '100%', padding: '11px', borderRadius: 12, marginBottom: 10,
+          background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)',
+          color: '#ff6b6b', fontSize: 12, cursor: 'pointer'
         }}>
-          {saveStatus === 'saving'
-            ? <><div style={{ width: 14, height: 14, border: '2px solid var(--border)', borderTop: '2px solid var(--text-secondary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }}/> {t('saving')}</>
-            : saveStatus === 'error' ? t('save_failed')
-            : t('save_history')}
+          ⚠ {t('save_failed_retry') || 'Save failed — tap to retry'}
         </button>
-      )}
-      {saveStatus === 'saved' && (
-        <div style={{ background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.2)', borderRadius: 12, padding: '11px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: '#4caf7d' }}>✓</span>
-          <p style={{ fontSize: 13, color: '#4caf7d', margin: 0 }}>{t('saved_to_history')}</p>
-        </div>
       )}
 
       <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
-      <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>{t('new_analysis')}</button>
+
+      <div className="btn-row">
+        <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>{t('new_analysis')}</button>
+        {onGoCoach && (
+          <button onClick={onGoCoach} style={{ padding: '14px', borderRadius: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            🎤 {t('nav_coach') || 'CV Coach'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

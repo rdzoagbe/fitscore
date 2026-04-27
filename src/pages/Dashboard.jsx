@@ -5,6 +5,7 @@ import { useLang } from '../context/LangContext'
 import UserMenu from '../components/UserMenu'
 import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import NewAnalysisMenu from '../components/NewAnalysisMenu'
+import StatusPill from '../components/StatusPill'
 import LangSelector from '../components/LangSelector'
 
 
@@ -200,12 +201,13 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                       {a.result?.job_context?.company && a.result.job_context.company !== 'Not specified' && (
                         <p style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@ {a.result.job_context.company}</p>
                       )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: `${color}18`, color, border: `1px solid ${color}30` }}>{verdict}</span>
                         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{date}</span>
                         {a.result?.job_context?.location && a.result.job_context.location !== 'Not specified' && (
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· 📍 {a.result.job_context.location.split(',')[0]}</span>
                         )}
+                        <StatusPill analysis={a} onUpdate={updated => setAnalyses(prev => prev.map(x => x.id === updated.id ? updated : x))} compact />
                       </div>
                     </div>
                     <button onClick={e => deleteAnalysis(a.id, e)} disabled={deleting===a.id}

@@ -87,7 +87,13 @@ Return ONLY a JSON object — no markdown, no preamble:
   },
   "format_warnings": ["<max 3, empty if clean>"],
   "critical_gaps": ["<max 3, empty if none>"],
-  "quick_wins": ["<exactly 4 specific copy-paste-ready fixes>"],
+  "quick_wins": [
+    {
+      "tip": "<the action to take, max 12 words>",
+      "example": "<a concrete sentence the user can copy-paste into their CV. Use realistic numbers/details. Max 25 words.>"
+    }
+  ],
+  "_quick_wins_count": "exactly 4 quick_wins required",
   "overall_verdict": "<likely_filtered | borderline | likely_passed>",
   "overall_reason": "<one sentence>",
   "interview_prep": {
@@ -226,7 +232,7 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 3000,
+      max_tokens: 3500,
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${resolvedJobText}\n\n---\n\nCV:\n${cvText}` }]
