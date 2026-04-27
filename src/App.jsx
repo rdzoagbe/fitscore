@@ -39,6 +39,15 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
   const LOADING_MSGS = LOADING_MSGS_KEY.map(k => t(k))
   const isValidUrl = str => { try { new URL(str); return true } catch { return false } }
+  const detectRiskyDomain = url => {
+    if (!isValidUrl(url)) return null
+    const lower = url.toLowerCase()
+    if (lower.includes('linkedin.com')) return 'linkedin'
+    if (lower.includes('indeed.')) return 'indeed'
+    if (lower.includes('glassdoor.')) return 'glassdoor'
+    return null
+  }
+  const riskyDomain = detectRiskyDomain(jobUrl)
 
   const handleAnalyze = async () => {
     if (!cvFile) return
@@ -52,6 +61,25 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
+
+  // Watch for blocking errors and auto-switch to paste mode
+  useEffect(() => {
+    if (status !== 'error' || !error) return
+    const lower = error.toLowerCase()
+    const isBlocked = lower.includes('blocked') || lower.includes('blocking') || lower.includes('paste') || lower.includes('authwall')
+    if (isBlocked && !showTextPaste) {
+      // Auto-switch after a short pause so the user sees the error first
+      const timer = setTimeout(() => {
+        setShowTextPaste(true)
+        // Focus the textarea
+        setTimeout(() => {
+          const ta = document.querySelector('textarea[placeholder*="job description" i], textarea[placeholder*="description" i]')
+          ta?.focus()
+        }, 100)
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [status, error, showTextPaste])
 
   useEffect(() => {
     if (data?.display_score >= 80) {
@@ -108,7 +136,24 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                     />
                   </div>
                   {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 5 }}>{t('job_url_invalid')}</p>}
-                  <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 5 }}>{t('job_url_hint')}</p>
+                  {riskyDomain ? (
+                    <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, color: '#f5a623', fontWeight: 600, marginBottom: 2 }}>
+                          {t(`risky_${riskyDomain}_title`) || `${riskyDomain.charAt(0).toUpperCase() + riskyDomain.slice(1)} often blocks automated reading`}
+                        </p>
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
+                          {t('risky_hint_desc') || 'For best results, copy the job description directly from the page and paste it below.'}
+                        </p>
+                        <button onClick={() => setShowTextPaste(true)} style={{ background: 'none', border: 'none', color: '#f5a623', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                          {t('switch_to_paste') || 'Switch to paste mode →'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 5 }}>{t('job_url_hint')}</p>
+                  )}
 
                   {showHistory && urlHistory.length > 0 && (
                     <div style={{ marginTop: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 6, maxHeight: 200, overflowY: 'auto' }}>
@@ -138,6 +183,16 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
               {showTextPaste && (
                 <div style={{ animation: 'fadeUp 0.2s ease' }}>
+                  {status === 'error' && error && (error.toLowerCase().includes('blocked') || error.toLowerCase().includes('blocking') || error.toLowerCase().includes('paste')) && (
+                    <div style={{ marginBottom: 12, padding: '11px 14px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.3)', borderRadius: 12, animation: 'fadeUp 0.3s ease' }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#4caf7d', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        ✨ {t('auto_switched_title') || 'Switched to paste mode for you'}
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {t('auto_switched_desc') || 'Copy the job description text from the page and paste it below — we\'ll do the rest.'}
+                      </p>
+                    </div>
+                  )}
                   <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
                     {t('paste_job_label') || 'Job description text'}
                   </label>
