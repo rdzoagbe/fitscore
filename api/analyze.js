@@ -128,7 +128,7 @@ async function fetchJobText(url) {
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
     .replace(/\s{2,}/g, ' ').trim()
   if (text.length < 100) throw new Error('Could not extract text from this page. Try Indeed or Welcome to the Jungle instead.')
-  return text.slice(0, 8000)
+  return text.slice(0, 6000)
 }
 
 async function extractCvText(base64Data, mimeType) {
@@ -224,7 +224,7 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 3500,
+      max_tokens: 3000,
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]

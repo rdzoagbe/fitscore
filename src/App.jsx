@@ -4,16 +4,17 @@ import { useLang } from './context/LangContext'
 import { useAnalyze } from './hooks/useAnalyze'
 import { useCvPersist } from './hooks/useCvPersist'
 import { useJobUrlHistory } from './hooks/useJobUrlHistory'
-import AuthPage from './pages/AuthPage'
+import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
-import ThemeToggle from './components/ThemeToggle'
-import LangSelector from './components/LangSelector'
 import EmailVerifyGate from './components/EmailVerifyGate'
+import UserMenu from './components/UserMenu'
+import Footer from './components/Footer'
 
 const ACCEPTED = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword']
 
@@ -38,7 +39,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
   const fileInputRef = useRef(null)
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const { status, data, error, analyze, reset } = useAnalyze()
   const { cvFile, loading: cvLoading, saveCv, clearCv } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
@@ -88,11 +89,9 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
           <div className="logo">Fit<span className="acc">Score</span></div>
           <div className="tagline">{t('tagline')}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <LangSelector />
-          <ThemeToggle />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {displayStatus === 'done' && <ChipBtn onClick={handleReset}>{t('new')}</ChipBtn>}
-          <ChipBtn onClick={onViewDashboard} accent>{t('history')}</ChipBtn>
+          <UserMenu onViewDashboard={onViewDashboard} />
         </div>
       </header>
 
@@ -129,12 +128,10 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
                     return (
                       <button key={i} onClick={() => { setJobUrl(h.job_url); setShowHistory(false) }}
                         style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
                       >
                         <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: 'Syne, sans-serif', minWidth: 32 }}>{h.score}%</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 1 }}>
+                          <p style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {h.result?.job_context?.title || h.job_title || 'Job'}
                           </p>
                           {h.result?.job_context?.company && h.result.job_context.company !== 'Not specified' && (
@@ -154,11 +151,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('your_cv')}</label>
-                {cvFile && (
-                  <button onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 500 }}>
-                    {t('change_cv')}
-                  </button>
-                )}
+                {cvFile && <button onClick={() => fileInputRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 500 }}>{t('change_cv')}</button>}
               </div>
 
               {cvLoading ? (
@@ -214,10 +207,7 @@ function AnalyzerPage({ onViewDashboard, prefillAnalysis, onClearPrefill }) {
           </div>
         )}
 
-        <div style={{ marginTop: 36, display: 'flex', gap: 20, alignItems: 'center' }}>
-          <a href="/privacy" style={{ fontSize: 11, color: 'var(--text-hint)', textDecoration: 'none' }}>{t('privacy')}</a>
-          <button onClick={signOut} style={{ fontSize: 11, color: 'var(--text-hint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{t('sign_out')}</button>
-        </div>
+        <Footer compact />
       </main>
 
       <PWAInstallPrompt />
@@ -241,9 +231,15 @@ export default function App() {
     </div>
   )
 
-  if (window.location.pathname === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
-  if (!user) return <AuthPage />
-  // Block unverified users (Supabase: user.email_confirmed_at is null until they click the link)
+  // Public pages
+  const path = window.location.pathname
+  if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
+  if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
+
+  // Logged out → landing page
+  if (!user) return <LandingPage />
+
+  // Email not verified
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
 
   return (

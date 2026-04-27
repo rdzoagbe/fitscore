@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
-import ThemeToggle from '../components/ThemeToggle'
+import UserMenu from '../components/UserMenu'
 import LangSelector from '../components/LangSelector'
 
 function ScoreChart({ analyses, t }) {
@@ -99,12 +99,11 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
           <div className="logo">Fit<span className="acc">Score</span></div>
           <div className="tagline">{t('tagline')}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <LangSelector />
-          <ThemeToggle />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={onNewAnalysis} style={{ background: 'var(--accent)', border: 'none', borderRadius: 20, padding: '9px 20px', color: '#1A1B22', fontSize: 13, fontFamily: 'Syne, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
             + {t('new_analysis')}
           </button>
+          <UserMenu onViewDashboard={() => {}} />
         </div>
       </header>
 
@@ -122,9 +121,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
               {passedCount > 0 ? ` · ${passedCount} ${t('passed')}` : ''}
             </p>
           </div>
-          <button onClick={signOut} style={{ fontSize: 12, color: 'var(--text-muted)', background: 'none', border: '1px solid var(--border)', borderRadius: 20, padding: '7px 16px', cursor: 'pointer' }}>
-            {t('sign_out')}
-          </button>
+
         </div>
 
         {/* Stats cards */}
