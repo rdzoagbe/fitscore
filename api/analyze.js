@@ -119,59 +119,33 @@ For interview_prep:
 - show_prep should be true if display_score >= 50 (worth interviewing for), else false.`
 
 async function fetchJobText(url) {
-  const isIndeed = url.includes('indeed.')
   const isLinkedIn = url.includes('linkedin.')
+  const isIndeed = url.includes('indeed.')
+  const isGlassdoor = url.includes('glassdoor.')
 
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Sec-Fetch-User': '?1',
-      'Upgrade-Insecure-Requests': '1',
-    },
-    redirect: 'follow'
-  })
+  let res
+  try {
+    res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+      },
+      redirect: 'follow'
+    })
+  } catch (fetchErr) {
+    throw new Error('Could not reach this page. Please copy the job description text and paste it instead.')
+  }
 
   if (!res.ok) {
-    if (isIndeed) throw new Error('Indeed blocked this fetch. Please copy the job description text and paste it using the "OR paste job description" option below.')
-    if (isLinkedIn) throw new Error('LinkedIn blocked this fetch. Please copy the job description text and paste it using the "OR paste job description" option below.')
-    throw new Error(`Could not fetch job page (${res.status}). Try copying the job description text and pasting it instead.`)
+    if (isLinkedIn) throw new Error('LinkedIn requires login to view this job. Please copy the job description text and paste it instead.')
+    if (isIndeed) throw new Error('Indeed blocked this fetch. Please copy the job description text and paste it instead.')
+    if (isGlassdoor) throw new Error('Glassdoor blocked this fetch. Please copy the job description text and paste it instead.')
+    throw new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
   }
 
   const html = await res.text()
-
-  // Detect bot-blocking pages
-  const lowerHtml = html.toLowerCase()
-  const isBlockedPage =
-    lowerHtml.includes('cf-error-details') ||
-    lowerHtml.includes('cloudflare') && lowerHtml.includes('blocked') ||
-    lowerHtml.includes('access denied') ||
-    lowerHtml.includes('captcha') ||
-    (isIndeed && (lowerHtml.includes('verify you are human') || html.length < 5000)) ||
-    (isLinkedIn && lowerHtml.includes('authwall'))
-
-  if (isBlockedPage) {
-    if (isIndeed) throw new Error('Indeed is blocking automated access right now. Please copy the job description text from the page and paste it using the "OR paste job description" option below.')
-    if (isLinkedIn) throw new Error('LinkedIn requires login to view this job. Please copy the job description text and paste it using the "OR paste job description" option below.')
-    throw new Error('This site is blocking automated access. Please copy the job description text and paste it instead.')
-  }
-
-  // Try to find <main> or <article> first — they usually contain the job content
-  let target = html
-  const mainMatch = html.match(/<main\b[\s\S]*?<\/main>/i)
-  const articleMatch = html.match(/<article\b[\s\S]*?<\/article>/i)
-  if (mainMatch && mainMatch[0].length > 800) target = mainMatch[0]
-  else if (articleMatch && articleMatch[0].length > 800) target = articleMatch[0]
-
-  // Strip non-content blocks (broad and safe — never narrows by class)
-  const text = target
+  const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
@@ -181,9 +155,7 @@ async function fetchJobText(url) {
     .replace(/\s{2,}/g, ' ').trim()
 
   if (text.length < 200) {
-    if (isIndeed) throw new Error('Indeed loaded a near-empty page (likely bot detection). Please copy the job description text and paste it using the "OR paste job description" option below.')
-    if (isLinkedIn) throw new Error('LinkedIn returned an empty page. Please copy the job description text and paste it using the "OR paste job description" option below.')
-    throw new Error('Could not extract enough text from this page. Please copy the job description and paste it instead.')
+    throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
   }
   return text.slice(0, 6000)
 }
