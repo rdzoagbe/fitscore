@@ -198,8 +198,20 @@ export default function CvCoachPage() {
     setGenLoading(true)
     setCoverLetter('')
     try {
-      // Prompt for full name first time
+      // Determine name: use saved fullName, OR auto-save what's typed in the input
       let nameToUse = fullName
+      if (!nameToUse && tempName?.trim()) {
+        // User typed but didn't click Save — save it for them
+        const saveResult = await saveFullName(tempName.trim())
+        if (saveResult?.success) {
+          nameToUse = tempName.trim()
+          setEditingName(false)
+        } else {
+          setGenError(saveResult?.error || 'Could not save your name. Please try again.')
+          setGenLoading(false)
+          return
+        }
+      }
       if (!nameToUse) {
         setEditingName(true)
         setGenError(t('name_required_first') || 'Please add your full name first — it will be saved for future letters.')
@@ -345,9 +357,11 @@ export default function CvCoachPage() {
                           autoFocus
                           onKeyDown={async e => {
                             if (e.key === 'Enter' && tempName.trim()) {
-                              await saveFullName(tempName)
-                              setEditingName(false)
-                              setGenError('')
+                              const result = await saveFullName(tempName)
+                              if (result?.success) {
+                                setEditingName(false)
+                                setGenError('')
+                              }
                             }
                             if (e.key === 'Escape') setEditingName(false)
                           }}
@@ -355,11 +369,14 @@ export default function CvCoachPage() {
                         <button
                           onClick={async () => {
                             if (!tempName.trim()) return
-                            await saveFullName(tempName)
-                            setEditingName(false)
-                            setGenError('')
+                            const result = await saveFullName(tempName)
+                            if (result?.success) {
+                              setEditingName(false)
+                              setGenError('')
+                            }
                           }}
-                          style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#1A1B22', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+                          disabled={!tempName.trim()}
+                          style={{ padding: '8px 14px', borderRadius: 10, background: tempName.trim() ? 'var(--accent)' : 'var(--bg-input)', border: tempName.trim() ? 'none' : '1px solid var(--border)', color: tempName.trim() ? '#1A1B22' : 'var(--text-muted)', fontSize: 12, fontWeight: 700, cursor: tempName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'Syne, sans-serif' }}
                         >{t('save') || 'Save'}</button>
                       </div>
                     ) : (
