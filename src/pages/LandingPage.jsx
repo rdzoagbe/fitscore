@@ -154,6 +154,42 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* WE'RE ON YOUR SIDE — explicit jobseeker positioning */}
+      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 24, padding: 'clamp(28px,5vw,48px)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'var(--accent-bg)', filter: 'blur(60px)', opacity: 0.5, pointerEvents: 'none' }} />
+          <div style={{ position: 'relative' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
+              🤝 {t('for_jobseekers_kicker') || 'Who we build for'}
+            </p>
+            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(22px,4.5vw,32px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16, maxWidth: 720 }}>
+              {t('for_jobseekers_title') || "We're on your side, not the recruiter's"}
+            </h2>
+            <p style={{ fontSize: 'clamp(14px,3vw,16px)', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 32, maxWidth: 720 }}>
+              {t('for_jobseekers_desc') || "FitScore is independent. We don't sell candidate data, we don't work with recruiters, and we don't power any ATS. We're a tool built by a job seeker, for job seekers."}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,220px), 1fr))', gap: 20 }}>
+              {[
+                { icon: '🔒', title: t('for_jobseekers_point1_title') || 'Privacy first', desc: t('for_jobseekers_point1_desc') || 'Your CV is stored locally on your device.' },
+                { icon: '🔍', title: t('for_jobseekers_point2_title') || 'Transparent scoring', desc: t('for_jobseekers_point2_desc') || 'See exactly what we read and why your score is what it is.' },
+                { icon: '🎁', title: t('for_jobseekers_point3_title') || 'Free for individuals', desc: t('for_jobseekers_point3_desc') || 'Always free for personal use. No upsells.' }
+              ].map((p, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 26, marginBottom: 10 }}>{p.icon}</div>
+                  <h4 style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{p.title}</h4>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{p.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 28, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, lineHeight: 1.6, fontStyle: 'italic' }}>
+              ℹ️ {t('jobseekers_only_disclaimer') || 'FitScore is for personal use by job seekers only. Use by recruiters, agencies, or HR is prohibited.'}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
         <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(24px,5vw,36px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16 }}>
