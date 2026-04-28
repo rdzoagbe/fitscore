@@ -17,6 +17,7 @@ import EmailVerifyGate from './components/EmailVerifyGate'
 import TopNav from './components/TopNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
+import AnalyzerHero from './components/AnalyzerHero'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -115,12 +116,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
         {displayStatus !== 'done' && (
           <div style={{ maxWidth: 600, animation: 'fadeUp 0.4s ease' }}>
-            {status === 'idle' && (
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.7 }}>
-                {t('welcome_back')}{user?.email ? `, ${user.email.split('@')[0]}` : ''}!{' '}
-                {cvFile ? t('welcome_cv_ready') : t('welcome_no_cv')}
-              </p>
-            )}
+            {status === 'idle' && <AnalyzerHero />}
 
             {/* Job URL */}
             <div style={{ marginBottom: 6 }}>
