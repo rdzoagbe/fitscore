@@ -53,7 +53,8 @@ Return ONLY a JSON object — no markdown, no preamble:
     "posted_date": "<date or 'Unknown'>",
     "languages_required": ["language1"],
     "apply_url": "<direct application URL if found in job posting, else null>",
-    "easy_apply": <true if job has LinkedIn Easy Apply or Indeed Apply button, else false>
+    "easy_apply": <true if job has LinkedIn Easy Apply or Indeed Apply button, else false>,
+    "hiring_contact": "<name of recruiter/hiring manager if EXPLICITLY named in the posting (e.g. 'Marie Dupont' or 'John Smith - HR'). Do NOT guess. null if no name is mentioned.>"
   },
   "job_summary": "<2 sentences max>",
   "match_probability": <integer 0-100>,

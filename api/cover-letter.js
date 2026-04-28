@@ -2,23 +2,54 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// Locale-aware salutations and sign-offs
+const SALUTATIONS = {
+  en: 'Dear Hiring Manager,',
+  fr: 'Madame, Monsieur,',
+  es: 'Estimado/a equipo de selección,',
+  de: 'Sehr geehrte Damen und Herren,',
+  it: 'Gentile Responsabile delle Risorse Umane,',
+  pt: 'Prezada Equipa de Recrutamento,'
+}
+
+const SIGN_OFFS = {
+  professional: { en: 'Best regards', fr: 'Cordialement', es: 'Atentamente', de: 'Mit freundlichen Grüßen', it: 'Cordiali saluti', pt: 'Com os melhores cumprimentos' },
+  warm: { en: 'Looking forward to connecting', fr: 'Au plaisir de vous lire', es: 'Un cordial saludo', de: 'Herzliche Grüße', it: 'A presto', pt: 'Aguardo o vosso contacto' },
+  formal: { en: 'Yours sincerely', fr: 'Veuillez agréer mes salutations distinguées', es: 'Reciba un cordial saludo', de: 'Hochachtungsvoll', it: 'Distinti saluti', pt: 'Os meus cumprimentos' },
+  enthusiastic: { en: 'Looking forward to hearing from you', fr: 'Dans l\'attente de vous rencontrer', es: 'Quedo a la espera de su respuesta', de: 'Ich freue mich auf Ihre Rückmeldung', it: 'Resto in attesa di un Suo riscontro', pt: 'Fico ansioso pelo vosso contacto' }
+}
+
+function pickSalutation(recipient, lang) {
+  if (recipient && recipient.trim()) {
+    // Use the supplied recipient name
+    const name = recipient.trim()
+    if (lang === 'fr') return `Bonjour ${name},`
+    if (lang === 'es') return `Estimado/a ${name},`
+    if (lang === 'de') return `Sehr geehrte/r ${name},`
+    if (lang === 'it') return `Gentile ${name},`
+    if (lang === 'pt') return `Caro/a ${name},`
+    return `Dear ${name},`
+  }
+  return SALUTATIONS[lang] || SALUTATIONS.en
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    const { analysis, lang = 'en', tone = 'professional' } = req.body
+    const { analysis, lang = 'en', tone = 'professional', recipient = null, fullName = null } = req.body
     if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context' })
 
     const r = analysis
     const langInstruction = {
-      en: 'Write the letter in English.',
-      fr: 'Rédige la lettre en français.',
-      es: 'Escribe la carta en español.',
-      de: 'Schreibe den Brief auf Deutsch.',
-      it: 'Scrivi la lettera in italiano.',
-      pt: 'Escreve a carta em português.'
-    }[lang] || 'Write the letter in English.'
+      en: 'Write the letter body in English.',
+      fr: 'Rédige le corps de la lettre en français.',
+      es: 'Escribe el cuerpo de la carta en español.',
+      de: 'Schreibe den Brieftext auf Deutsch.',
+      it: 'Scrivi il corpo della lettera in italiano.',
+      pt: 'Escreve o corpo da carta em português.'
+    }[lang] || 'Write the letter body in English.'
 
     const toneInstruction = {
       professional: 'Confident and professional but not stiff.',
@@ -27,7 +58,7 @@ export default async function handler(req, res) {
       enthusiastic: 'Enthusiastic and energetic, conveying passion for the role.'
     }[tone] || 'Confident and professional but not stiff.'
 
-    const prompt = `Write a professional cover letter for this job application.
+    const prompt = `Write the BODY ONLY of a cover letter for this job application. Do NOT include any salutation (no "Dear..."), date, address, or sign-off. Just the 3 paragraphs of body content.
 
 JOB: ${r.job_context?.title || 'Position'} at ${r.job_context?.company || 'the company'}
 LOCATION: ${r.job_context?.location || 'Not specified'}
@@ -47,14 +78,14 @@ ${(r.critical_gaps || []).map(g => '- ' + g).join('\n') || '- None'}
 INSTRUCTIONS:
 - ${langInstruction}
 - Tone: ${toneInstruction}
-- Structure: 3 short paragraphs
-  - Opening: express genuine interest, mention top qualification
-  - Middle: 2-3 specific achievements matching the role requirements
-  - Closing: forward-looking call to action
-- Do NOT include date, address blocks, salutations like "Dear Hiring Manager", sign-offs like "Sincerely", or placeholders like [Your Name].
-- Just the letter body itself.
-- Maximum 220 words.
-- Be specific, not generic. Reference the actual job and skills.`
+- Structure: exactly 3 short paragraphs
+  - Paragraph 1: express genuine interest in the role, mention your top relevant qualification
+  - Paragraph 2: 2-3 specific achievements matching the role requirements (use real numbers if your_edges has them)
+  - Paragraph 3: forward-looking close, express interest in next steps
+- DO NOT include the salutation (no "Dear X,") or sign-off (no "Best regards" / "Sincerely") — those will be added separately
+- Be specific, not generic. Reference the actual job and skills.
+- Maximum 220 words for the body.
+- Return ONLY the 3 paragraphs separated by blank lines. No preamble, no headers, no signature.`
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -63,8 +94,16 @@ INSTRUCTIONS:
       messages: [{ role: 'user', content: prompt }]
     })
 
-    const text = message.content.map(b => b.text || '').join('').trim()
-    return res.status(200).json({ success: true, letter: text })
+    const body = message.content.map(b => b.text || '').join('').trim()
+
+    // Compose the full letter with salutation + body + sign-off + name
+    const salutation = pickSalutation(recipient, lang)
+    const signOff = (SIGN_OFFS[tone] || SIGN_OFFS.professional)[lang] || (SIGN_OFFS[tone] || SIGN_OFFS.professional).en
+    const name = (fullName && fullName.trim()) ? fullName.trim() : ''
+
+    const letter = `${salutation}\n\n${body}\n\n${signOff},\n${name}`.trim()
+
+    return res.status(200).json({ success: true, letter, salutation, signOff, body })
   } catch (e) {
     console.error('Cover letter error:', e.message)
     return res.status(500).json({ error: e.message || 'Failed to generate cover letter' })

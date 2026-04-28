@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useUserProfile } from '../hooks/useUserProfile'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
@@ -163,6 +164,21 @@ export default function CvCoachPage() {
   const [coverLetter, setCoverLetter] = useState('')
   const [tone, setTone] = useState('professional')
   const [genError, setGenError] = useState('')
+  const [recipient, setRecipient] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [tempName, setTempName] = useState('')
+  const { fullName, saveFullName } = useUserProfile()
+
+  // When user picks an analysis, pre-fill recipient if AI found one in the job posting
+  useEffect(() => {
+    if (selected?.result?.job_context?.hiring_contact) {
+      setRecipient(selected.result.job_context.hiring_contact)
+    } else {
+      setRecipient('')
+    }
+    setCoverLetter('')
+    setGenError('')
+  }, [selected?.id])
   const [genLoading, setGenLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -182,13 +198,23 @@ export default function CvCoachPage() {
     setGenLoading(true)
     setCoverLetter('')
     try {
+      // Prompt for full name first time
+      let nameToUse = fullName
+      if (!nameToUse) {
+        setEditingName(true)
+        setGenError(t('name_required_first') || 'Please add your full name first — it will be saved for future letters.')
+        setGenLoading(false)
+        return
+      }
       const res = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analysis: selected.result,
           lang,
-          tone
+          tone,
+          recipient: recipient.trim() || null,
+          fullName: nameToUse
         })
       })
       if (!res.ok) {
@@ -295,6 +321,73 @@ export default function CvCoachPage() {
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.6, textAlign: 'center' }}>
                     ✉️ {t('cover_letter_prompt') || 'Generate a professional cover letter tailored to this job based on your CV analysis.'}
                   </p>
+
+                  {/* Your name */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+                        {t('your_name') || 'Your name'}
+                      </span>
+                      {!editingName && fullName && (
+                        <button onClick={() => { setEditingName(true); setTempName(fullName) }} style={{ fontSize: 10, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          {t('edit') || 'Edit'}
+                        </button>
+                      )}
+                    </div>
+                    {editingName ? (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          type="text"
+                          value={tempName}
+                          onChange={e => setTempName(e.target.value)}
+                          placeholder={t('your_name_placeholder') || 'e.g. Roland Dzoagbe'}
+                          style={{ flex: 1, padding: '8px 12px', fontSize: 13 }}
+                          autoFocus
+                          onKeyDown={async e => {
+                            if (e.key === 'Enter' && tempName.trim()) {
+                              await saveFullName(tempName)
+                              setEditingName(false)
+                              setGenError('')
+                            }
+                            if (e.key === 'Escape') setEditingName(false)
+                          }}
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!tempName.trim()) return
+                            await saveFullName(tempName)
+                            setEditingName(false)
+                            setGenError('')
+                          }}
+                          style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#1A1B22', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}
+                        >{t('save') || 'Save'}</button>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '8px 12px', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: fullName ? 'var(--text-primary)' : 'var(--text-muted)', cursor: 'pointer' }}
+                        onClick={() => { setEditingName(true); setTempName(fullName || '') }}>
+                        {fullName || (t('your_name_hint') || 'Click to add your full name (saved for future letters)')}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recipient */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+                        {t('recipient_label') || 'Recipient'} <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--text-hint)' }}>· {t('optional') || 'optional'}</span>
+                      </span>
+                      {selected?.result?.job_context?.hiring_contact && recipient === selected.result.job_context.hiring_contact && (
+                        <span style={{ fontSize: 9, color: '#4caf7d', fontWeight: 600 }}>✨ {t('found_in_posting') || 'Found in posting'}</span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={recipient}
+                      onChange={e => setRecipient(e.target.value)}
+                      placeholder={t('recipient_placeholder') || 'e.g. Marie Dupont (or leave empty for default)'}
+                      style={{ padding: '8px 12px', fontSize: 13 }}
+                    />
+                  </div>
 
                   <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
                     {t('cover_letter_tone') || 'Tone'}
