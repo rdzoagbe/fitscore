@@ -3,6 +3,7 @@ import { useLang } from '../context/LangContext'
 import LangSelector from '../components/LangSelector'
 import ThemeToggle from '../components/ThemeToggle'
 import AuthModal from '../components/AuthModal'
+import ContactModal from '../components/ContactModal'
 
 function FeatureCard({ icon, title, desc, accent }) {
   return (
@@ -19,6 +20,7 @@ function FeatureCard({ icon, title, desc, accent }) {
 export default function LandingPage() {
   const { t } = useLang()
   const [authOpen, setAuthOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
   const [authMode, setAuthMode] = useState('signup')
 
   const openAuth = (mode) => { setAuthMode(mode); setAuthOpen(true) }
@@ -230,7 +232,7 @@ export default function LandingPage() {
 
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>{t('footer_contact') || 'Contact'}</p>
-            <a href="mailto:hello@fitscore.app" style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 8 }}>hello@fitscore.app</a>
+            <button onClick={() => setContactOpen(true)} style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>{t('contact_us') || 'Get in touch'}</button>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{t('footer_made_in') || 'Made in France 🇫🇷'}</p>
           </div>
         </div>
@@ -246,6 +248,7 @@ export default function LandingPage() {
       </footer>
 
       {authOpen && <AuthModal initialMode={authMode} onClose={() => setAuthOpen(false)} />}
+      {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
     </div>
   )
 }

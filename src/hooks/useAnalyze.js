@@ -31,12 +31,18 @@ export function useAnalyze() {
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`)
-      setState({ status: 'done', data: data.analysis, error: null })
+      setState({
+        status: 'done',
+        data: data.analysis,
+        error: null,
+        savedRow: data.savedRow || null,
+        rateLimit: data.rateLimit || null
+      })
     } catch (e) {
       setState({ status: 'error', data: null, error: e.message })
     }
   }
 
-  const reset = () => setState({ status: 'idle', data: null, error: null })
+  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
   return { ...state, analyze, reset }
 }

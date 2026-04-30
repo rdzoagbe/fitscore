@@ -33,7 +33,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
   const { user } = useAuth()
-  const { status, data, error, analyze, reset } = useAnalyze()
+  const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
   const { cvFile, clearCv } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
@@ -260,6 +260,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
           <div ref={resultRef} className="page-enter">
             <ResultsView
               data={displayData}
+              savedRow={viewingAnalysis ? viewingAnalysis : savedRow}
+              rateLimit={rateLimit}
               onReset={handleReset}
               onGoCoach={() => setPage('coach')}
             />

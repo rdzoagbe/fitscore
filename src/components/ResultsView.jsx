@@ -12,6 +12,7 @@ import QuickWinsCard from './QuickWinsCard'
 import CvCoachPreview from './CvCoachPreview'
 import CvPreview from './CvPreview'
 import StatusPill from './StatusPill'
+import WaitlistBanner from './WaitlistBanner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
@@ -35,58 +36,37 @@ const MiniCard = ({ title, children, accent }) => (
   </div>
 )
 
-export default function ResultsView({ data, onReset, onGoCoach }) {
+export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit, onReset, onGoCoach }) {
   const { user } = useAuth()
   const { t } = useLang()
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
   const jobUrl = data.job_url || null
-  const [analysisRow, setAnalysisRow] = useState(null) // saved row from DB
-  const [autoSaveStatus, setAutoSaveStatus] = useState('idle') // idle | saving | saved | error
-  const savedRef = useRef(false) // prevents double-save in React strict mode
+  // No more client-side insert — server saves once with cache_key dedup
+  const [analysisRow, setAnalysisRow] = useState(() => {
+    // Use the server-saved row if provided, or use existing row when viewing history
+    if (serverSavedRow) return serverSavedRow
+    if (data.id) return data
+    return null
+  })
+  const autoSaveStatus = analysisRow ? 'saved' : 'idle'
   const scoreDelta = useScoreDelta(analysisRow || data)
 
-  // AUTO-SAVE on first render — opt-out, not opt-in
+  // Update analysisRow if serverSavedRow arrives later (e.g. fresh analysis)
   useEffect(() => {
-    if (!user || savedRef.current) return
-    // Skip if this is a viewing-only mode (data already has an `id` from history)
-    if (data.id) { setAnalysisRow(data); setAutoSaveStatus('saved'); savedRef.current = true; return }
-    savedRef.current = true
-    saveAnalysis()
-  }, [])
-
-  const saveAnalysis = async () => {
-    if (!user) return
-    setAutoSaveStatus('saving')
-    try {
-      const { data: inserted, error } = await supabase
-        .from('analyses')
-        .insert({
-          user_id: user.id,
-          job_url: jobUrl || '',
-          job_title: data.job_context?.title || data.job_title || null,
-          score,
-          result: data
-        })
-        .select()
-        .single()
-      if (error) {
-        console.error('Auto-save error:', error.message)
-        setAutoSaveStatus('error')
-      } else {
-        setAnalysisRow(inserted)
-        setAutoSaveStatus('saved')
-      }
-    } catch (e) {
-      setAutoSaveStatus('error')
+    if (serverSavedRow && (!analysisRow || analysisRow.id !== serverSavedRow.id)) {
+      setAnalysisRow(serverSavedRow)
     }
-  }
+  }, [serverSavedRow])
 
   const handleStatusUpdate = (updated) => setAnalysisRow(updated)
 
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
+      {/* WAITLIST BANNER — shown when user nears their daily limit */}
+      <WaitlistBanner rateLimit={rateLimit} />
+
       {/* CV PREVIEW — shown FIRST so users immediately see what was extracted */}
       <CvPreview preview={data.cv_preview} truncated={data.cv_preview_truncated} />
 
@@ -199,16 +179,7 @@ export default function ResultsView({ data, onReset, onGoCoach }) {
         </div>
       )}
 
-      {/* Auto-save error fallback */}
-      {autoSaveStatus === 'error' && (
-        <button onClick={saveAnalysis} style={{
-          width: '100%', padding: '11px', borderRadius: 12, marginBottom: 10,
-          background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)',
-          color: '#ff6b6b', fontSize: 12, cursor: 'pointer'
-        }}>
-          ⚠ {t('save_failed_retry') || 'Save failed — tap to retry'}
-        </button>
-      )}
+
 
       <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
 
