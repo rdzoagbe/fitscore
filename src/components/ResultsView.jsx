@@ -78,20 +78,37 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
         salary={data.salary_assessment}
       />
 
-      {/* Auto-save + status row */}
-      {(autoSaveStatus === 'saving' || (autoSaveStatus === 'saved' && analysisRow)) && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
-          {autoSaveStatus === 'saving' ? (
+      {/* Status row + Run another button */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '0 4px', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {autoSaveStatus === 'saving' && (
             <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, border: '1.5px solid var(--border)', borderTop: '1.5px solid var(--text-muted)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
               {t('auto_saving') || 'saving...'}
             </span>
-          ) : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>✓ {t('saved_to_history') || 'Saved'}</span>}
+          )}
+          {autoSaveStatus === 'saved' && (
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>✓ {t('saved_to_history') || 'Saved'}</span>
+          )}
           {autoSaveStatus === 'saved' && analysisRow && (
             <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
           )}
         </div>
-      )}
+
+        {/* Run another button — always visible so users can quickly start fresh */}
+        <button onClick={onReset} style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
+          color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600,
+          fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
+          transition: 'all 0.15s', whiteSpace: 'nowrap'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+        >
+          ↻ {t('run_another') || 'Run another'}
+        </button>
+      </div>
 
       {/* Unified Joblytics card */}
       <FitScoreCard data={data} scoreDelta={scoreDelta} />

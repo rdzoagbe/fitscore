@@ -117,7 +117,7 @@ function AvatarMenu({ onClose }) {
   )
 }
 
-export default function TopNav({ page, setPage }) {
+export default function TopNav({ page, setPage, onLogoClick }) {
   const { user } = useAuth()
   const { t } = useLang()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -138,7 +138,7 @@ export default function TopNav({ page, setPage }) {
         height: 52, gap: 8
       }}>
         {/* Logo */}
-        <button onClick={() => setPage('analyzer')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+        <button onClick={() => { onLogoClick ? onLogoClick() : setPage('analyzer') }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
           <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
             Job<span style={{ color: 'var(--accent)' }}>lytics</span>
           </span>
@@ -146,7 +146,7 @@ export default function TopNav({ page, setPage }) {
 
         {/* Center nav links */}
         <nav style={{ display: 'flex', gap: 4, alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-          <NavLink icon="🔍" label={t('analyze') || 'Analyze'} active={page==='analyzer'} onClick={() => setPage('analyzer')} />
+          <NavLink icon="🔍" label={t('analyze') || 'Analyze'} active={page==='analyzer'} onClick={() => { onLogoClick ? onLogoClick() : setPage('analyzer') }} />
           <NavLink icon="📊" label={t('history') || 'History'} active={page==='dashboard'} onClick={() => setPage('dashboard')} />
           <NavLink icon="🎤" label={t('nav_coach') || 'CV Coach'} active={page==='coach'} onClick={() => setPage('coach')} />
         </nav>

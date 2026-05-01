@@ -329,7 +329,7 @@ export default function App() {
   return (
     <>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
-      <TopNav page={page} setPage={setPage} />
+      <TopNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('analyzer') }} />
       {renderPage()}
     </>
   )
