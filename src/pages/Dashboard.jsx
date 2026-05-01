@@ -7,6 +7,7 @@ import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import NewAnalysisMenu from '../components/NewAnalysisMenu'
 import StatusPill from '../components/StatusPill'
 import LangSelector from '../components/LangSelector'
+import DeleteAllModal from '../components/DeleteAllModal'
 
 
 
@@ -28,6 +29,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
   const { user, signOut } = useAuth()
   const { t, lang } = useLang()
   const [analyses, setAnalyses] = useState([])
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -47,6 +49,17 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     setDeleting(id)
     await supabase.from('analyses').delete().eq('id', id)
     setAnalyses(prev => prev.filter(a => a.id !== id))
+  }
+
+  const handleDeleteAll = async () => {
+    if (!user) throw new Error('Not signed in')
+    const { error } = await supabase
+      .from('analyses')
+      .delete()
+      .eq('user_id', user.id)
+    if (error) throw error
+    setAnalyses([])
+    setDeleteAllOpen(false)
     setDeleting(null)
   }
 
@@ -144,9 +157,25 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
         {/* SECTION TITLE for the saved analyses */}
         {!loading && analyses.length > 0 && (
           <div style={{ marginBottom: 14 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(15px,3.5vw,18px)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4, letterSpacing: '-0.01em' }}>
-              {t('saved_analyses_title')}
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 4 }}>
+              <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(15px,3.5vw,18px)', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', flex: 1 }}>
+                {t('saved_analyses_title')}
+              </h2>
+              <button
+                onClick={() => setDeleteAllOpen(true)}
+                style={{
+                  background: 'none', border: '1px solid rgba(255,107,107,0.3)',
+                  color: '#ff7878', borderRadius: 20,
+                  padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  flexShrink: 0, transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,107,0.08)'; e.currentTarget.style.borderColor = '#ff6b6b' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'rgba(255,107,107,0.3)' }}
+              >
+                🗑 {t('delete_all') || 'Delete all'}
+              </button>
+            </div>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 14 }}>
               {t('saved_analyses_subtitle')}
             </p>
@@ -253,6 +282,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
           <a href="/privacy" style={{ fontSize: 11, color: 'var(--text-hint)', textDecoration: 'none' }}>{t('privacy')}</a>
         </div>
       </main>
+      {deleteAllOpen && <DeleteAllModal count={analyses.length} onConfirm={handleDeleteAll} onClose={() => setDeleteAllOpen(false)} />}
     </div>
   )
 }
