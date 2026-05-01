@@ -27,7 +27,7 @@ export default function ContactModal({ onClose }) {
   }, [onClose])
 
   const send = () => {
-    const subject = `[FitScore] ${TOPICS.find(t => t.value === topic)?.value || 'Contact'} — from ${name || user?.email || 'a user'}`
+    const subject = `[Joblytics] ${TOPICS.find(t => t.value === topic)?.value || 'Contact'} — from ${name || user?.email || 'a user'}`
     const fromLine = user?.email ? `From: ${user.email}\n` : ''
     const nameLine = name ? `Name: ${name}\n` : ''
     const body = `${nameLine}${fromLine}Topic: ${topic}\n\n${message}`

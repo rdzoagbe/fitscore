@@ -18,6 +18,7 @@ import TopNav from './components/TopNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import AnalyzerHero from './components/AnalyzerHero'
+import LastAnalysisCard from './components/LastAnalysisCard'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -116,7 +117,12 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
         {displayStatus !== 'done' && (
           <div style={{ maxWidth: 600, animation: 'fadeUp 0.4s ease' }}>
-            {status === 'idle' && <AnalyzerHero />}
+            {status === 'idle' && (
+              <>
+                <AnalyzerHero />
+                <LastAnalysisCard onSelectAnalysis={a => setViewingAnalysis(a)} />
+              </>
+            )}
 
             {/* Job URL */}
             <div style={{ marginBottom: 6 }}>
@@ -214,8 +220,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             {/* OR toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              <button onClick={() => { setShowTextPaste(s => !s); setUserToggledMode(true); reset() }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', whiteSpace: 'nowrap', fontWeight: 500 }}>
-                {showTextPaste ? `↑ ${t('use_url') || 'Use URL instead'}` : (t('or_paste_text') || 'OR paste job description')}
+              <button onClick={() => { setShowTextPaste(s => !s); setUserToggledMode(true); reset() }} style={{ fontSize: 12, color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent)', cursor: 'pointer', padding: '6px 14px', whiteSpace: 'nowrap', fontWeight: 600, borderRadius: 20, fontFamily: 'inherit' }}>
+                {showTextPaste ? `↑ ${t('use_url') || 'Use URL instead'}` : (t('or_paste_text') || '✏️ OR paste job description')}
               </button>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
             </div>

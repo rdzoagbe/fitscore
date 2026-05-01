@@ -93,7 +93,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
         </div>
       )}
 
-      {/* Unified FitScore card */}
+      {/* Unified Joblytics card */}
       <FitScoreCard data={data} scoreDelta={scoreDelta} />
       <SeniorityCard seniority={data.seniority} />
       <InterviewPrepCard prep={data.interview_prep} score={score} />
@@ -184,7 +184,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
 
       <div className="btn-row">
-        <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>{t('new_analysis')}</button>
+        <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>↻ {t('run_another') || 'Run another'}</button>
         {onGoCoach && (
           <button onClick={onGoCoach} style={{ padding: '14px', borderRadius: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             🎤 {t('nav_coach') || 'CV Coach'}

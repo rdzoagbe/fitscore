@@ -47,7 +47,7 @@ export default function AuthPage() {
 
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(24px,6vw,32px)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: 6 }}>
-            Fit<span style={{ color: 'var(--accent)' }}>Score</span>
+            Job<span style={{ color: 'var(--accent)' }}>lytics</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.06em' }}>{t('tagline')}</p>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 12, lineHeight: 1.6 }}>

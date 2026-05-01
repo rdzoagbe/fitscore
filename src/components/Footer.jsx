@@ -12,7 +12,7 @@ export default function Footer({ compact = false }) {
     <>
       <footer style={{ marginTop: 40, padding: '20px 0 0', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <p style={{ fontSize: 11, color: 'var(--text-hint)' }}>
-          © {new Date().getFullYear()} FitScore · {t('footer_made_in') || 'Made in France'}
+          © {new Date().getFullYear()} Joblytics · {t('footer_made_in') || 'Made in France'}
         </p>
         <div style={{ display: 'flex', gap: 16, fontSize: 11, alignItems: 'center' }}>
           <a href="/privacy" style={{ color: 'var(--text-hint)', textDecoration: 'none' }}>{t('privacy')}</a>

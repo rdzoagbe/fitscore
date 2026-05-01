@@ -37,7 +37,7 @@ export default function LandingPage() {
       }}>
         <div>
           <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(18px,4vw,22px)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Fit<span style={{ color: 'var(--accent)' }}>Score</span>
+            Job<span style={{ color: 'var(--accent)' }}>lytics</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -66,7 +66,7 @@ export default function LandingPage() {
         </h1>
 
         <p style={{ fontSize: 'clamp(15px,3vw,18px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 600, margin: '0 auto 32px' }}>
-          {t('landing_subtitle') || 'Stop guessing. FitScore tells you exactly why your CV gets filtered, what to fix in 5 minutes, and how to win the interview if you apply.'}
+          {t('landing_subtitle') || 'Stop guessing. Joblytics tells you exactly why your CV gets filtered, what to fix in 5 minutes, and how to win the interview if you apply.'}
         </p>
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
@@ -168,7 +168,7 @@ export default function LandingPage() {
               {t('for_jobseekers_title') || "We're on your side, not the recruiter's"}
             </h2>
             <p style={{ fontSize: 'clamp(14px,3vw,16px)', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 32, maxWidth: 720 }}>
-              {t('for_jobseekers_desc') || "FitScore is independent. We don't sell candidate data, we don't work with recruiters, and we don't power any ATS. We're a tool built by a job seeker, for job seekers."}
+              {t('for_jobseekers_desc') || "Joblytics is independent. We don't sell candidate data, we don't work with recruiters, and we don't power any ATS. We're a tool built by a job seeker, for job seekers."}
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,220px), 1fr))', gap: 20 }}>
@@ -186,7 +186,7 @@ export default function LandingPage() {
             </div>
 
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 28, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, lineHeight: 1.6, fontStyle: 'italic' }}>
-              ℹ️ {t('jobseekers_only_disclaimer') || 'FitScore is for personal use by job seekers only. Use by recruiters, agencies, or HR is prohibited.'}
+              ℹ️ {t('jobseekers_only_disclaimer') || 'Joblytics is for personal use by job seekers only. Use by recruiters, agencies, or HR is prohibited.'}
             </p>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function LandingPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,160px), 1fr))', gap: 28, marginBottom: 32 }}>
           <div>
             <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-              Fit<span style={{ color: 'var(--accent)' }}>Score</span>
+              Job<span style={{ color: 'var(--accent)' }}>lytics</span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
               {t('footer_tagline') || 'Beat the algorithm. Get hired.'}
@@ -239,7 +239,7 @@ export default function LandingPage() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, borderTop: '1px solid var(--border)', flexWrap: 'wrap', gap: 12 }}>
           <p style={{ fontSize: 11, color: 'var(--text-hint)' }}>
-            © {new Date().getFullYear()} FitScore. {t('footer_rights') || 'All rights reserved.'}
+            © {new Date().getFullYear()} Joblytics. {t('footer_rights') || 'All rights reserved.'}
           </p>
           <p style={{ fontSize: 11, color: 'var(--text-hint)' }}>
             {t('footer_rgpd_note') || 'RGPD-compliant · Data stored in EU'}

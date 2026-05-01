@@ -140,7 +140,7 @@ export default function TopNav({ page, setPage }) {
         {/* Logo */}
         <button onClick={() => setPage('analyzer')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
           <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Fit<span style={{ color: 'var(--accent)' }}>Score</span>
+            Job<span style={{ color: 'var(--accent)' }}>lytics</span>
           </span>
         </button>
 

@@ -86,7 +86,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     <div className="page page-enter">
       <header className="page-header">
         <div>
-          <div className="logo">Fit<span className="acc">Score</span></div>
+          <div className="logo">Job<span className="acc">lytics</span></div>
           <div className="tagline">{t('tagline')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

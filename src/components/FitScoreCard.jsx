@@ -31,7 +31,7 @@ export default function FitScoreCard({ data, scoreDelta }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-              {t('your_fitscore') || 'Your FitScore'}
+              {t('your_fitscore') || 'Your Score'}
             </p>
             {scoreDelta !== null && scoreDelta !== undefined && (
               <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: scoreDelta >= 0 ? 'rgba(76,175,125,0.15)' : 'rgba(255,107,107,0.15)', color: scoreDelta >= 0 ? '#4caf7d' : '#ff6b6b', border: `1px solid ${scoreDelta >= 0 ? 'rgba(76,175,125,0.3)' : 'rgba(255,107,107,0.3)'}` }}>

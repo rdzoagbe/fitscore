@@ -48,7 +48,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
 
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-            Fit<span style={{ color: 'var(--accent)' }}>Score</span>
+            Job<span style={{ color: 'var(--accent)' }}>lytics</span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
             {mode === 'signin' ? (t('modal_welcome_back') || 'Welcome back') : (t('modal_join') || 'Create your account')}
