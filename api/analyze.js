@@ -173,8 +173,17 @@ function hashContent(...parts) {
 }
 
 // RATE LIMIT: max 10 analyses per user per hour, max 30 per day
+// Whitelist of user IDs with elevated limits (admin / dev)
+const WHITELIST = (process.env.RATE_LIMIT_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean)
+const HOURLY_LIMIT = 15
+const DAILY_LIMIT = 50
+const WHITELIST_DAILY = 500
+
 async function checkRateLimit(supabase, userId) {
-  if (!supabase || !userId) return { allowed: true }
+  if (!supabase || !userId) return { allowed: true, dayCount: 0, dayLimit: DAILY_LIMIT }
+
+  const isWhitelisted = WHITELIST.includes(userId)
+  const dayLimit = isWhitelisted ? WHITELIST_DAILY : DAILY_LIMIT
 
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -185,8 +194,8 @@ async function checkRateLimit(supabase, userId) {
     .eq('user_id', userId)
     .gte('created_at', oneHourAgo)
 
-  if ((hourCount ?? 0) >= 10) {
-    return { allowed: false, reason: 'hourly', message: 'Hourly limit reached (10 analyses/hour). Please try again later.' }
+  if (!isWhitelisted && (hourCount ?? 0) >= HOURLY_LIMIT) {
+    return { allowed: false, reason: 'hourly', message: `Hourly limit reached (${HOURLY_LIMIT} analyses/hour). Please try again later.`, dayCount: 0, dayLimit }
   }
 
   const { count: dayCount } = await supabase
@@ -195,11 +204,11 @@ async function checkRateLimit(supabase, userId) {
     .eq('user_id', userId)
     .gte('created_at', oneDayAgo)
 
-  if ((dayCount ?? 0) >= 30) {
-    return { allowed: false, reason: 'daily', message: 'Daily limit reached (30 analyses/day). Please try again tomorrow.' }
+  if ((dayCount ?? 0) >= dayLimit) {
+    return { allowed: false, reason: 'daily', message: `Daily limit reached (${dayLimit} analyses/day). Please try again tomorrow.`, dayCount: dayCount ?? 0, dayLimit }
   }
 
-  return { allowed: true }
+  return { allowed: true, dayCount: dayCount ?? 0, dayLimit }
 }
 
 export default async function handler(req, res) {
@@ -219,8 +228,10 @@ export default async function handler(req, res) {
     } catch {}
 
     // SECURITY: rate limit check
+    let rateLimitInfo = { dayCount: 0, dayLimit: 50 }
     if (supabaseClient && userId) {
       const rl = await checkRateLimit(supabaseClient, userId)
+      rateLimitInfo = { dayCount: rl.dayCount, dayLimit: rl.dayLimit }
       if (!rl.allowed) {
         return res.status(429).json({ error: rl.message, rate_limited: true, reason: rl.reason })
       }
@@ -254,10 +265,10 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 3500,
+      max_tokens: 2500,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText}\n\n---\n\nCV:\n${cvText}` }]
+      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 6000)}\n\n---\n\nCV:\n${cvText.slice(0, 6000)}` }]
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
@@ -286,23 +297,62 @@ export default async function handler(req, res) {
     analysis.cv_preview = cvText.trim().slice(0, 800).replace(/\s+/g, ' ').trim()
     analysis.cv_preview_truncated = cvText.trim().length > 800
 
-    // Save with cache_key
+    // Save with cache_key — upsert: if same cv+job already saved, update it
+    let savedRow = null
     try {
       if (supabaseClient && userId) {
-        await supabaseClient.from('analyses').insert({
-          user_id: userId,
-          job_url: jobUrl || 'manual_paste',
-          job_title: analysis.job_context?.title || null,
-          score: analysis.display_score,
-          result: analysis,
-          cv_file_path: null,
-          cv_file_name: cvFileName || null,
-          cache_key: cacheKey
-        })
+        // First check if a row with this cache_key already exists for this user
+        const { data: existing } = await supabaseClient
+          .from('analyses')
+          .select('id, application_status, status_updated_at')
+          .eq('user_id', userId)
+          .eq('cache_key', cacheKey)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (existing) {
+          // Update existing row, preserve application_status
+          const { data: updated } = await supabaseClient
+            .from('analyses')
+            .update({
+              job_url: jobUrl || 'manual_paste',
+              job_title: analysis.job_context?.title || null,
+              score: analysis.display_score,
+              result: analysis,
+              cv_file_name: cvFileName || null
+            })
+            .eq('id', existing.id)
+            .select()
+            .single()
+          savedRow = updated
+        } else {
+          // Insert new row
+          const { data: inserted } = await supabaseClient
+            .from('analyses')
+            .insert({
+              user_id: userId,
+              job_url: jobUrl || 'manual_paste',
+              job_title: analysis.job_context?.title || null,
+              score: analysis.display_score,
+              result: analysis,
+              cv_file_path: null,
+              cv_file_name: cvFileName || null,
+              cache_key: cacheKey
+            })
+            .select()
+            .single()
+          savedRow = inserted
+        }
       }
     } catch (e) { console.log('Save failed:', e.message) }
 
-    return res.status(200).json({ success: true, analysis })
+    return res.status(200).json({
+      success: true,
+      analysis,
+      savedRow,
+      rateLimit: rateLimitInfo
+    })
   } catch (e) {
     console.error('Handler error:', e.message)
     return res.status(500).json({ error: e.message || 'Analysis failed' })

@@ -19,6 +19,7 @@ import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import AnalyzerHero from './components/AnalyzerHero'
 import LastAnalysisCard from './components/LastAnalysisCard'
+import TipCard from './components/TipCard'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -258,6 +259,10 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                   {t('processing_time') || 'Processing takes ~15 seconds'}
                 </p>
               </>
+            )}
+
+            {status === 'idle' && (
+              <TipCard onGoCoach={() => setPage('coach')} onGoHistory={() => setPage('dashboard')} />
             )}
           </div>
         )}
