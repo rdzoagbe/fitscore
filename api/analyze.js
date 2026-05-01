@@ -246,6 +246,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     }
 
+    if (!jobText || jobText.trim().length < 100) {
+      return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting (requirements, responsibilities, etc.).' })
+    }
+
     // CACHE: same content = same result
     const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
 
@@ -281,13 +285,22 @@ export default async function handler(req, res) {
       throw new Error('AI returned malformed JSON. This is usually transient — please try again.')
     }
 
-    // Validate critical fields
-    if (!analysis?.keyword_match?.score && analysis?.keyword_match?.score !== 0) {
-      throw new Error('AI response missing keyword_match.score. Please try again.')
+    // Coerce scores defensively — AI might return string numbers or missing structure
+    const safeScore = (val, fallback = 0) => {
+      const n = typeof val === 'number' ? val : parseInt(val, 10)
+      if (isNaN(n) || n < 0 || n > 100) return fallback
+      return Math.round(n)
     }
-    if (!analysis?.requirements_check?.score && analysis?.requirements_check?.score !== 0) {
-      throw new Error('AI response missing requirements_check.score. Please try again.')
+
+    if (!analysis || typeof analysis !== 'object') {
+      throw new Error('AI returned an unexpected response. Please try again.')
     }
+
+    // Ensure structure exists with safe defaults rather than throwing
+    analysis.keyword_match = analysis.keyword_match || { score: 0, found: [], missing: [] }
+    analysis.requirements_check = analysis.requirements_check || { score: 0 }
+    analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
+    analysis.requirements_check.score = safeScore(analysis.requirements_check.score, 0)
 
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
     analysis.job_url = jobUrl || null
