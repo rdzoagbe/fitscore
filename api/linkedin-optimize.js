@@ -525,7 +525,7 @@ export default async function handler(req, res) {
         skills = asString(parsed.skills || skills, MAX.skills)
         sourceUsed = 'url'
       } catch (error) {
-        return res.status(502).json({
+        return res.status(200).json({
           success: false,
           fallback: 'paste',
           error: error.message || 'Could not read this LinkedIn URL. Please paste your profile sections instead.'
