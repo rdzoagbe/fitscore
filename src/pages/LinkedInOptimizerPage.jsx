@@ -1,18 +1,68 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useLang } from '../context/LangContext'
-import { generateOptimizedLinkedInDocx } from '../utils/linkedinDocx'
-import { generateOptimizedLinkedInPdf } from '../utils/linkedinPdf'
 
-const isLinkedInUrl = (s) => {
-  if (!s) return false
+function isLinkedInProfileUrl(value) {
+  if (!value) return false
   try {
-    const u = new URL(s.trim())
-    return u.hostname.includes('linkedin.com') && (u.pathname.startsWith('/in/') || u.pathname.startsWith('/pub/'))
-  } catch { return false }
+    const url = new URL(value.trim())
+    const hostname = url.hostname.toLowerCase()
+    const isLinkedInHost = hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com')
+    const path = url.pathname.replace(/\/+$/, '')
+    return url.protocol.startsWith('http') && isLinkedInHost && /^\/(in|pub)\/[^/]+/i.test(path)
+  } catch {
+    return false
+  }
+}
+
+function downloadTextFile(fileName, content, type = 'text/plain;charset=utf-8') {
+  const blob = new Blob([content], { type })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function formatReport(data) {
+  const exp = data?.experience?.improvements || []
+  return [
+    'LinkedIn Optimized Profile',
+    '',
+    `Overall score: ${data?.overall_score ?? 0}/100`,
+    data?.score_explanation || '',
+    '',
+    'HEADLINE',
+    data?.headline?.improved_version || '',
+    '',
+    'ABOUT',
+    data?.about?.improved_version || '',
+    '',
+    'EXPERIENCE',
+    ...exp.flatMap(item => [
+      item.role_title || 'Experience',
+      ...(item.improved_bullets || []).map(bullet => `• ${bullet}`),
+      ''
+    ]),
+    'SKILLS TO PIN',
+    ...(data?.skills?.to_reorder_top_3 || []).map(skill => `• ${skill}`),
+    '',
+    'SKILLS TO ADD',
+    ...(data?.skills?.to_add || []).map(skill => `• ${skill}`),
+    '',
+    'QUICK WINS',
+    ...(data?.quick_wins || []).map(win => `• ${win}`),
+    '',
+    data?.honest_disclaimer || ''
+  ].join('\n')
 }
 
 export default function LinkedInOptimizerPage() {
   const { t, lang } = useLang()
+  const tr = (key, fallback) => t?.(key) || fallback
+
   const [profileUrl, setProfileUrl] = useState('')
   const [showPaste, setShowPaste] = useState(false)
   const [userToggledMode, setUserToggledMode] = useState(false)
@@ -26,345 +76,349 @@ export default function LinkedInOptimizerPage() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState({})
 
-  // Auto-switch to paste mode if URL fetch returned a fallback message (mirrors job URL behavior)
+  const urlValid = useMemo(() => isLinkedInProfileUrl(profileUrl), [profileUrl])
+  const pasteValid = headline.trim().length >= 5 || about.trim().length >= 30 || experience.trim().length >= 50
+  const canSubmit = !loading && (showPaste ? pasteValid : urlValid)
+
   useEffect(() => {
-    if (!error || userToggledMode) return
+    if (!error || userToggledMode || showPaste) return undefined
     const lower = error.toLowerCase()
-    const isBlocked = lower.includes('blocked') || lower.includes('paste') || lower.includes('login wall') || lower.includes('reach linkedin')
-    if (isBlocked && !showPaste) {
-      const timer = setTimeout(() => {
-        setShowPaste(true)
-        setTimeout(() => {
-          document.querySelector('textarea[data-section="about"]')?.focus()
-        }, 100)
-      }, 800)
-      return () => clearTimeout(timer)
-    }
+    const shouldSwitch = ['blocked', 'paste', 'login wall', 'could not read', 'linkedin returned'].some(signal => lower.includes(signal))
+    if (!shouldSwitch) return undefined
+
+    const timer = window.setTimeout(() => {
+      setShowPaste(true)
+      window.setTimeout(() => document.querySelector('textarea[data-section="about"]')?.focus(), 100)
+    }, 700)
+    return () => window.clearTimeout(timer)
   }, [error, userToggledMode, showPaste])
 
-  const optimize = async () => {
+  async function optimize() {
+    if (!canSubmit) return
     setError('')
     setLoading(true)
     setOptimization(null)
+
     try {
       const body = showPaste
         ? { headline, about, experience, skills, targetRole, lang }
         : { profileUrl: profileUrl.trim(), targetRole, lang }
 
-      const res = await fetch('/api/linkedin-optimize', {
+      const response = await fetch('/api/linkedin-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`)
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `Server error ${response.status}`)
+      }
+
       setOptimization(data.optimization)
-      setTimeout(() => {
+      window.setTimeout(() => {
         document.getElementById('linkedin-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
-    } catch (e) {
-      setError(e.message || 'Could not analyze profile. Please try again.')
+    } catch (err) {
+      setError(err.message || tr('linkedin_error', 'Could not analyze profile. Please try again.'))
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
-  const togglePasteMode = () => {
-    setShowPaste(s => !s)
+  function togglePasteMode() {
+    setShowPaste(value => !value)
     setUserToggledMode(true)
     setError('')
   }
 
-  const copyToClipboard = async (text, key) => {
+  async function copyToClipboard(text, key) {
     try {
-      await navigator.clipboard.writeText(text)
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        textarea.remove()
+      }
       setCopied(prev => ({ ...prev, [key]: true }))
-      setTimeout(() => setCopied(prev => ({ ...prev, [key]: false })), 2000)
-    } catch {}
-  }
-
-  const downloadDocx = async () => {
-    try {
-      await generateOptimizedLinkedInDocx(optimization, { fileName: 'LinkedIn-optimized.docx' })
+      window.setTimeout(() => setCopied(prev => ({ ...prev, [key]: false })), 1800)
     } catch {
-      setError('Could not generate DOCX. Please try again.')
+      setError(tr('copy_failed', 'Copy failed. Please select the text manually.'))
     }
   }
 
-  const downloadPdf = () => {
-    try {
-      generateOptimizedLinkedInPdf(optimization, { fileName: 'LinkedIn-optimized.pdf' })
-    } catch {
-      setError('Could not generate PDF. Please try again.')
-    }
+  function downloadReport() {
+    if (!optimization) return
+    downloadTextFile('LinkedIn-optimized-profile.txt', formatReport(optimization))
   }
 
-  const urlValid = isLinkedInUrl(profileUrl)
-  const pasteValid = (headline.trim().length >= 5 || about.trim().length >= 30)
-  const canSubmit = !loading && (showPaste ? pasteValid : urlValid)
+  function downloadJson() {
+    if (!optimization) return
+    downloadTextFile('LinkedIn-optimized-profile.json', JSON.stringify(optimization, null, 2), 'application/json;charset=utf-8')
+  }
 
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(20px,4vw,40px) clamp(16px,4vw,32px)' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+    <main style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(20px,4vw,40px) clamp(16px,4vw,32px)' }}>
+      <header style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-          🔗 {t('linkedin_kicker') || 'LinkedIn Optimizer'}
+          🔗 {tr('linkedin_kicker', 'LinkedIn Optimizer')}
         </p>
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(22px,5vw,32px)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-          {t('linkedin_title') || 'Make your LinkedIn profile recruiter-magnet'}
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(22px,5vw,34px)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+          {tr('linkedin_title', 'Make your LinkedIn profile recruiter-magnet')}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {t('linkedin_subtitle_url') || 'Paste your LinkedIn profile URL below. Get a section-by-section analysis with copy-paste-ready improvements.'}
+          {tr('linkedin_subtitle_url', 'Paste your LinkedIn profile URL or manually paste your profile sections. URL mode falls back safely because LinkedIn often blocks automated reads.')}
         </p>
-      </div>
+      </header>
 
-      {/* Input form */}
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 24 }}>
-        {/* Target role (always visible) */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            🎯 {t('linkedin_target_role') || 'Target role'} <span style={{ textTransform: 'none', color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
-          </label>
-          <input
-            value={targetRole}
-            onChange={e => setTargetRole(e.target.value)}
-            placeholder={t('linkedin_target_placeholder') || 'e.g. Senior Product Manager · Cloud Infrastructure Lead'}
-            style={{ fontSize: 14 }}
-          />
-          <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 4 }}>
-            {t('linkedin_target_hint') || 'What roles do you want to be found for? Helps tune the optimization.'}
-          </p>
-        </div>
+      <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 24 }}>
+        <FieldLabel accent icon="🎯" label={tr('linkedin_target_role', 'Target role')} optional={tr('optional', 'optional')} />
+        <input
+          value={targetRole}
+          onChange={event => setTargetRole(event.target.value)}
+          placeholder={tr('linkedin_target_placeholder', 'e.g. IT Manager · Endpoint Manager · Microsoft Intune Lead')}
+          style={{ fontSize: 14, width: '100%' }}
+          disabled={loading}
+        />
+        <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 4, marginBottom: 18 }}>
+          {tr('linkedin_target_hint', 'The role you want to be found for. This tunes the optimization.')}
+        </p>
 
-        {/* URL FIELD (default mode) */}
         {!showPaste && (
-          <>
-            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-              🔗 {t('linkedin_url_label') || 'LinkedIn profile URL'}
-            </label>
+          <div>
+            <FieldLabel icon="🔗" label={tr('linkedin_url_label', 'LinkedIn profile URL')} />
             <input
               type="url"
               value={profileUrl}
-              onChange={e => { setProfileUrl(e.target.value); if (error) setError('') }}
+              onChange={event => { setProfileUrl(event.target.value); if (error) setError('') }}
               placeholder="https://www.linkedin.com/in/yourname"
-              style={{ fontSize: 14 }}
+              style={{ fontSize: 14, width: '100%' }}
               disabled={loading}
             />
             <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 6, lineHeight: 1.5 }}>
-              💡 {t('linkedin_url_hint') || "Make sure your profile is set to public. LinkedIn often blocks automated reads — if that happens, you'll be auto-switched to paste mode."}
+              💡 {tr('linkedin_url_hint', "LinkedIn normally blocks automated reads. Paste mode is the reliable option if URL mode fails.")}
             </p>
-          </>
+          </div>
         )}
 
-        {/* OR PASTE TOGGLE (mirrors job URL UX) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '14px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          <button onClick={togglePasteMode} style={{
-            fontSize: 12, color: 'var(--accent)',
-            background: 'var(--accent-bg)', border: '1px solid var(--accent)',
-            cursor: 'pointer', padding: '6px 14px', whiteSpace: 'nowrap',
-            fontWeight: 600, borderRadius: 20, fontFamily: 'inherit'
-          }}>
+          <button type="button" onClick={togglePasteMode} style={toggleButtonStyle} disabled={loading}>
             {showPaste
-              ? `↑ ${t('linkedin_use_url') || 'Use URL instead'}`
-              : `✏️ ${t('linkedin_or_paste') || 'OR paste profile sections'}`}
+              ? `↑ ${tr('linkedin_use_url', 'Use URL instead')}`
+              : `✏️ ${tr('linkedin_or_paste', 'OR paste profile sections')}`}
           </button>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
         </div>
 
-        {/* PASTE FIELDS */}
         {showPaste && (
-          <>
+          <div>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14, padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 10 }}>
-              💡 <strong>{t('linkedin_paste_howto_title') || 'How to copy:'}</strong> {t('linkedin_paste_howto_body') || "Open your LinkedIn profile, click each section to expand it, select all (Ctrl+A) and copy (Ctrl+C). Even just Headline + About gives a useful analysis."}
+              💡 <strong>{tr('linkedin_paste_howto_title', 'How to copy:')}</strong> {tr('linkedin_paste_howto_body', 'Open your LinkedIn profile, expand the sections, then copy/paste Headline, About, Experience and Skills. Headline + About is enough to test.')}
             </p>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                {t('linkedin_section_headline') || 'Headline'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {headline.length}/220</span>
-              </label>
-              <input
-                value={headline}
-                onChange={e => setHeadline(e.target.value.slice(0, 220))}
-                placeholder={t('linkedin_headline_placeholder') || 'e.g. Senior IT Manager · ERP & CRM · Available for new opportunities'}
-                style={{ fontSize: 14 }}
-                disabled={loading}
-              />
-            </div>
+            <TextInput
+              label={tr('linkedin_section_headline', 'Headline')}
+              hint={`${headline.length}/220`}
+              value={headline}
+              onChange={value => setHeadline(value.slice(0, 220))}
+              placeholder={tr('linkedin_headline_placeholder', 'e.g. Senior IT Manager · Intune · ITSM · Team Leadership')}
+              disabled={loading}
+            />
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                {t('linkedin_section_about') || 'About / Summary'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {about.length} chars</span>
-              </label>
-              <textarea
-                data-section="about"
-                value={about}
-                onChange={e => setAbout(e.target.value)}
-                placeholder={t('linkedin_about_placeholder') || 'Paste your LinkedIn About section here.'}
-                rows={5}
-                maxLength={3000}
-                style={{ fontSize: 13, resize: 'vertical' }}
-                disabled={loading}
-              />
-            </div>
+            <TextareaInput
+              label={tr('linkedin_section_about', 'About / Summary')}
+              hint={`${about.length} chars`}
+              value={about}
+              onChange={setAbout}
+              placeholder={tr('linkedin_about_placeholder', 'Paste your LinkedIn About section here.')}
+              rows={5}
+              maxLength={3000}
+              disabled={loading}
+              dataSection="about"
+            />
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                {t('linkedin_section_experience') || 'Experience'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
-              </label>
-              <textarea
-                value={experience}
-                onChange={e => setExperience(e.target.value)}
-                placeholder={t('linkedin_experience_placeholder') || 'Paste your most recent 1-3 experience entries.'}
-                rows={5}
-                maxLength={4000}
-                style={{ fontSize: 13, resize: 'vertical' }}
-                disabled={loading}
-              />
-            </div>
+            <TextareaInput
+              label={tr('linkedin_section_experience', 'Experience')}
+              hint={tr('optional', 'optional')}
+              value={experience}
+              onChange={setExperience}
+              placeholder={tr('linkedin_experience_placeholder', 'Paste your most recent 1-3 experience entries.')}
+              rows={5}
+              maxLength={4000}
+              disabled={loading}
+            />
 
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-                {t('linkedin_section_skills') || 'Skills'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
-              </label>
-              <input
-                value={skills}
-                onChange={e => setSkills(e.target.value)}
-                placeholder={t('linkedin_skills_placeholder') || 'Comma-separated: Project Management, ITIL, Salesforce...'}
-                style={{ fontSize: 13 }}
-                disabled={loading}
-              />
-            </div>
-          </>
+            <TextInput
+              label={tr('linkedin_section_skills', 'Skills')}
+              hint={tr('optional', 'optional')}
+              value={skills}
+              onChange={setSkills}
+              placeholder={tr('linkedin_skills_placeholder', 'Comma-separated: Intune, ITIL, Jira, Team Leadership...')}
+              disabled={loading}
+            />
+          </div>
         )}
 
-        {/* Error */}
         {error && (
           <div style={{ marginTop: 6, marginBottom: 14, padding: '10px 12px', background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10 }}>
-            <p style={{ fontSize: 12, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
+            <p style={{ fontSize: 12, color: '#ff6b6b', lineHeight: 1.5, margin: 0 }}>⚠ {error}</p>
             {!showPaste && error.toLowerCase().includes('paste') && (
-              <button onClick={togglePasteMode} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginTop: 6, padding: 0 }}>
-                → {t('linkedin_switch_to_paste') || 'Switch to paste mode'}
+              <button type="button" onClick={togglePasteMode} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginTop: 6, padding: 0 }}>
+                → {tr('linkedin_switch_to_paste', 'Switch to paste mode')}
               </button>
             )}
           </div>
         )}
 
-        <button onClick={optimize} disabled={!canSubmit} className="btn-primary" style={{ width: '100%' }}>
-          {loading ? `⏳ ${t('linkedin_loading') || 'Analyzing your profile...'}` : `✨ ${t('linkedin_cta') || 'Optimize my profile →'}`}
+        <button type="button" onClick={optimize} disabled={!canSubmit} className="btn-primary" style={{ width: '100%', opacity: canSubmit ? 1 : 0.55 }}>
+          {loading ? `⏳ ${tr('linkedin_loading', 'Analyzing your profile...')}` : `✨ ${tr('linkedin_cta', 'Optimize my profile →')}`}
         </button>
 
         {!canSubmit && !loading && (
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', marginTop: 8 }}>
             {showPaste
-              ? (t('linkedin_min_warning') || 'Fill at least Headline OR About to start.')
-              : (t('linkedin_url_warning') || 'Paste a valid LinkedIn profile URL.')}
+              ? tr('linkedin_min_warning', 'Fill at least Headline, About, or Experience to start.')
+              : tr('linkedin_url_warning', 'Paste a valid LinkedIn profile URL.')}
           </p>
         )}
-      </div>
+      </section>
 
-      {/* Results */}
       {optimization && (
-        <div id="linkedin-results" style={{ animation: 'fadeUp 0.4s ease' }}>
-          <OverallScoreCard data={optimization} t={t} />
+        <section id="linkedin-results" style={{ animation: 'fadeUp 0.4s ease' }}>
+          {optimization.warning && (
+            <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(245,166,35,0.25)', background: 'rgba(245,166,35,0.08)', color: 'var(--text-secondary)', fontSize: 12, lineHeight: 1.6 }}>
+              ⚠ {optimization.warning}
+            </div>
+          )}
+
+          <OverallScoreCard data={optimization} tr={tr} />
           <SectionCard
-            title={t('linkedin_section_headline') || 'Headline'}
+            title={tr('linkedin_section_headline', 'Headline')}
             icon="📌"
             section={optimization.headline}
-            improvedKey="improved_version"
-            copyKey="headline"
             copied={copied.headline}
-            onCopy={() => copyToClipboard(optimization.headline.improved_version, 'headline')}
-            t={t}
+            onCopy={() => copyToClipboard(optimization.headline?.improved_version || '', 'headline')}
+            tr={tr}
           />
           <SectionCard
-            title={t('linkedin_section_about') || 'About / Summary'}
+            title={tr('linkedin_section_about', 'About / Summary')}
             icon="💬"
             section={optimization.about}
-            improvedKey="improved_version"
-            copyKey="about"
             copied={copied.about}
-            onCopy={() => copyToClipboard(optimization.about.improved_version, 'about')}
+            onCopy={() => copyToClipboard(optimization.about?.improved_version || '', 'about')}
             preserveLines
-            t={t}
+            tr={tr}
           />
-          {optimization.experience?.improvements?.length > 0 && (
-            <ExperienceCard data={optimization.experience} copied={copied} onCopy={copyToClipboard} t={t} />
+
+          {!!optimization.experience?.improvements?.length && (
+            <ExperienceCard data={optimization.experience} copied={copied} onCopy={copyToClipboard} tr={tr} />
           )}
-          {optimization.skills && (
-            <SkillsCard data={optimization.skills} t={t} />
-          )}
-          {optimization.quick_wins?.length > 0 && (
-            <QuickWinsCard wins={optimization.quick_wins} t={t} />
-          )}
+          {optimization.skills && <SkillsCard data={optimization.skills} tr={tr} />}
+          {!!optimization.quick_wins?.length && <QuickWinsCard wins={optimization.quick_wins} tr={tr} />}
 
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 18 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontFamily: 'Syne, sans-serif' }}>
-              ⬇️ {t('linkedin_download_title') || 'Download your optimized profile'}
+              ⬇️ {tr('linkedin_download_title', 'Download your optimized profile')}
             </p>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
-              {t('linkedin_download_desc') || 'Get the full analysis as a document you can keep, edit, or share.'}
+              {tr('linkedin_download_desc', 'Download a plain-text report or the raw JSON response for debugging.')}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 8 }}>
-              <button onClick={downloadDocx} className="btn-primary">
-                ⬇ {t('download_docx') || 'Download .docx'}
-              </button>
-              <button onClick={downloadPdf} style={{ padding: '12px', borderRadius: 12, background: 'var(--bg-input)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                ⬇ {t('download_pdf') || 'Download .pdf'}
-              </button>
+              <button type="button" onClick={downloadReport} className="btn-primary">⬇ Download .txt</button>
+              <button type="button" onClick={downloadJson} style={secondaryButtonStyle}>⬇ Download .json</button>
             </div>
           </div>
 
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 30 }}>
-            ℹ️ {optimization.honest_disclaimer || (t('linkedin_disclaimer') || 'Review carefully before publishing on LinkedIn. AI optimizes wording but does not verify facts.')}
+            ℹ️ {optimization.honest_disclaimer || tr('linkedin_disclaimer', 'Review carefully before publishing on LinkedIn. AI optimizes wording but does not verify facts.')}
           </p>
-        </div>
+        </section>
       )}
     </main>
   )
 }
 
-function OverallScoreCard({ data, t }) {
-  const score = data.overall_score || 0
-  const projectedScore = Math.min(100, score + 25)
-  const color = score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff6b6b'
-
+function FieldLabel({ label, icon, optional, accent = false }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(18px,3.5vw,24px)', marginBottom: 14 }}>
-      <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 10 }}>
-        📊 {t('linkedin_overall_score') || 'Overall profile score'}
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-        <div>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{t('linkedin_now') || 'Now'}</p>
-          <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 36, fontWeight: 700, color, lineHeight: 1 }}>
-            {score}<span style={{ fontSize: 16, color: 'var(--text-muted)' }}>/100</span>
-          </p>
-        </div>
-        <div style={{ fontSize: 22, color: 'var(--text-muted)' }}>→</div>
-        <div>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{t('linkedin_after') || 'After improvements'}</p>
-          <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 36, fontWeight: 700, color: '#4caf7d', lineHeight: 1 }}>
-            {projectedScore}<span style={{ fontSize: 16, color: 'var(--text-muted)' }}>/100</span>
-          </p>
-        </div>
-      </div>
-      {data.score_explanation && (
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 14 }}>
-          {data.score_explanation}
-        </p>
-      )}
+    <label style={{ fontSize: 10, fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+      {icon ? `${icon} ` : ''}{label} {optional && <span style={{ textTransform: 'none', color: 'var(--text-hint)', fontWeight: 400 }}>· {optional}</span>}
+    </label>
+  )
+}
+
+function TextInput({ label, hint, value, onChange, placeholder, disabled }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <FieldLabel label={label} optional={hint} />
+      <input value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} disabled={disabled} style={{ fontSize: 14, width: '100%' }} />
     </div>
   )
 }
 
-function SectionCard({ title, icon, section, improvedKey, copyKey, copied, onCopy, preserveLines, t }) {
-  if (!section || !section[improvedKey]) return null
+function TextareaInput({ label, hint, value, onChange, placeholder, rows, maxLength, disabled, dataSection }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 14 }}>
+    <div style={{ marginBottom: 14 }}>
+      <FieldLabel label={label} optional={hint} />
+      <textarea
+        data-section={dataSection}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        maxLength={maxLength}
+        disabled={disabled}
+        style={{ fontSize: 13, resize: 'vertical', width: '100%' }}
+      />
+    </div>
+  )
+}
+
+function OverallScoreCard({ data, tr }) {
+  const score = data.overall_score || 0
+  const headlineScore = data.headline?.improved_score || 0
+  const aboutScore = data.about?.improved_score || 0
+  const expScore = data.experience?.current_score || 0
+  const skillsScore = data.skills?.current_score || 0
+  const projectedScore = Math.min(100, Math.max(score, Math.round(((headlineScore + aboutScore + expScore + skillsScore) / 40) * 100)))
+  const color = score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff6b6b'
+
+  return (
+    <div style={cardStyle}>
+      <p style={kickerStyle}>📊 {tr('linkedin_overall_score', 'Overall profile score')}</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+        <ScoreBlock label={tr('linkedin_now', 'Now')} score={score} color={color} />
+        <div style={{ fontSize: 22, color: 'var(--text-muted)' }}>→</div>
+        <ScoreBlock label={tr('linkedin_after', 'After improvements')} score={projectedScore} color="#4caf7d" />
+      </div>
+      {data.score_explanation && <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 14 }}>{data.score_explanation}</p>}
+    </div>
+  )
+}
+
+function ScoreBlock({ label, score, color }) {
+  return (
+    <div>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</p>
+      <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 36, fontWeight: 700, color, lineHeight: 1 }}>
+        {score}<span style={{ fontSize: 16, color: 'var(--text-muted)' }}>/100</span>
+      </p>
+    </div>
+  )
+}
+
+function SectionCard({ title, icon, section, copied, onCopy, preserveLines, tr }) {
+  if (!section?.improved_version) return null
+  return (
+    <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
-          {icon} {title}
-        </p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>{icon} {title}</p>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
           <span style={{ color: 'var(--text-muted)' }}>{section.current_score}/10</span>
           <span style={{ color: 'var(--accent)' }}>→</span>
@@ -372,172 +426,159 @@ function SectionCard({ title, icon, section, improvedKey, copyKey, copied, onCop
         </div>
       </div>
 
-      {section.issues?.length > 0 && (
-        <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(255,142,107,0.06)', border: '1px solid rgba(255,142,107,0.2)', borderRadius: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#ff8e6b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            {t('linkedin_issues') || 'Issues'}
-          </p>
-          <ul style={{ paddingLeft: 16, margin: 0 }}>
-            {section.issues.map((issue, i) => (
-              <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 2 }}>{issue}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {!!section.issues?.length && <Issues issues={section.issues} tr={tr} />}
 
       <p style={{ fontSize: 10, fontWeight: 700, color: '#4caf7d', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-        ✨ {t('linkedin_improved') || 'Improved version'} — {t('copy_paste_ready') || 'copy-paste ready'}
+        ✨ {tr('linkedin_improved', 'Improved version')} — {tr('copy_paste_ready', 'copy-paste ready')}
       </p>
       <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
-        <p style={{
-          fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.7,
-          whiteSpace: preserveLines ? 'pre-wrap' : 'normal',
-          wordBreak: 'break-word'
-        }}>
-          {section[improvedKey]}
+        <p style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: preserveLines ? 'pre-wrap' : 'normal', wordBreak: 'break-word' }}>
+          {section.improved_version}
         </p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button onClick={onCopy} style={{
-          padding: '8px 14px', borderRadius: 20,
-          background: copied ? 'rgba(76,175,125,0.15)' : 'var(--accent)',
-          border: copied ? '1px solid rgba(76,175,125,0.3)' : 'none',
-          color: copied ? '#4caf7d' : '#1A1B22',
-          fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif'
-        }}>
-          {copied ? `✓ ${t('copied') || 'Copied'}` : `📋 ${t('copy') || 'Copy'}`}
+        <button type="button" onClick={onCopy} style={copyButtonStyle(copied)}>
+          {copied ? `✓ ${tr('copied', 'Copied')}` : `📋 ${tr('copy', 'Copy')}`}
         </button>
-        {section.why_better && (
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', flex: 1, minWidth: 200 }}>
-            {section.why_better}
-          </p>
-        )}
+        {section.why_better && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', flex: 1, minWidth: 200 }}>{section.why_better}</p>}
       </div>
     </div>
   )
 }
 
-function ExperienceCard({ data, copied, onCopy, t }) {
+function Issues({ issues, tr }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 14 }}>
+    <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(255,142,107,0.06)', border: '1px solid rgba(255,142,107,0.2)', borderRadius: 10 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: '#ff8e6b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>{tr('linkedin_issues', 'Issues')}</p>
+      <ul style={{ paddingLeft: 16, margin: 0 }}>
+        {issues.map((issue, index) => <li key={index} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 2 }}>{issue}</li>)}
+      </ul>
+    </div>
+  )
+}
+
+function ExperienceCard({ data, copied, onCopy, tr }) {
+  return (
+    <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
-          💼 {t('linkedin_section_experience') || 'Experience'}
-        </p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>💼 {tr('linkedin_section_experience', 'Experience')}</p>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{data.current_score}/10</span>
       </div>
-
-      {data.issues?.length > 0 && (
-        <div style={{ marginBottom: 12, padding: '10px 12px', background: 'rgba(255,142,107,0.06)', border: '1px solid rgba(255,142,107,0.2)', borderRadius: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#ff8e6b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            {t('linkedin_issues') || 'Issues'}
-          </p>
-          <ul style={{ paddingLeft: 16, margin: 0 }}>
-            {data.issues.map((issue, i) => (
-              <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{issue}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {data.improvements.map((imp, idx) => {
-        const allBullets = (imp.improved_bullets || []).join('\n• ')
+      {!!data.issues?.length && <Issues issues={data.issues} tr={tr} />}
+      {data.improvements.map((item, index) => {
+        const bullets = item.improved_bullets || []
+        const copyText = bullets.map(bullet => `• ${bullet}`).join('\n')
         return (
-          <div key={idx} style={{ marginBottom: 14, padding: '14px 16px', background: 'var(--bg-input)', borderRadius: 10 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>{imp.role_title}</p>
+          <div key={index} style={{ marginBottom: 14, padding: '14px 16px', background: 'var(--bg-input)', borderRadius: 10 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>{item.role_title}</p>
             <ul style={{ paddingLeft: 16, margin: 0, marginBottom: 10 }}>
-              {(imp.improved_bullets || []).map((b, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 4 }}>{b}</li>
-              ))}
+              {bullets.map((bullet, bulletIndex) => <li key={bulletIndex} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 4 }}>{bullet}</li>)}
             </ul>
-            <button
-              onClick={() => onCopy(`• ${allBullets}`, `exp${idx}`)}
-              style={{
-                padding: '6px 12px', borderRadius: 16,
-                background: copied[`exp${idx}`] ? 'rgba(76,175,125,0.15)' : 'var(--accent)',
-                border: copied[`exp${idx}`] ? '1px solid rgba(76,175,125,0.3)' : 'none',
-                color: copied[`exp${idx}`] ? '#4caf7d' : '#1A1B22',
-                fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif'
-              }}
-            >
-              {copied[`exp${idx}`] ? `✓ ${t('copied') || 'Copied'}` : `📋 ${t('copy_bullets') || 'Copy bullets'}`}
+            <button type="button" onClick={() => onCopy(copyText, `exp${index}`)} style={copyButtonStyle(copied[`exp${index}`])}>
+              {copied[`exp${index}`] ? `✓ ${tr('copied', 'Copied')}` : `📋 ${tr('copy_bullets', 'Copy bullets')}`}
             </button>
           </div>
         )
       })}
-
-      {data.general_advice && (
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.6, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
-          💡 {data.general_advice}
-        </p>
-      )}
+      {data.general_advice && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.6, paddingTop: 8, borderTop: '1px solid var(--border)' }}>💡 {data.general_advice}</p>}
     </div>
   )
 }
 
-function SkillsCard({ data, t }) {
+function SkillsCard({ data, tr }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 14 }}>
-      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>
-        🛠 {t('linkedin_section_skills') || 'Skills'}
-      </p>
-      {data.to_reorder_top_3?.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            ⭐ {t('linkedin_pin_top3') || 'Pin these as top 3'}
-          </p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {data.to_reorder_top_3.map((s, i) => (
-              <span key={i} style={{ padding: '4px 10px', borderRadius: 14, background: 'var(--accent-bg)', border: '1px solid var(--accent)', color: 'var(--accent)', fontSize: 12, fontWeight: 600 }}>{s}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {data.to_add?.length > 0 && (
-        <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#4caf7d', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            ➕ {t('linkedin_add_skills') || 'Add'}
-          </p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {data.to_add.map((s, i) => (
-              <span key={i} style={{ padding: '4px 10px', borderRadius: 14, background: 'rgba(76,175,125,0.1)', border: '1px solid rgba(76,175,125,0.3)', color: '#4caf7d', fontSize: 12, fontWeight: 500 }}>{s}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {data.to_remove?.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#ff8e6b', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
-            ➖ {t('linkedin_remove_skills') || 'Remove'}
-          </p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {data.to_remove.map((s, i) => (
-              <span key={i} style={{ padding: '4px 10px', borderRadius: 14, background: 'rgba(255,142,107,0.08)', border: '1px solid rgba(255,142,107,0.25)', color: '#ff8e6b', fontSize: 12, textDecoration: 'line-through' }}>{s}</span>
-            ))}
-          </div>
-        </div>
-      )}
-      {data.rationale && (
-        <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8, lineHeight: 1.6 }}>
-          💡 {data.rationale}
-        </p>
-      )}
+    <div style={cardStyle}>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: 12 }}>🛠 {tr('linkedin_section_skills', 'Skills')}</p>
+      <PillGroup title={`⭐ ${tr('linkedin_pin_top3', 'Pin these as top 3')}`} items={data.to_reorder_top_3} variant="accent" />
+      <PillGroup title={`➕ ${tr('linkedin_add_skills', 'Add')}`} items={data.to_add} variant="green" />
+      <PillGroup title={`➖ ${tr('linkedin_remove_skills', 'Remove')}`} items={data.to_remove} variant="orange" strike />
+      {data.rationale && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8, lineHeight: 1.6 }}>💡 {data.rationale}</p>}
     </div>
   )
 }
 
-function QuickWinsCard({ wins, t }) {
+function PillGroup({ title, items = [], variant, strike = false }) {
+  if (!items.length) return null
+  const styles = {
+    accent: { background: 'var(--accent-bg)', border: '1px solid var(--accent)', color: 'var(--accent)' },
+    green: { background: 'rgba(76,175,125,0.1)', border: '1px solid rgba(76,175,125,0.3)', color: '#4caf7d' },
+    orange: { background: 'rgba(255,142,107,0.08)', border: '1px solid rgba(255,142,107,0.25)', color: '#ff8e6b' }
+  }[variant]
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: styles.color, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>{title}</p>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {items.map((item, index) => <span key={index} style={{ padding: '4px 10px', borderRadius: 14, fontSize: 12, fontWeight: 600, textDecoration: strike ? 'line-through' : 'none', ...styles }}>{item}</span>)}
+      </div>
+    </div>
+  )
+}
+
+function QuickWinsCard({ wins, tr }) {
   return (
     <div style={{ background: 'rgba(76,175,125,0.06)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 14 }}>
-      <p style={{ fontSize: 14, fontWeight: 600, color: '#4caf7d', fontFamily: 'Syne, sans-serif', marginBottom: 10 }}>
-        ⚡ {t('linkedin_quick_wins') || 'Quick wins (do these now)'}
-      </p>
+      <p style={{ fontSize: 14, fontWeight: 600, color: '#4caf7d', fontFamily: 'Syne, sans-serif', marginBottom: 10 }}>⚡ {tr('linkedin_quick_wins', 'Quick wins')}</p>
       <ul style={{ paddingLeft: 18, margin: 0 }}>
-        {wins.map((w, i) => (
-          <li key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 4 }}>{w}</li>
-        ))}
+        {wins.map((win, index) => <li key={index} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 4 }}>{win}</li>)}
       </ul>
     </div>
   )
+}
+
+const cardStyle = {
+  background: 'var(--bg-card)',
+  border: '1px solid var(--border)',
+  borderRadius: 18,
+  padding: 'clamp(16px,3vw,24px)',
+  marginBottom: 14
+}
+
+const kickerStyle = {
+  fontSize: 10,
+  fontWeight: 700,
+  color: 'var(--text-muted)',
+  letterSpacing: '0.07em',
+  textTransform: 'uppercase',
+  marginBottom: 10
+}
+
+const toggleButtonStyle = {
+  fontSize: 12,
+  color: 'var(--accent)',
+  background: 'var(--accent-bg)',
+  border: '1px solid var(--accent)',
+  cursor: 'pointer',
+  padding: '6px 14px',
+  whiteSpace: 'nowrap',
+  fontWeight: 600,
+  borderRadius: 20,
+  fontFamily: 'inherit'
+}
+
+const secondaryButtonStyle = {
+  padding: '12px',
+  borderRadius: 12,
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border)',
+  color: 'var(--text-primary)',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontFamily: 'inherit'
+}
+
+function copyButtonStyle(copied) {
+  return {
+    padding: '8px 14px',
+    borderRadius: 20,
+    background: copied ? 'rgba(76,175,125,0.15)' : 'var(--accent)',
+    border: copied ? '1px solid rgba(76,175,125,0.3)' : 'none',
+    color: copied ? '#4caf7d' : '#1A1B22',
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: 'Syne, sans-serif'
+  }
 }

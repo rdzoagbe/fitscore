@@ -1,86 +1,227 @@
-import Anthropic from '@anthropic-ai/sdk'
+/*
+  Fixed LinkedIn profile optimizer API handler.
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  Drop this file into:
+    - Next.js Pages Router: /pages/api/linkedin-optimize.js
+    - Vercel serverless function: /api/linkedin-optimize.js, depending on your project layout
 
-const SYSTEM = `You are a LinkedIn profile optimization expert with 10+ years coaching senior professionals. You analyze profiles for:
-- Recruiter-friendliness (keyword density, scannability)
-- Personal brand clarity (clear positioning, target role alignment)
-- Engagement quality (hooks, results-oriented language, social proof)
-- ATS-readability (LinkedIn's internal search uses keywords too)
+  It is deliberately testable without Anthropic installed or configured. If ANTHROPIC_API_KEY
+  is missing, it returns a deterministic rule-based analysis so the frontend can still be tested.
+*/
 
-You give SPECIFIC, COPY-PASTE-READY rewrites. Never generic advice.
-You NEVER fabricate experience, certifications, or achievements that aren't in the original.
-You optimize WORDING and STRUCTURE only — the truth must remain.`
+const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
+const MAX = {
+  headline: 220,
+  about: 3000,
+  experience: 4000,
+  skills: 1200,
+  targetRole: 180,
+  fetchedProfile: 9000
+}
 
-// Try to fetch a public LinkedIn profile from URL.
-// LinkedIn aggressively blocks automated requests; this will usually return 403.
-// We attempt anyway and fall back to paste mode on failure.
-async function fetchLinkedInProfile(url) {
-  let res
+const SYSTEM = `You are a LinkedIn profile optimization expert with 10+ years coaching senior professionals. You analyze profiles for recruiter-friendliness, keyword density, scannability, personal brand clarity, target-role alignment, hooks, measurable results, and LinkedIn search visibility.
+
+Rules:
+- Give specific, copy-paste-ready rewrites.
+- Never invent experience, certifications, employers, metrics, awards, or achievements that are not in the original profile.
+- Optimize wording and structure only.
+- If information is missing, say exactly what the user should add and mark it as a missing section.
+- Return valid JSON only.`
+
+function setCors(res) {
+  res.setHeader?.('Access-Control-Allow-Origin', '*')
+  res.setHeader?.('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader?.('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+}
+
+function asString(value, max = 4000) {
+  if (typeof value !== 'string') return ''
+  return value.replace(/\u0000/g, '').trim().slice(0, max)
+}
+
+function parseBody(req) {
+  if (!req.body) return {}
+  if (typeof req.body === 'string') {
+    try { return JSON.parse(req.body) } catch { return {} }
+  }
+  return req.body
+}
+
+function isAllowedLang(lang) {
+  return ['en', 'fr', 'es', 'de', 'it', 'pt'].includes(lang)
+}
+
+function isLinkedInProfileUrl(value) {
   try {
-    res = await fetch(url, {
+    const url = new URL(value)
+    const hostname = url.hostname.toLowerCase()
+    const isLinkedInHost = hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com')
+    const path = url.pathname.replace(/\/+$/, '')
+    const isProfilePath = /^\/(in|pub)\/[^/]+/i.test(path)
+    return url.protocol.startsWith('http') && isLinkedInHost && isProfilePath
+  } catch {
+    return false
+  }
+}
+
+function decodeHtmlEntities(text) {
+  return text
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+}
+
+async function fetchLinkedInProfile(profileUrl) {
+  if (!isLinkedInProfileUrl(profileUrl)) {
+    throw new Error('Please provide a valid LinkedIn profile URL, for example https://www.linkedin.com/in/yourname.')
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  let response
+  try {
+    response = await fetch(profileUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8'
       },
-      redirect: 'follow'
+      redirect: 'follow',
+      signal: controller.signal
     })
-  } catch (fetchErr) {
-    throw new Error('Could not reach LinkedIn. Please paste your profile sections below instead.')
+  } catch (error) {
+    throw new Error('Could not reach LinkedIn. Please use paste mode instead.')
+  } finally {
+    clearTimeout(timeout)
   }
 
-  if (!res.ok) {
-    throw new Error('LinkedIn blocks automated profile reading. Please paste your profile sections below instead.')
+  if (!response.ok) {
+    throw new Error('LinkedIn blocked automated profile reading. Please use paste mode instead.')
   }
 
-  const html = await res.text()
-
-  // Strip scripts/styles, then HTML tags
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
+  const html = await response.text()
+  const text = decodeHtmlEntities(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, ' ').trim()
+    .replace(/\s{2,}/g, ' ')
+    .trim()
 
-  // LinkedIn authwall returns ~few hundred chars of "Sign in / Join" boilerplate
-  // Real profile content is usually 3000+ chars
-  if (text.length < 800) {
-    throw new Error('LinkedIn returned a login wall, not your profile. Please paste your profile sections below instead.')
-  }
-
-  // Sanity: must contain at least basic profile signals
   const lower = text.toLowerCase()
-  if (!lower.includes('experience') && !lower.includes('about') && !lower.includes('skill')) {
-    throw new Error('Could not extract profile content from this URL. Please paste your profile sections below instead.')
+  const looksLikeAuthWall = [
+    'sign in to view',
+    'join linkedin',
+    'authwall',
+    'login',
+    'checkpoint',
+    'unusual traffic'
+  ].some(signal => lower.includes(signal))
+
+  const hasProfileSignals = ['experience', 'about', 'skills', 'education', 'activity'].some(signal => lower.includes(signal))
+
+  if (text.length < 1200 || looksLikeAuthWall || !hasProfileSignals) {
+    throw new Error('LinkedIn returned a login wall instead of public profile content. Please use paste mode instead.')
   }
 
-  return text.slice(0, 8000)
+  return text.slice(0, MAX.fetchedProfile)
 }
 
-// Use AI to parse a single big text blob into headline/about/experience/skills
-async function parseProfileBlob(blob, lang) {
-  const langInstr = {
-    en: 'in English', fr: 'in French', es: 'in Spanish',
-    de: 'in German', it: 'in Italian', pt: 'in Portuguese'
-  }[lang] || 'in English'
+function extractSection(text, startLabels, endLabels) {
+  const lower = text.toLowerCase()
+  let start = -1
+  let usedLabel = ''
 
-  const prompt = `Below is raw text from a LinkedIn profile (either pasted as one blob or fetched from a URL). Extract the 4 main sections.
+  for (const label of startLabels) {
+    const index = lower.indexOf(label.toLowerCase())
+    if (index !== -1 && (start === -1 || index < start)) {
+      start = index
+      usedLabel = label
+    }
+  }
+  if (start === -1) return ''
 
-Return ONLY this JSON, no markdown:
+  const from = start + usedLabel.length
+  let end = text.length
+  for (const label of endLabels) {
+    const index = lower.indexOf(label.toLowerCase(), from + 20)
+    if (index !== -1 && index < end) end = index
+  }
+
+  return text.slice(from, end).replace(/\s{2,}/g, ' ').trim()
+}
+
+function parseProfileBlobLocally(blob) {
+  const cleaned = asString(blob, MAX.fetchedProfile)
+  const headline = cleaned.split(/\n|\r| {2,}/).map(x => x.trim()).filter(Boolean)[0] || ''
+  const about = extractSection(cleaned, ['About', 'À propos', 'Summary', 'Résumé'], ['Experience', 'Expérience', 'Activity', 'Education', 'Formation', 'Skills', 'Compétences'])
+  const experience = extractSection(cleaned, ['Experience', 'Expérience'], ['Education', 'Formation', 'Skills', 'Compétences', 'Licenses', 'Certifications', 'Recommendations'])
+  const skills = extractSection(cleaned, ['Skills', 'Compétences'], ['Recommendations', 'Recommandations', 'Interests', 'Centres d’intérêt'])
+  return { headline: headline.slice(0, MAX.headline), about, experience, skills }
+}
+
+async function getAnthropicClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return null
+
+  const mod = await import('@anthropic-ai/sdk')
+  const Anthropic = mod.default || mod.Anthropic
+  return new Anthropic({ apiKey })
+}
+
+function stripCodeFence(raw) {
+  return String(raw || '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
+}
+
+function parseJsonFromAi(raw) {
+  const cleaned = stripCodeFence(raw)
+  try { return JSON.parse(cleaned) } catch {}
+
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    return JSON.parse(cleaned.slice(start, end + 1))
+  }
+  throw new Error('AI response was not valid JSON.')
+}
+
+function langInstruction(lang) {
+  return {
+    en: 'Write all output in English.',
+    fr: 'Rédige toutes les sorties en français.',
+    es: 'Escribe toda la salida en español.',
+    de: 'Schreibe alle Ausgaben auf Deutsch.',
+    it: "Scrivi tutto l'output in italiano.",
+    pt: 'Escreve todo o output em português.'
+  }[lang] || 'Write all output in English.'
+}
+
+async function parseProfileBlobWithAi(blob, lang) {
+  const client = await getAnthropicClient()
+  if (!client) return parseProfileBlobLocally(blob)
+
+  const prompt = `Below is raw text from a LinkedIn profile. Extract the main sections.
+
+Return only valid JSON with this exact shape:
 {
-  "headline": "<short professional title line, ≤220 chars>",
-  "about": "<the About / Summary section, full text>",
-  "experience": "<recent 2-3 experience entries: title + company + bullets>",
-  "skills": "<comma-separated list of skills found, max 30>"
+  "headline": "short professional title line, <=220 chars",
+  "about": "the About/Summary section, full text",
+  "experience": "recent 2-3 experience entries: title + company + bullets",
+  "skills": "comma-separated list of skills found, max 30"
 }
 
-If a section is genuinely missing from the input, return empty string for that field. Don't fabricate.
-
-Output language: keep original ${langInstr}.
+If a section is missing, return an empty string. Do not fabricate.
+${langInstruction(lang)}
 
 RAW TEXT:
 """
@@ -88,207 +229,345 @@ ${blob.slice(0, 7500)}
 """`
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2500,
+    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+    max_tokens: 1800,
     temperature: 0,
     messages: [{ role: 'user', content: prompt }]
   })
 
-  const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
-  try {
-    return JSON.parse(raw)
-  } catch (e) {
-    return { headline: '', about: blob.slice(0, 3000), experience: '', skills: '' }
+  const raw = message.content.map(block => block.text || '').join('').trim()
+  return parseJsonFromAi(raw)
+}
+
+function wordCount(text) {
+  return asString(text, 10000).split(/\s+/).filter(Boolean).length
+}
+
+function splitSkills(skillsText) {
+  return asString(skillsText, MAX.skills)
+    .split(/[,;\n•|]/)
+    .map(skill => skill.trim())
+    .filter(Boolean)
+    .filter((skill, index, arr) => arr.findIndex(s => s.toLowerCase() === skill.toLowerCase()) === index)
+    .slice(0, 30)
+}
+
+function clampInt(value, min, max, fallback = 0) {
+  const number = Number.parseInt(value, 10)
+  if (Number.isNaN(number)) return fallback
+  return Math.max(min, Math.min(max, number))
+}
+
+function takeSentence(text, fallback) {
+  const cleaned = asString(text, 1200).replace(/\s+/g, ' ')
+  if (!cleaned) return fallback
+  const parts = cleaned.match(/[^.!?]+[.!?]?/g) || [cleaned]
+  return parts.slice(0, 2).join(' ').trim()
+}
+
+function truncate(text, max) {
+  const clean = asString(text, max + 100).replace(/\s+/g, ' ')
+  return clean.length <= max ? clean : `${clean.slice(0, max - 1).trim()}…`
+}
+
+function localScore({ headline, about, experience, skills }) {
+  let score = 15
+  if (headline.length >= 20) score += 20
+  if (about.length >= 250) score += 25
+  else if (about.length >= 80) score += 12
+  if (experience.length >= 250) score += 20
+  else if (experience.length >= 80) score += 10
+  if (splitSkills(skills).length >= 8) score += 15
+  else if (splitSkills(skills).length >= 3) score += 8
+  if (/\d|%|€|\$|£|kpi|sla|roi|users|devices|tickets/i.test(`${about} ${experience}`)) score += 5
+  return Math.max(0, Math.min(100, score))
+}
+
+function buildLocalOptimization({ headline, about, experience, skills, targetRole, lang, warning }) {
+  const role = targetRole || 'your target role'
+  const skillList = splitSkills(skills)
+  const topSkills = skillList.slice(0, 3)
+  const score = localScore({ headline, about, experience, skills })
+  const aboutIntro = about
+    ? takeSentence(about, '')
+    : `Add a concise About section explaining your positioning for ${role}, your strongest areas of expertise, and two verified achievements.`
+
+  const improvedHeadlineBase = headline
+    ? `${headline}${targetRole && !headline.toLowerCase().includes(targetRole.toLowerCase()) ? ` | Targeting ${targetRole}` : ''}`
+    : `${targetRole || 'Professional profile'} | Add your core expertise and measurable impact`
+
+  const improvedAbout = about
+    ? `${aboutIntro}\n\nKey strengths: ${topSkills.length ? topSkills.join(' · ') : 'add your strongest verified skills'}.\n\nI focus on clear execution, measurable outcomes, and cross-functional collaboration. Before publishing, add 1-2 verified metrics from your real experience to strengthen credibility.`
+    : aboutIntro
+
+  const firstExperienceTitle = experience
+    ? truncate(experience.split(/\n|\r/).find(Boolean) || 'Recent experience', 80)
+    : 'Experience section to add'
+
+  return {
+    overall_score: score,
+    score_explanation: warning
+      ? `Basic local analysis completed. ${warning}`
+      : 'Basic local analysis completed from the pasted LinkedIn content.',
+    headline: {
+      current_score: headline.length >= 20 ? 7 : 3,
+      issues: [
+        headline.length < 20 ? 'Headline is too short to communicate positioning clearly.' : 'Headline can be sharper by aligning it to the target role.',
+        targetRole ? 'Target role should be visible in the first line.' : 'Add a clear target role to improve recruiter matching.'
+      ].slice(0, 3),
+      improved_version: truncate(improvedHeadlineBase, MAX.headline),
+      improved_score: headline.length >= 20 ? 8 : 6,
+      why_better: 'It makes the positioning more explicit and easier for recruiters to scan.'
+    },
+    about: {
+      current_score: about.length >= 250 ? 7 : about.length >= 80 ? 5 : 2,
+      issues: [
+        about.length < 250 ? 'About section is too short or missing, so it does not build enough credibility.' : 'About section would be stronger with a tighter hook and clearer proof points.',
+        'Add measurable outcomes only where you can verify them.'
+      ],
+      improved_version: improvedAbout,
+      improved_score: about.length >= 250 ? 8 : 6,
+      why_better: 'It adds a clearer opening, scannable strengths, and a concrete reminder to include verified evidence.'
+    },
+    experience: {
+      current_score: experience.length >= 250 ? 7 : experience.length >= 80 ? 5 : 2,
+      issues: [
+        experience.length < 80 ? 'Experience content is missing or too short for a strong profile analysis.' : 'Experience entries should lead with action verbs and outcomes.',
+        'LinkedIn experience should be concise and proof-oriented, not a full CV copy.'
+      ],
+      improvements: [{
+        role_title: firstExperienceTitle,
+        improved_bullets: experience
+          ? [
+              `Clarified scope and responsibilities based on: ${truncate(takeSentence(experience, 'your recent experience'), 160)}`,
+              'Add one verified measurable result, such as volume, SLA, cost saving, delivery time, team size, or user impact.',
+              targetRole ? `Prioritize achievements most relevant to ${targetRole}.` : 'Prioritize achievements most relevant to your next role.'
+            ]
+          : ['Add your job title, company, scope, key responsibilities, and 2-3 verified achievements.']
+      }],
+      general_advice: 'Use 3-5 concise bullets per recent role. Start with impact, then explain scope and tools.'
+    },
+    skills: {
+      current_score: skillList.length >= 8 ? 7 : skillList.length >= 3 ? 5 : 2,
+      to_add: targetRole ? [targetRole].filter(roleName => !skillList.some(s => s.toLowerCase() === roleName.toLowerCase())) : [],
+      to_remove: [],
+      to_reorder_top_3: topSkills.length ? topSkills : ['Add your top 3 verified skills'],
+      rationale: 'Pinned skills should match the role you want and the evidence in your profile.'
+    },
+    quick_wins: [
+      'Make sure the first 80 characters of the headline say exactly what you do.',
+      'Add 2-3 verified metrics to About or Experience.',
+      'Pin the three most relevant skills for the target role.',
+      'Remove vague claims that are not backed by experience.'
+    ],
+    honest_disclaimer: 'Review carefully before publishing. The tool improves wording but does not verify facts.',
+    warning: warning || ''
   }
 }
 
+function normalizeResult(result, fallbackInput = {}) {
+  const normalized = result && typeof result === 'object' ? result : {}
+  const safeArray = value => Array.isArray(value) ? value.map(String).filter(Boolean) : []
+  const safe10 = value => clampInt(value, 0, 10, 0)
+
+  normalized.overall_score = clampInt(normalized.overall_score, 0, 100, 0)
+  normalized.score_explanation = asString(normalized.score_explanation, 800)
+
+  normalized.headline = normalized.headline && typeof normalized.headline === 'object' ? normalized.headline : {}
+  normalized.headline.current_score = safe10(normalized.headline.current_score)
+  normalized.headline.improved_score = safe10(normalized.headline.improved_score)
+  normalized.headline.issues = safeArray(normalized.headline.issues).slice(0, 3)
+  normalized.headline.improved_version = asString(normalized.headline.improved_version || fallbackInput.headline, MAX.headline)
+  normalized.headline.why_better = asString(normalized.headline.why_better, 800)
+
+  normalized.about = normalized.about && typeof normalized.about === 'object' ? normalized.about : {}
+  normalized.about.current_score = safe10(normalized.about.current_score)
+  normalized.about.improved_score = safe10(normalized.about.improved_score)
+  normalized.about.issues = safeArray(normalized.about.issues).slice(0, 3)
+  normalized.about.improved_version = asString(normalized.about.improved_version || fallbackInput.about, 5000)
+  normalized.about.why_better = asString(normalized.about.why_better, 800)
+
+  normalized.experience = normalized.experience && typeof normalized.experience === 'object' ? normalized.experience : {}
+  normalized.experience.current_score = safe10(normalized.experience.current_score)
+  normalized.experience.issues = safeArray(normalized.experience.issues).slice(0, 3)
+  normalized.experience.improvements = Array.isArray(normalized.experience.improvements) ? normalized.experience.improvements.slice(0, 5).map(item => ({
+    role_title: asString(item?.role_title || 'Experience', 160),
+    improved_bullets: safeArray(item?.improved_bullets).slice(0, 5)
+  })) : []
+  normalized.experience.general_advice = asString(normalized.experience.general_advice, 1000)
+
+  normalized.skills = normalized.skills && typeof normalized.skills === 'object' ? normalized.skills : {}
+  normalized.skills.current_score = safe10(normalized.skills.current_score)
+  normalized.skills.to_add = safeArray(normalized.skills.to_add).slice(0, 8)
+  normalized.skills.to_remove = safeArray(normalized.skills.to_remove).slice(0, 8)
+  normalized.skills.to_reorder_top_3 = safeArray(normalized.skills.to_reorder_top_3).slice(0, 3)
+  normalized.skills.rationale = asString(normalized.skills.rationale, 800)
+
+  normalized.quick_wins = safeArray(normalized.quick_wins).slice(0, 5)
+  normalized.honest_disclaimer = asString(normalized.honest_disclaimer || 'Review carefully before publishing on LinkedIn.', 800)
+  normalized.warning = asString(normalized.warning, 800)
+
+  return normalized
+}
+
+async function optimizeWithAi(input) {
+  const client = await getAnthropicClient()
+  if (!client) {
+    return buildLocalOptimization({
+      ...input,
+      warning: 'ANTHROPIC_API_KEY is not configured, so this is a local rule-based test result rather than an AI rewrite.'
+    })
+  }
+
+  const prompt = `Analyze and optimize this LinkedIn profile.
+
+TARGET ROLE/POSITIONING:
+${input.targetRole || 'Not specified. Infer from existing content only.'}
+
+ORIGINAL HEADLINE:
+"${input.headline || '(empty)'}"
+
+ORIGINAL ABOUT/SUMMARY:
+"""
+${input.about || '(empty)'}
+"""
+
+ORIGINAL EXPERIENCE:
+"""
+${input.experience || '(empty)'}
+"""
+
+SKILLS:
+${input.skills || '(empty)'}
+
+${langInstruction(input.lang)}
+
+Return only valid JSON with this exact shape:
+{
+  "overall_score": 0,
+  "score_explanation": "1-2 sentences",
+  "headline": {
+    "current_score": 0,
+    "issues": ["specific issue"],
+    "improved_version": "<=220 chars",
+    "improved_score": 0,
+    "why_better": "1-2 sentences"
+  },
+  "about": {
+    "current_score": 0,
+    "issues": ["specific issue"],
+    "improved_version": "200-400 words when enough verified input exists; otherwise mark as missing and explain what verified content to add",
+    "improved_score": 0,
+    "why_better": "2 sentences"
+  },
+  "experience": {
+    "current_score": 0,
+    "issues": ["specific issue"],
+    "improvements": [
+      { "role_title": "job title from input", "improved_bullets": ["action verb + scope + verified result only"] }
+    ],
+    "general_advice": "1-2 sentences"
+  },
+  "skills": {
+    "current_score": 0,
+    "to_add": ["skill already supported by the input or target role"],
+    "to_remove": ["skill that weakens positioning, if any"],
+    "to_reorder_top_3": ["skill 1", "skill 2", "skill 3"],
+    "rationale": "1 sentence"
+  },
+  "quick_wins": ["concrete 30-second action"],
+  "honest_disclaimer": "short reminder"
+}
+
+Critical constraints:
+- Do not invent facts, numbers, certifications, employers, responsibilities, or achievements.
+- If a section is empty, do not pretend it exists; write that it must be added.
+- Improved versions must be ready to copy only when enough factual input exists.
+- Keep the LinkedIn headline under 220 characters.`
+
+  const message = await client.messages.create({
+    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+    max_tokens: 4200,
+    temperature: 0.25,
+    system: SYSTEM,
+    messages: [{ role: 'user', content: prompt }]
+  })
+
+  const raw = message.content.map(block => block.text || '').join('').trim()
+  return parseJsonFromAi(raw)
+}
+
 export default async function handler(req, res) {
+  setCors(res)
+
+  if (req.method === 'OPTIONS') return res.status(204).end?.()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    const { profileUrl, headline, about, experience, skills, targetRole, lang = 'en' } = req.body
+    const body = parseBody(req)
+    const lang = isAllowedLang(body.lang) ? body.lang : 'en'
+    const profileUrl = asString(body.profileUrl, 500)
+    const targetRole = asString(body.targetRole, MAX.targetRole)
 
-    let h = headline || ''
-    let a = about || ''
-    let e = experience || ''
-    let s = skills || ''
+    let headline = asString(body.headline, MAX.headline)
+    let about = asString(body.about, MAX.about)
+    let experience = asString(body.experience, MAX.experience)
+    let skills = asString(body.skills, MAX.skills)
+    let sourceUsed = 'paste'
 
-    // Path 1: URL provided — try to fetch
-    if (profileUrl && profileUrl.trim()) {
-      const url = profileUrl.trim()
-      if (!url.includes('linkedin.com/in/') && !url.includes('linkedin.com/pub/')) {
-        return res.status(400).json({ error: 'Please provide a LinkedIn profile URL (e.g. https://www.linkedin.com/in/yourname).' })
-      }
-
+    if (profileUrl) {
       try {
-        const blob = await fetchLinkedInProfile(url)
-        const parsed = await parseProfileBlob(blob, lang)
-        h = parsed.headline || h
-        a = parsed.about || a
-        e = parsed.experience || e
-        s = parsed.skills || s
-      } catch (fetchErr) {
-        // Throw the friendly fallback message — frontend will switch to paste mode
+        const blob = await fetchLinkedInProfile(profileUrl)
+        const parsed = await parseProfileBlobWithAi(blob, lang)
+        headline = asString(parsed.headline || headline, MAX.headline)
+        about = asString(parsed.about || about, MAX.about)
+        experience = asString(parsed.experience || experience, MAX.experience)
+        skills = asString(parsed.skills || skills, MAX.skills)
+        sourceUsed = 'url'
+      } catch (error) {
         return res.status(502).json({
-          error: fetchErr.message || 'Could not fetch LinkedIn profile. Please paste your sections instead.',
-          fallback: 'paste'
+          success: false,
+          fallback: 'paste',
+          error: error.message || 'Could not read this LinkedIn URL. Please paste your profile sections instead.'
         })
       }
     }
 
-    // Path 2 (or fallback after URL parse): use whatever we have
-    if ((!h || h.trim().length < 5) && (!a || a.trim().length < 30)) {
-      return res.status(400).json({ error: 'Please paste at least your Headline or About section to analyze.' })
+    if (headline.length < 5 && about.length < 30 && experience.length < 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide at least a LinkedIn headline, About section, or experience content.'
+      })
     }
 
-    const langMap = {
-      en: 'Write all output in English.',
-      fr: 'Rédige toutes les sorties en français.',
-      es: 'Escribe toda la salida en español.',
-      de: 'Schreibe alle Ausgaben auf Deutsch.',
-      it: 'Scrivi tutto l\'output in italiano.',
-      pt: 'Escreve todo o output em português.'
-    }
-
-    const prompt = `Analyze and optimize this LinkedIn profile.
-
-TARGET ROLE/POSITIONING (what the user wants to be found for):
-${targetRole?.trim() || 'Not specified — infer from existing content'}
-
-ORIGINAL HEADLINE (max 220 chars on LinkedIn):
-"${(h || '').trim() || '(empty)'}"
-
-ORIGINAL ABOUT/SUMMARY:
-"""
-${(a || '').trim().slice(0, 3000) || '(empty)'}
-"""
-
-ORIGINAL EXPERIENCE (recent first, 1-3 entries):
-"""
-${(e || '').trim().slice(0, 4000) || '(empty)'}
-"""
-
-SKILLS (current LinkedIn skill list, comma-separated):
-${(s || '').trim().slice(0, 1000) || '(empty)'}
-
-${langMap[lang] || langMap.en}
-
-Return ONLY this JSON, no markdown, no preamble:
-{
-  "overall_score": <0-100 integer based on profile completeness, keyword density, clarity, and recruiter appeal>,
-  "score_explanation": "<1-2 sentences explaining what drives the score>",
-
-  "headline": {
-    "current_score": <0-10 integer>,
-    "issues": ["<specific issue 1>", "<issue 2>", "<issue 3 max>"],
-    "improved_version": "<rewritten headline, ≤220 chars, keyword-rich, role-clear, recruiter-magnet>",
-    "improved_score": <projected 0-10 score after improvement>,
-    "why_better": "<1-2 sentences explaining what changed and why>"
-  },
-
-  "about": {
-    "current_score": <0-10 integer>,
-    "issues": ["<issue 1>", "<issue 2>", "<issue 3 max>"],
-    "improved_version": "<full rewritten About section. 200-400 words. First-person. Hook in line 1. Specific achievements. Clear CTA at the end. Use line breaks for scannability.>",
-    "improved_score": <projected 0-10 after improvement>,
-    "why_better": "<2 sentences explaining the structural changes>"
-  },
-
-  "experience": {
-    "current_score": <0-10>,
-    "issues": ["<common issue across experience entries>", "<issue 2>"],
-    "improvements": [
-      {
-        "role_title": "<job title from input>",
-        "improved_bullets": [
-          "<rewritten bullet 1 — action verb + what + measurable result>",
-          "<bullet 2>",
-          "<bullet 3 max — keep most relevant only>"
-        ]
-      }
-    ],
-    "general_advice": "<1-2 sentences on how to write LinkedIn experience entries vs CV entries>"
-  },
-
-  "skills": {
-    "current_score": <0-10>,
-    "to_add": ["<skill 1 to add>", "<skill 2>", "<skill 3 max>"],
-    "to_remove": ["<skill that hurts positioning>", "..."],
-    "to_reorder_top_3": ["<top 3 skills user should pin>", "<skill 2>", "<skill 3>"],
-    "rationale": "<1 sentence on why these changes>"
-  },
-
-  "quick_wins": [
-    "<concrete 30-second action 1, e.g. 'Add a profile photo with neutral background'>",
-    "<action 2>",
-    "<action 3>",
-    "<action 4 max — only include high-impact, low-effort items>"
-  ],
-
-  "honest_disclaimer": "<short reminder to verify and edit before publishing>"
-}
-
-CRITICAL RULES:
-- NEVER invent skills, jobs, certifications, achievements not present in the original input
-- If a section was empty, suggest what to write but mark it clearly as "Add this" rather than "Improve this"
-- All improved versions must be COPY-PASTE READY (no placeholders like [Your Name])
-- Be specific to the target role if provided — don't write generic content
-- Issues should be diagnostic, not just "this is weak" — explain what's wrong concretely`
-
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4500,
-      temperature: 0.3,
-      system: SYSTEM,
-      messages: [{ role: 'user', content: prompt }]
-    })
-
-    const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
-
-    let result
+    let optimization
     try {
-      result = JSON.parse(raw)
-    } catch (parseErr) {
-      console.error('Parse error:', parseErr.message, 'Raw start:', raw.slice(0, 300))
-      return res.status(500).json({ error: 'Could not parse AI response. Please try again.' })
+      optimization = await optimizeWithAi({ headline, about, experience, skills, targetRole, lang })
+    } catch (error) {
+      console.error('AI optimization failed; returning local fallback:', error.message)
+      optimization = buildLocalOptimization({
+        headline,
+        about,
+        experience,
+        skills,
+        targetRole,
+        lang,
+        warning: `AI provider failed: ${error.message}. Returned local rule-based result so you can keep testing.`
+      })
     }
 
-    // Defensive normalization
-    const safeNum = (v, fallback = 0) => {
-      const n = typeof v === 'number' ? v : parseInt(v, 10)
-      return isNaN(n) ? fallback : Math.max(0, Math.min(100, n))
-    }
-    const safe10 = (v) => Math.max(0, Math.min(10, safeNum(v, 0)))
+    const normalized = normalizeResult(optimization, { headline, about, experience, skills })
 
-    result.overall_score = safeNum(result.overall_score, 0)
-    result.headline = result.headline || {}
-    result.headline.current_score = safe10(result.headline.current_score)
-    result.headline.improved_score = safe10(result.headline.improved_score)
-    result.headline.issues = Array.isArray(result.headline.issues) ? result.headline.issues.slice(0, 3) : []
-
-    result.about = result.about || {}
-    result.about.current_score = safe10(result.about.current_score)
-    result.about.improved_score = safe10(result.about.improved_score)
-    result.about.issues = Array.isArray(result.about.issues) ? result.about.issues.slice(0, 3) : []
-
-    result.experience = result.experience || {}
-    result.experience.current_score = safe10(result.experience.current_score)
-    result.experience.issues = Array.isArray(result.experience.issues) ? result.experience.issues.slice(0, 3) : []
-    result.experience.improvements = Array.isArray(result.experience.improvements) ? result.experience.improvements : []
-
-    result.skills = result.skills || {}
-    result.skills.current_score = safe10(result.skills.current_score)
-    result.skills.to_add = Array.isArray(result.skills.to_add) ? result.skills.to_add.slice(0, 5) : []
-    result.skills.to_remove = Array.isArray(result.skills.to_remove) ? result.skills.to_remove.slice(0, 5) : []
-    result.skills.to_reorder_top_3 = Array.isArray(result.skills.to_reorder_top_3) ? result.skills.to_reorder_top_3.slice(0, 3) : []
-
-    result.quick_wins = Array.isArray(result.quick_wins) ? result.quick_wins.slice(0, 4) : []
-    result.honest_disclaimer = result.honest_disclaimer || 'Review carefully before publishing on LinkedIn.'
-
-    return res.status(200).json({ success: true, optimization: result, sourceUsed: profileUrl ? 'url' : 'paste' })
-  } catch (e) {
-    console.error('LinkedIn optimize error:', e.message)
-    return res.status(500).json({ error: e.message || 'Failed to optimize profile' })
+    return res.status(200).json({
+      success: true,
+      sourceUsed,
+      optimization: normalized
+    })
+  } catch (error) {
+    console.error('LinkedIn optimize error:', error)
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to optimize LinkedIn profile.'
+    })
   }
 }
