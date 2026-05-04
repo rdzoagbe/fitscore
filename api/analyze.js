@@ -74,6 +74,19 @@ Return ONLY a JSON object — no markdown, no preamble:
     "assessment": "<below_market | market | above_market | unknown | not_specified>",
     "comment": "<brief>"
   },
+  "salary_intelligence": {
+    "currency": "<3-letter ISO: EUR, GBP, USD, CHF, CAD, etc. Match the posting's currency or local currency for the location.>",
+    "scenario": "<'salary_mentioned' if posting includes a number/range, else 'salary_hidden'>",
+    "posted_low": <number or null. The lower bound of salary in posting (annual, gross), or null if not specified>,
+    "posted_high": <number or null. The upper bound of salary in posting, or null if not specified>,
+    "estimated_market_low": <number. Your estimate of typical low end for this role in this location/seniority based on training data>,
+    "estimated_market_high": <number. Your estimate of typical high end for this role in this location/seniority>,
+    "target_low": <number. Realistic ask for someone with the candidate's profile — usually middle-to-upper of the range>,
+    "target_high": <number. Stretch ask for the candidate IF they have strong leverage points (specific keywords, seniority match, etc.)>,
+    "leverage_points": ["<specific reason 1 the candidate could push higher, e.g. 'Direct experience in fintech regulation'>", "<reason 2>", "<reason 3 max>"],
+    "negotiation_strategy": "<2 sentences max. Tactical advice: when to mention numbers, what range to name first, how to anchor>",
+    "confidence": "<'high' if very common role in major city, 'medium' if some assumptions made, 'low' if unusual role/location>"
+  },
   "verdict": "<one sentence verdict, max 12 words>",
   "keyword_match": {
     "score": <0-100>,
@@ -117,7 +130,18 @@ For interview_prep:
 - likely_questions: think like a real hiring manager. Reference specific tech/gaps/CV items by name.
 - your_edges: only include if genuinely above requirement. If candidate is junior for the role, this array can be smaller or focus on transferable strengths.
 - weak_spots: be honest. Each weak spot must have a concrete prep_tip the candidate can act on.
-- show_prep should be true if display_score >= 50 (worth interviewing for), else false.`
+- show_prep should be true if display_score >= 50 (worth interviewing for), else false.
+
+For salary_intelligence:
+- Estimate based on: job title, seniority level, location (city/country/region), required skills, contract type
+- Use ROUND numbers (e.g., 60000, not 59783)
+- All numbers in LOCAL ANNUAL GROSS currency (EUR for France/EU, GBP for UK, USD for US, CHF for Switzerland)
+- target_low and target_high are a NEGOTIATION range:
+  * If salary_mentioned: target = upper third of posted range; push = ~5-15% above posted high IF leverage points exist
+  * If salary_hidden: target = realistic ask matching candidate profile; push = stretch with leverage
+- leverage_points must be CONCRETE and tied to this CV + this job (not generic). Max 3 items. If fewer than 2 truthful items exist, return only the truthful ones.
+- confidence: 'high' for common roles in major European cities, 'low' for unusual roles where market data is thin
+- This is GUIDANCE not market data — numbers may be off by ±20%.`
 
 async function fetchJobText(url) {
   const isLinkedIn = url.includes('linkedin.')
@@ -262,7 +286,9 @@ export default async function handler(req, res) {
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      if (cached?.result) {
+      if (cached?.result && cached.result.salary_intelligence) {
+        // Only serve cached result if it has the new salary_intelligence field
+        // Otherwise fall through and re-analyze with the latest schema
         return res.status(200).json({ success: true, analysis: cached.result, cached: true })
       }
     }
@@ -301,6 +327,32 @@ export default async function handler(req, res) {
     analysis.requirements_check = analysis.requirements_check || { score: 0 }
     analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
     analysis.requirements_check.score = safeScore(analysis.requirements_check.score, 0)
+
+    // Defensive defaults for salary_intelligence (older cached results may not have it)
+    if (!analysis.salary_intelligence || typeof analysis.salary_intelligence !== 'object') {
+      analysis.salary_intelligence = null
+    } else {
+      const si = analysis.salary_intelligence
+      // Coerce numbers safely
+      const safeNum = (v) => {
+        const n = typeof v === 'number' ? v : parseFloat(v)
+        return isNaN(n) || n <= 0 ? null : Math.round(n)
+      }
+      si.posted_low = safeNum(si.posted_low)
+      si.posted_high = safeNum(si.posted_high)
+      si.estimated_market_low = safeNum(si.estimated_market_low)
+      si.estimated_market_high = safeNum(si.estimated_market_high)
+      si.target_low = safeNum(si.target_low)
+      si.target_high = safeNum(si.target_high)
+      si.leverage_points = Array.isArray(si.leverage_points) ? si.leverage_points.slice(0, 3) : []
+      si.currency = (typeof si.currency === 'string' && si.currency.length === 3) ? si.currency.toUpperCase() : 'EUR'
+      si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
+      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
+      // If we don't have at least target numbers, kill it — better to show nothing than garbage
+      if (!si.target_low || !si.target_high) {
+        analysis.salary_intelligence = null
+      }
+    }
 
     analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
     analysis.job_url = jobUrl || null

@@ -119,20 +119,6 @@ export default function InterviewPrepCard({ prep, score }) {
         </CollapsibleSection>
       )}
 
-      {/* Salary negotiation */}
-      {prep.salary_negotiation_hint && (
-        <CollapsibleSection
-          title={t('salary_negotiation') || 'Salary negotiation'}
-          icon="💰"
-          color="#FF8E6B"
-        >
-          <div style={{ padding: '10px 12px', background: 'var(--accent-bg)', borderRadius: 10, borderLeft: '3px solid var(--accent)' }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              {prep.salary_negotiation_hint}
-            </p>
-          </div>
-        </CollapsibleSection>
-      )}
     </div>
   )
 }
