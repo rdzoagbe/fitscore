@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useUserProfile } from '../hooks/useUserProfile'
+import OptimizeCvCard from '../components/OptimizeCvCard'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
@@ -464,6 +465,9 @@ export default function CvCoachPage() {
               )}
             </div>
           </div>
+
+          {/* CV Optimization */}
+          <OptimizeCvCard selected={selected} />
         </div>
       </div>
     </div>
