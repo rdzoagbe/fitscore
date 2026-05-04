@@ -164,6 +164,7 @@ export default function CvCoachPage() {
   const [selected, setSelected] = useState(null)
   const [coverLetter, setCoverLetter] = useState('')
   const [tone, setTone] = useState('professional')
+  const [length, setLength] = useState('standard')
   const [genError, setGenError] = useState('')
   const [recipient, setRecipient] = useState('')
   const [editingName, setEditingName] = useState(false)
@@ -226,6 +227,7 @@ export default function CvCoachPage() {
           analysis: selected.result,
           lang,
           tone,
+          length,
           recipient: recipient.trim() || null,
           fullName: nameToUse
         })
@@ -410,7 +412,7 @@ export default function CvCoachPage() {
                   <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
                     {t('cover_letter_tone') || 'Tone'}
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 14 }}>
                     {[
                       { v: 'professional', label: t('tone_professional') || 'Professional' },
                       { v: 'warm', label: t('tone_warm') || 'Warm' },
@@ -424,6 +426,31 @@ export default function CvCoachPage() {
                         color: tone === o.v ? 'var(--accent)' : 'var(--text-secondary)',
                         fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === o.v ? 600 : 400
                       }}>{o.label}</button>
+                    ))}
+                  </div>
+
+                  {/* Length selector */}
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {t('cover_letter_length') || 'Length'}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 16 }}>
+                    {[
+                      { v: 'short', label: t('length_short') || 'Short', sub: t('length_short_sub') || '~80 words' },
+                      { v: 'standard', label: t('length_standard') || 'Standard', sub: t('length_standard_sub') || '~200 words' },
+                      { v: 'detailed', label: t('length_detailed') || 'Detailed', sub: t('length_detailed_sub') || '~320 words' }
+                    ].map(o => (
+                      <button key={o.v} onClick={() => setLength(o.v)} style={{
+                        padding: '8px 6px', borderRadius: 10,
+                        border: `1px solid ${length === o.v ? 'var(--accent)' : 'var(--border)'}`,
+                        background: length === o.v ? 'var(--accent-bg)' : 'var(--bg-input)',
+                        color: length === o.v ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+                        fontWeight: length === o.v ? 600 : 400,
+                        display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center'
+                      }}>
+                        <span>{o.label}</span>
+                        <span style={{ fontSize: 9, color: length === o.v ? 'var(--accent)' : 'var(--text-hint)', fontWeight: 400 }}>{o.sub}</span>
+                      </button>
                     ))}
                   </div>
 
