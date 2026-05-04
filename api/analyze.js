@@ -286,9 +286,7 @@ export default async function handler(req, res) {
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      if (cached?.result && cached.result.salary_intelligence) {
-        // Only serve cached result if it has the new salary_intelligence field
-        // Otherwise fall through and re-analyze with the latest schema
+      if (cached?.result) {
         return res.status(200).json({ success: true, analysis: cached.result, cached: true })
       }
     }

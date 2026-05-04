@@ -5,6 +5,7 @@ import JobContextCard from './JobContextCard'
 import MatchProbability from './MatchProbability'
 import FitScoreCard from './FitScoreCard'
 import NextStepsCard from './NextStepsCard'
+import SalaryInsightCard from './SalaryInsightCard'
 import { useScoreDelta } from '../hooks/useScoreDelta'
 import SeniorityCard from './SeniorityCard'
 import SmartApplyBtn from './SmartApplyBtn'
@@ -122,6 +123,10 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
         jobUrl={jobUrl}
         easyApply={data.job_context?.easy_apply}
       />
+
+      {/* Salary intelligence — collapsible card with target/stretch ranges */}
+      <SalaryInsightCard data={data} />
+
       <SeniorityCard seniority={data.seniority} />
       <InterviewPrepCard prep={data.interview_prep} score={score} />
 
