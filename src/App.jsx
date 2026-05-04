@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CvCoachPage from './pages/CvCoachPage'
+import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -20,6 +21,7 @@ import CvPanel from './components/CvPanel'
 import AnalyzerHero from './components/AnalyzerHero'
 import LastAnalysisCard from './components/LastAnalysisCard'
 import TipCard from './components/TipCard'
+import LinkedInPromoCard from './components/LinkedInPromoCard'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -122,6 +124,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               <>
                 <AnalyzerHero />
                 <LastAnalysisCard onSelectAnalysis={a => setViewingAnalysis(a)} />
+                <LinkedInPromoCard onGo={() => setPage('linkedin')} />
               </>
             )}
 
@@ -317,6 +320,8 @@ export default function App() {
         />
       case 'coach':
         return <CvCoachPage />
+      case 'linkedin':
+        return <LinkedInOptimizerPage />
       default:
         return <AnalyzerPage
           setPage={setPage}
