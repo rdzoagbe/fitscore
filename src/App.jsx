@@ -14,7 +14,7 @@ import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import EmailVerifyGate from './components/EmailVerifyGate'
-import TopNav from './components/TopNav'
+import AppNav from './components/AppNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import AnalyzerHero from './components/AnalyzerHero'
@@ -329,7 +329,7 @@ export default function App() {
   return (
     <>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
-      <TopNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('analyzer') }} />
+      <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('analyzer') }} />
       {renderPage()}
     </>
   )

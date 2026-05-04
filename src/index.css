@@ -100,3 +100,28 @@ textarea::placeholder { color: var(--text-muted); }
   40% { transform: rotate(-4deg); }
   50% { transform: rotate(10deg); }
 }
+
+/* === Responsive nav system === */
+.mobile-bottom-nav { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-top-nav { display: none !important; }
+  .mobile-bottom-nav { display: flex !important; }
+  /* Add bottom padding to main content to clear the bottom nav */
+  body { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0)); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Active tab indicator pulse */
+.mobile-bottom-nav button[data-active="true"] {
+  position: relative;
+}

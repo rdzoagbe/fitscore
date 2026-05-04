@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import UserMenu from '../components/UserMenu'
 import ScoreHistoryChart from '../components/ScoreHistoryChart'
+import JourneyHero from '../components/JourneyHero'
 import NewAnalysisMenu from '../components/NewAnalysisMenu'
 import StatusPill from '../components/StatusPill'
 import LangSelector from '../components/LangSelector'
@@ -125,7 +126,10 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
 
         </div>
 
-        {/* Stats cards */}
+        {/* JOURNEY HERO — momentum-focused */}
+        {!loading && analyses.length > 0 && <JourneyHero analyses={analyses} />}
+
+        {/* Stats cards (kept for now, simpler than journey) */}
         {!loading && analyses.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
             {[
