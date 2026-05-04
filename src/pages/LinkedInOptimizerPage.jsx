@@ -1,10 +1,21 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useLang } from '../context/LangContext'
 import { generateOptimizedLinkedInDocx } from '../utils/linkedinDocx'
 import { generateOptimizedLinkedInPdf } from '../utils/linkedinPdf'
 
+const isLinkedInUrl = (s) => {
+  if (!s) return false
+  try {
+    const u = new URL(s.trim())
+    return u.hostname.includes('linkedin.com') && (u.pathname.startsWith('/in/') || u.pathname.startsWith('/pub/'))
+  } catch { return false }
+}
+
 export default function LinkedInOptimizerPage() {
   const { t, lang } = useLang()
+  const [profileUrl, setProfileUrl] = useState('')
+  const [showPaste, setShowPaste] = useState(false)
+  const [userToggledMode, setUserToggledMode] = useState(false)
   const [headline, setHeadline] = useState('')
   const [about, setAbout] = useState('')
   const [experience, setExperience] = useState('')
@@ -15,20 +26,39 @@ export default function LinkedInOptimizerPage() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState({})
 
+  // Auto-switch to paste mode if URL fetch returned a fallback message (mirrors job URL behavior)
+  useEffect(() => {
+    if (!error || userToggledMode) return
+    const lower = error.toLowerCase()
+    const isBlocked = lower.includes('blocked') || lower.includes('paste') || lower.includes('login wall') || lower.includes('reach linkedin')
+    if (isBlocked && !showPaste) {
+      const timer = setTimeout(() => {
+        setShowPaste(true)
+        setTimeout(() => {
+          document.querySelector('textarea[data-section="about"]')?.focus()
+        }, 100)
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [error, userToggledMode, showPaste])
+
   const optimize = async () => {
     setError('')
     setLoading(true)
     setOptimization(null)
     try {
+      const body = showPaste
+        ? { headline, about, experience, skills, targetRole, lang }
+        : { profileUrl: profileUrl.trim(), targetRole, lang }
+
       const res = await fetch('/api/linkedin-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, about, experience, skills, targetRole, lang })
+        body: JSON.stringify(body)
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`)
       setOptimization(data.optimization)
-      // Scroll to results
       setTimeout(() => {
         document.getElementById('linkedin-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
@@ -36,6 +66,12 @@ export default function LinkedInOptimizerPage() {
       setError(e.message || 'Could not analyze profile. Please try again.')
     }
     setLoading(false)
+  }
+
+  const togglePasteMode = () => {
+    setShowPaste(s => !s)
+    setUserToggledMode(true)
+    setError('')
   }
 
   const copyToClipboard = async (text, key) => {
@@ -49,7 +85,7 @@ export default function LinkedInOptimizerPage() {
   const downloadDocx = async () => {
     try {
       await generateOptimizedLinkedInDocx(optimization, { fileName: 'LinkedIn-optimized.docx' })
-    } catch (e) {
+    } catch {
       setError('Could not generate DOCX. Please try again.')
     }
   }
@@ -57,10 +93,14 @@ export default function LinkedInOptimizerPage() {
   const downloadPdf = () => {
     try {
       generateOptimizedLinkedInPdf(optimization, { fileName: 'LinkedIn-optimized.pdf' })
-    } catch (e) {
+    } catch {
       setError('Could not generate PDF. Please try again.')
     }
   }
+
+  const urlValid = isLinkedInUrl(profileUrl)
+  const pasteValid = (headline.trim().length >= 5 || about.trim().length >= 30)
+  const canSubmit = !loading && (showPaste ? pasteValid : urlValid)
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(20px,4vw,40px) clamp(16px,4vw,32px)' }}>
@@ -73,20 +113,13 @@ export default function LinkedInOptimizerPage() {
           {t('linkedin_title') || 'Make your LinkedIn profile recruiter-magnet'}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {t('linkedin_subtitle') || 'Paste your profile sections below. Get a section-by-section analysis with copy-paste-ready improvements.'}
-        </p>
-      </div>
-
-      {/* How-to */}
-      <div style={{ marginBottom: 24, padding: '14px 16px', background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)' }}>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          💡 <strong>{t('linkedin_howto_title') || 'How to copy your LinkedIn sections:'}</strong> {t('linkedin_howto_body') || "Open your LinkedIn profile → click on each section → select all text (Ctrl+A) → copy (Ctrl+C) → paste below. Don't worry if you only fill some — even just Headline and About gives a useful analysis."}
+          {t('linkedin_subtitle_url') || 'Paste your LinkedIn profile URL below. Get a section-by-section analysis with copy-paste-ready improvements.'}
         </p>
       </div>
 
       {/* Input form */}
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 24 }}>
-        {/* Target role (optional, top) */}
+        {/* Target role (always visible) */}
         <div style={{ marginBottom: 18 }}>
           <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
             🎯 {t('linkedin_target_role') || 'Target role'} <span style={{ textTransform: 'none', color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
@@ -94,7 +127,7 @@ export default function LinkedInOptimizerPage() {
           <input
             value={targetRole}
             onChange={e => setTargetRole(e.target.value)}
-            placeholder={t('linkedin_target_placeholder') || 'e.g. Senior Product Manager · Cloud Infrastructure Lead · Engineering Manager'}
+            placeholder={t('linkedin_target_placeholder') || 'e.g. Senior Product Manager · Cloud Infrastructure Lead'}
             style={{ fontSize: 14 }}
           />
           <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 4 }}>
@@ -102,75 +135,129 @@ export default function LinkedInOptimizerPage() {
           </p>
         </div>
 
-        {/* Headline */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            {t('linkedin_section_headline') || 'Headline'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {headline.length}/220</span>
-          </label>
-          <input
-            value={headline}
-            onChange={e => setHeadline(e.target.value.slice(0, 220))}
-            placeholder={t('linkedin_headline_placeholder') || 'e.g. Senior IT Manager · ERP & CRM · Available for new opportunities'}
-            style={{ fontSize: 14 }}
-          />
-        </div>
-
-        {/* About */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            {t('linkedin_section_about') || 'About / Summary'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {about.length} chars</span>
-          </label>
-          <textarea
-            value={about}
-            onChange={e => setAbout(e.target.value)}
-            placeholder={t('linkedin_about_placeholder') || 'Paste your LinkedIn About section here. The more you paste, the better the analysis.'}
-            rows={6}
-            maxLength={3000}
-            style={{ fontSize: 13, resize: 'vertical' }}
-          />
-        </div>
-
-        {/* Experience */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            {t('linkedin_section_experience') || 'Experience'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
-          </label>
-          <textarea
-            value={experience}
-            onChange={e => setExperience(e.target.value)}
-            placeholder={t('linkedin_experience_placeholder') || 'Paste your most recent 1-3 experience entries (title + company + bullets).'}
-            rows={6}
-            maxLength={4000}
-            style={{ fontSize: 13, resize: 'vertical' }}
-          />
-        </div>
-
-        {/* Skills */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
-            {t('linkedin_section_skills') || 'Skills'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
-          </label>
-          <input
-            value={skills}
-            onChange={e => setSkills(e.target.value)}
-            placeholder={t('linkedin_skills_placeholder') || 'Comma-separated: Project Management, ITIL, Salesforce, Team Leadership...'}
-            style={{ fontSize: 13 }}
-          />
-        </div>
-
-        {error && (
-          <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 14, padding: '10px 12px', background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10 }}>
-            ⚠ {error}
-          </p>
+        {/* URL FIELD (default mode) */}
+        {!showPaste && (
+          <>
+            <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              🔗 {t('linkedin_url_label') || 'LinkedIn profile URL'}
+            </label>
+            <input
+              type="url"
+              value={profileUrl}
+              onChange={e => { setProfileUrl(e.target.value); if (error) setError('') }}
+              placeholder="https://www.linkedin.com/in/yourname"
+              style={{ fontSize: 14 }}
+              disabled={loading}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 6, lineHeight: 1.5 }}>
+              💡 {t('linkedin_url_hint') || "Make sure your profile is set to public. LinkedIn often blocks automated reads — if that happens, you'll be auto-switched to paste mode."}
+            </p>
+          </>
         )}
 
-        <button onClick={optimize} disabled={loading || (!headline.trim() && !about.trim())} className="btn-primary" style={{ width: '100%' }}>
+        {/* OR PASTE TOGGLE (mirrors job URL UX) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '14px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          <button onClick={togglePasteMode} style={{
+            fontSize: 12, color: 'var(--accent)',
+            background: 'var(--accent-bg)', border: '1px solid var(--accent)',
+            cursor: 'pointer', padding: '6px 14px', whiteSpace: 'nowrap',
+            fontWeight: 600, borderRadius: 20, fontFamily: 'inherit'
+          }}>
+            {showPaste
+              ? `↑ ${t('linkedin_use_url') || 'Use URL instead'}`
+              : `✏️ ${t('linkedin_or_paste') || 'OR paste profile sections'}`}
+          </button>
+          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+        </div>
+
+        {/* PASTE FIELDS */}
+        {showPaste && (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14, padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 10 }}>
+              💡 <strong>{t('linkedin_paste_howto_title') || 'How to copy:'}</strong> {t('linkedin_paste_howto_body') || "Open your LinkedIn profile, click each section to expand it, select all (Ctrl+A) and copy (Ctrl+C). Even just Headline + About gives a useful analysis."}
+            </p>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                {t('linkedin_section_headline') || 'Headline'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {headline.length}/220</span>
+              </label>
+              <input
+                value={headline}
+                onChange={e => setHeadline(e.target.value.slice(0, 220))}
+                placeholder={t('linkedin_headline_placeholder') || 'e.g. Senior IT Manager · ERP & CRM · Available for new opportunities'}
+                style={{ fontSize: 14 }}
+                disabled={loading}
+              />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                {t('linkedin_section_about') || 'About / Summary'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {about.length} chars</span>
+              </label>
+              <textarea
+                data-section="about"
+                value={about}
+                onChange={e => setAbout(e.target.value)}
+                placeholder={t('linkedin_about_placeholder') || 'Paste your LinkedIn About section here.'}
+                rows={5}
+                maxLength={3000}
+                style={{ fontSize: 13, resize: 'vertical' }}
+                disabled={loading}
+              />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                {t('linkedin_section_experience') || 'Experience'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
+              </label>
+              <textarea
+                value={experience}
+                onChange={e => setExperience(e.target.value)}
+                placeholder={t('linkedin_experience_placeholder') || 'Paste your most recent 1-3 experience entries.'}
+                rows={5}
+                maxLength={4000}
+                style={{ fontSize: 13, resize: 'vertical' }}
+                disabled={loading}
+              />
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                {t('linkedin_section_skills') || 'Skills'} <span style={{ color: 'var(--text-hint)', fontWeight: 400 }}>· {t('optional') || 'optional'}</span>
+              </label>
+              <input
+                value={skills}
+                onChange={e => setSkills(e.target.value)}
+                placeholder={t('linkedin_skills_placeholder') || 'Comma-separated: Project Management, ITIL, Salesforce...'}
+                style={{ fontSize: 13 }}
+                disabled={loading}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{ marginTop: 6, marginBottom: 14, padding: '10px 12px', background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10 }}>
+            <p style={{ fontSize: 12, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
+            {!showPaste && error.toLowerCase().includes('paste') && (
+              <button onClick={togglePasteMode} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginTop: 6, padding: 0 }}>
+                → {t('linkedin_switch_to_paste') || 'Switch to paste mode'}
+              </button>
+            )}
+          </div>
+        )}
+
+        <button onClick={optimize} disabled={!canSubmit} className="btn-primary" style={{ width: '100%' }}>
           {loading ? `⏳ ${t('linkedin_loading') || 'Analyzing your profile...'}` : `✨ ${t('linkedin_cta') || 'Optimize my profile →'}`}
         </button>
 
-        {!headline.trim() && !about.trim() && (
+        {!canSubmit && !loading && (
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', marginTop: 8 }}>
-            {t('linkedin_min_warning') || 'Fill at least Headline OR About to start.'}
+            {showPaste
+              ? (t('linkedin_min_warning') || 'Fill at least Headline OR About to start.')
+              : (t('linkedin_url_warning') || 'Paste a valid LinkedIn profile URL.')}
           </p>
         )}
       </div>
@@ -210,7 +297,6 @@ export default function LinkedInOptimizerPage() {
             <QuickWinsCard wins={optimization.quick_wins} t={t} />
           )}
 
-          {/* Download buttons */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 18 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontFamily: 'Syne, sans-serif' }}>
               ⬇️ {t('linkedin_download_title') || 'Download your optimized profile'}
@@ -228,7 +314,6 @@ export default function LinkedInOptimizerPage() {
             </div>
           </div>
 
-          {/* Disclaimer */}
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 30 }}>
             ℹ️ {optimization.honest_disclaimer || (t('linkedin_disclaimer') || 'Review carefully before publishing on LinkedIn. AI optimizes wording but does not verify facts.')}
           </p>
@@ -303,7 +388,7 @@ function SectionCard({ title, icon, section, improvedKey, copyKey, copied, onCop
       <p style={{ fontSize: 10, fontWeight: 700, color: '#4caf7d', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
         ✨ {t('linkedin_improved') || 'Improved version'} — {t('copy_paste_ready') || 'copy-paste ready'}
       </p>
-      <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, position: 'relative' }}>
+      <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
         <p style={{
           fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.7,
           whiteSpace: preserveLines ? 'pre-wrap' : 'normal',
