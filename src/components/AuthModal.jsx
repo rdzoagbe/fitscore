@@ -76,6 +76,42 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
           {t('continue_google')}
         </button>
 
+        <button
+          onClick={() => { window.location.href = '/api/auth/linkedin/start' }}
+          style={{
+            width:'100%',
+            padding:'12px',
+            borderRadius:12,
+            background:'#0A66C2',
+            border:'1px solid #0A66C2',
+            color:'#fff',
+            fontSize:14,
+            fontWeight:600,
+            cursor:'pointer',
+            marginBottom:14,
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            gap:10
+          }}
+        >
+          <span style={{
+            display:'inline-flex',
+            alignItems:'center',
+            justifyContent:'center',
+            width:20,
+            height:20,
+            borderRadius:4,
+            background:'#fff',
+            color:'#0A66C2',
+            fontWeight:800,
+            fontSize:13,
+            lineHeight:1
+          }}>in</span>
+          Continue with LinkedIn
+        </button>
+
+
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, height:'1px', background:'var(--border)' }}/>
           <span style={{ fontSize:12, color:'var(--text-muted)' }}>{t('or')}</span>
