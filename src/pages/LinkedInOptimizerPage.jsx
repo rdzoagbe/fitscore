@@ -99,6 +99,8 @@ export default function LinkedInOptimizerPage() {
   const [profileText, setProfileText] = useState('')
   const [uploadName, setUploadName] = useState('')
   const [uploadLoading, setUploadLoading] = useState(false)
+  const [dmaLoading, setDmaLoading] = useState(false)
+  const [dmaStatus, setDmaStatus] = useState('')
 
   const urlValid = useMemo(() => isLinkedInProfileUrl(profileUrl), [profileUrl])
   const uploadValid = profileText.trim().length >= 50
@@ -128,6 +130,23 @@ export default function LinkedInOptimizerPage() {
       })
       .catch(() => {})
     return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const dmaConnected = params.get('linkedin_dma')
+    const dmaError = params.get('linkedin_dma_error')
+
+    if (dmaConnected === 'connected') {
+      setDmaStatus('LinkedIn data authorization completed. Importing profile data...')
+      importLinkedInDmaData()
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+
+    if (dmaError) {
+      setError(`LinkedIn data import failed: ${dmaError}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
   }, [])
 
   async function optimize() {
@@ -165,6 +184,37 @@ export default function LinkedInOptimizerPage() {
     }
   }
 
+
+  function startLinkedInDmaImport() {
+    setError('')
+    setDmaStatus('Redirecting to LinkedIn for full profile data consent...')
+    window.location.assign('/api/linkedin-dma/start')
+  }
+
+  async function importLinkedInDmaData() {
+    setError('')
+    setDmaLoading(true)
+    setDmaStatus('Importing LinkedIn profile data...')
+
+    try {
+      const response = await fetch('/api/linkedin-dma/import')
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `LinkedIn import failed with status ${response.status}`)
+      }
+
+      setProfileText((data.profileText || '').slice(0, 40000))
+      setUploadName('LinkedIn Data Portability Import')
+      setShowPaste(false)
+      setDmaStatus(`LinkedIn data imported: ${data.domains?.join(', ') || 'profile data'}. You can now optimize it.`)
+    } catch (err) {
+      setError(err.message || 'Could not import LinkedIn data.')
+      setDmaStatus('')
+    } finally {
+      setDmaLoading(false)
+    }
+  }
 
   async function handleProfileUpload(event) {
     const file = event.target.files?.[0]
@@ -272,8 +322,12 @@ export default function LinkedInOptimizerPage() {
               {linkedinIdentity.picture ? <img src={linkedinIdentity.picture} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} /> : <span style={linkedinBadgeStyle}>in</span>}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 700, margin: 0 }}>LinkedIn connected{linkedinIdentity.name ? ` · ${linkedinIdentity.name}` : ''}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Identity connected. Upload your PDF or paste sections below to analyze full profile content.</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Identity connected. Use the import button to request full LinkedIn profile data, or upload your PDF/paste sections.</p>
+                {dmaStatus && <p style={{ fontSize: 11, color: 'var(--accent)', margin: '4px 0 0 0' }}>{dmaStatus}</p>}
               </div>
+              <button type="button" onClick={startLinkedInDmaImport} disabled={dmaLoading} style={dmaButtonStyle}>
+                {dmaLoading ? 'Importing...' : 'Import full LinkedIn profile'}
+              </button>
               <button type="button" onClick={disconnectLinkedIn} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11 }}>Disconnect</button>
             </div>
           ) : (
@@ -699,6 +753,19 @@ const toggleButtonStyle = {
   fontWeight: 600,
   borderRadius: 20,
   fontFamily: 'inherit'
+}
+
+const dmaButtonStyle = {
+  padding: '8px 12px',
+  borderRadius: 20,
+  background: 'var(--accent)',
+  border: 'none',
+  color: '#1A1B22',
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'Syne, sans-serif',
+  whiteSpace: 'nowrap'
 }
 
 const secondaryButtonStyle = {
