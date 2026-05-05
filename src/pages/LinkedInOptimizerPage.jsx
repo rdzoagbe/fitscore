@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useLang } from '../context/LangContext'
+import LinkedInOAuthButton from '../components/LinkedInOAuthButton'
 
 function isLinkedInProfileUrl(value) {
   if (!value) return false
@@ -24,6 +25,25 @@ function downloadTextFile(fileName, content, type = 'text/plain;charset=utf-8') 
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
+}
+
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('Could not read file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function readTextFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('Could not read file.'))
+    reader.readAsText(file)
+  })
 }
 
 function formatReport(data) {
@@ -75,10 +95,15 @@ export default function LinkedInOptimizerPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState({})
+  const [linkedinIdentity, setLinkedinIdentity] = useState(null)
+  const [profileText, setProfileText] = useState('')
+  const [uploadName, setUploadName] = useState('')
+  const [uploadLoading, setUploadLoading] = useState(false)
 
   const urlValid = useMemo(() => isLinkedInProfileUrl(profileUrl), [profileUrl])
+  const uploadValid = profileText.trim().length >= 50
   const pasteValid = headline.trim().length >= 5 || about.trim().length >= 30 || experience.trim().length >= 50
-  const canSubmit = !loading && (showPaste ? pasteValid : urlValid)
+  const canSubmit = !loading && !uploadLoading && (uploadValid || (showPaste ? pasteValid : urlValid))
 
   useEffect(() => {
     if (!error || userToggledMode || showPaste) return undefined
@@ -93,6 +118,18 @@ export default function LinkedInOptimizerPage() {
     return () => window.clearTimeout(timer)
   }, [error, userToggledMode, showPaste])
 
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/auth/linkedin/me')
+      .then(response => response.json())
+      .then(data => {
+        if (!cancelled && data.connected) setLinkedinIdentity(data.profile)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
   async function optimize() {
     if (!canSubmit) return
     setError('')
@@ -100,9 +137,11 @@ export default function LinkedInOptimizerPage() {
     setOptimization(null)
 
     try {
-      const body = showPaste
-        ? { headline, about, experience, skills, targetRole, lang }
-        : { profileUrl: profileUrl.trim(), targetRole, lang }
+      const body = profileText.trim()
+        ? { profileText: profileText.trim(), targetRole, lang }
+        : showPaste
+          ? { headline, about, experience, skills, targetRole, lang }
+          : { profileUrl: profileUrl.trim(), targetRole, lang }
 
       const response = await fetch('/api/linkedin-optimize', {
         method: 'POST',
@@ -124,6 +163,58 @@ export default function LinkedInOptimizerPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+
+  async function handleProfileUpload(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setError('')
+    setUploadLoading(true)
+    setProfileText('')
+    setUploadName(file.name)
+
+    try {
+      if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
+        const text = await readTextFile(file)
+        if (text.trim().length < 50) throw new Error('This text file does not contain enough profile content.')
+        setProfileText(text.slice(0, 12000))
+        setShowPaste(false)
+        return
+      }
+
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        throw new Error('Please upload a LinkedIn PDF or a .txt file.')
+      }
+
+      const base64 = await fileToBase64(file)
+      const response = await fetch('/api/linkedin-pdf-extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64: base64, fileName: file.name })
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data.success) throw new Error(data.error || 'Could not extract text from this PDF.')
+
+      setProfileText(data.text)
+      setShowPaste(false)
+    } catch (err) {
+      setError(err.message || 'Could not process this file. Please use paste mode.')
+      setProfileText('')
+    } finally {
+      setUploadLoading(false)
+    }
+  }
+
+  async function disconnectLinkedIn() {
+    await fetch('/api/auth/linkedin/logout', { method: 'POST' }).catch(() => {})
+    setLinkedinIdentity(null)
+  }
+
+  function clearUploadedProfile() {
+    setProfileText('')
+    setUploadName('')
   }
 
   function togglePasteMode() {
@@ -173,8 +264,22 @@ export default function LinkedInOptimizerPage() {
           {tr('linkedin_title', 'Make your LinkedIn profile recruiter-magnet')}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {tr('linkedin_subtitle_url', 'Paste your LinkedIn profile URL or manually paste your profile sections. URL mode falls back safely because LinkedIn often blocks automated reads.')}
+          {tr('linkedin_subtitle_url', 'Connect LinkedIn for identity, then upload your LinkedIn PDF or paste profile sections for the actual analysis. URL mode remains optional and may be blocked by LinkedIn.')}
         </p>
+        <div style={{ marginTop: 16 }}>
+          {linkedinIdentity ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 14 }}>
+              {linkedinIdentity.picture ? <img src={linkedinIdentity.picture} alt="" style={{ width: 42, height: 42, borderRadius: '50%', objectFit: 'cover' }} /> : <span style={linkedinBadgeStyle}>in</span>}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 700, margin: 0 }}>LinkedIn connected{linkedinIdentity.name ? ` · ${linkedinIdentity.name}` : ''}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Identity connected. Upload your PDF or paste sections below to analyze full profile content.</p>
+              </div>
+              <button type="button" onClick={disconnectLinkedIn} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11 }}>Disconnect</button>
+            </div>
+          ) : (
+            <LinkedInOAuthButton style={{ maxWidth: 280 }}>Connect LinkedIn account</LinkedInOAuthButton>
+          )}
+        </div>
       </header>
 
       <section style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(16px,3vw,24px)', marginBottom: 24 }}>
@@ -190,7 +295,30 @@ export default function LinkedInOptimizerPage() {
           {tr('linkedin_target_hint', 'The role you want to be found for. This tunes the optimization.')}
         </p>
 
-        {!showPaste && (
+        <div style={{ marginBottom: 18, padding: '14px 16px', background: 'var(--bg-input)', border: '1px dashed var(--border)', borderRadius: 14 }}>
+          <FieldLabel icon="📄" label={tr('linkedin_upload_label', 'Upload LinkedIn PDF')} optional={tr('recommended', 'recommended')} />
+          <input
+            type="file"
+            accept="application/pdf,.pdf,text/plain,.txt"
+            onChange={handleProfileUpload}
+            disabled={loading || uploadLoading}
+            style={{ fontSize: 12, color: 'var(--text-secondary)', width: '100%' }}
+          />
+          <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 8, lineHeight: 1.5 }}>
+            {uploadLoading
+              ? 'Extracting profile text...'
+              : profileText
+                ? `✓ ${uploadName || 'Profile file'} loaded. ${profileText.length} characters extracted.`
+                : 'Export your LinkedIn profile as PDF, upload it here, then run the optimizer.'}
+          </p>
+          {profileText && (
+            <button type="button" onClick={clearUploadedProfile} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, marginTop: 4 }}>
+              Clear uploaded profile
+            </button>
+          )}
+        </div>
+
+        {!profileText && !showPaste && (
           <div>
             <FieldLabel icon="🔗" label={tr('linkedin_url_label', 'LinkedIn profile URL')} />
             <input
@@ -207,17 +335,19 @@ export default function LinkedInOptimizerPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          <button type="button" onClick={togglePasteMode} style={toggleButtonStyle} disabled={loading}>
-            {showPaste
-              ? `↑ ${tr('linkedin_use_url', 'Use URL instead')}`
-              : `✏️ ${tr('linkedin_or_paste', 'OR paste profile sections')}`}
-          </button>
-          <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-        </div>
+        {!profileText && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <button type="button" onClick={togglePasteMode} style={toggleButtonStyle} disabled={loading}>
+              {showPaste
+                ? `↑ ${tr('linkedin_use_url', 'Use URL instead')}`
+                : `✏️ ${tr('linkedin_or_paste', 'OR paste profile sections')}`}
+            </button>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          </div>
+        )}
 
-        {showPaste && (
+        {!profileText && showPaste && (
           <div>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 14, padding: '10px 12px', background: 'var(--bg-input)', borderRadius: 10 }}>
               💡 <strong>{tr('linkedin_paste_howto_title', 'How to copy:')}</strong> {tr('linkedin_paste_howto_body', 'Open your LinkedIn profile, expand the sections, then copy/paste Headline, About, Experience and Skills. Headline + About is enough to test.')}
@@ -285,7 +415,7 @@ export default function LinkedInOptimizerPage() {
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', marginTop: 8 }}>
             {showPaste
               ? tr('linkedin_min_warning', 'Fill at least Headline, About, or Experience to start.')
-              : tr('linkedin_url_warning', 'Paste a valid LinkedIn profile URL.')}
+              : tr('linkedin_url_warning', 'Upload your LinkedIn PDF, paste profile sections, or enter a valid LinkedIn URL.')}
           </p>
         )}
       </section>
@@ -525,6 +655,20 @@ function QuickWinsCard({ wins, tr }) {
       </ul>
     </div>
   )
+}
+
+const linkedinBadgeStyle = {
+  width: 42,
+  height: 42,
+  borderRadius: 10,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: '#0A66C2',
+  color: '#fff',
+  fontSize: 18,
+  fontWeight: 800,
+  lineHeight: 1
 }
 
 const cardStyle = {

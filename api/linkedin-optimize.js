@@ -507,6 +507,7 @@ export default async function handler(req, res) {
     const body = parseBody(req)
     const lang = isAllowedLang(body.lang) ? body.lang : 'en'
     const profileUrl = asString(body.profileUrl, 500)
+    const profileText = asString(body.profileText, MAX.fetchedProfile)
     const targetRole = asString(body.targetRole, MAX.targetRole)
 
     let headline = asString(body.headline, MAX.headline)
@@ -515,7 +516,14 @@ export default async function handler(req, res) {
     let skills = asString(body.skills, MAX.skills)
     let sourceUsed = 'paste'
 
-    if (profileUrl) {
+    if (profileText) {
+      const parsed = await parseProfileBlobWithAi(profileText, lang)
+      headline = asString(parsed.headline || headline, MAX.headline)
+      about = asString(parsed.about || about, MAX.about)
+      experience = asString(parsed.experience || experience, MAX.experience)
+      skills = asString(parsed.skills || skills, MAX.skills)
+      sourceUsed = 'upload'
+    } else if (profileUrl) {
       try {
         const blob = await fetchLinkedInProfile(profileUrl)
         const parsed = await parseProfileBlobWithAi(blob, lang)
@@ -528,6 +536,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           success: false,
           fallback: 'paste',
+          requiresPaste: true,
           error: error.message || 'Could not read this LinkedIn URL. Please paste your profile sections instead.'
         })
       }
