@@ -5,7 +5,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import LangSelector from '../components/LangSelector'
 
 export default function AuthPage() {
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, signInWithLinkedIn } = useAuth()
   const { t } = useLang()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -80,9 +80,10 @@ export default function AuthPage() {
 
         <button
           type="button"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault()
-            window.location.assign('/api/auth/linkedin/start')
+            const { error } = await signInWithLinkedIn()
+            if (error) alert(error.message)
           }}
           style={{
             width:'100%',

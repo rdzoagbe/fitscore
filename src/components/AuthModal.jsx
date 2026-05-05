@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
 export default function AuthModal({ initialMode = 'signin', onClose }) {
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, signInWithLinkedIn } = useAuth()
   const { t } = useLang()
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
@@ -78,9 +78,10 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
 
         <button
           type="button"
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault()
-            window.location.assign('/api/auth/linkedin/start')
+            const { error } = await signInWithLinkedIn()
+            if (error) alert(error.message)
           }}
           style={{
             width:'100%',
