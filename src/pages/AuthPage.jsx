@@ -79,7 +79,11 @@ export default function AuthPage() {
           </button>
 
         <button
-          onClick={() => { window.location.href = '/api/auth/linkedin/start' }}
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            window.location.assign('/api/auth/linkedin/start')
+          }}
           style={{
             width:'100%',
             padding:'12px',
