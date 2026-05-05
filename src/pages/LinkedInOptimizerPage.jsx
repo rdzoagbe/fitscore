@@ -325,9 +325,9 @@ export default function LinkedInOptimizerPage() {
                 <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>Identity connected. Use the import button to request full LinkedIn profile data, or upload your PDF/paste sections.</p>
                 {dmaStatus && <p style={{ fontSize: 11, color: 'var(--accent)', margin: '4px 0 0 0' }}>{dmaStatus}</p>}
               </div>
-              <button type="button" onClick={startLinkedInDmaImport} disabled={dmaLoading} style={dmaButtonStyle}>
-                {dmaLoading ? 'Importing...' : 'Import full LinkedIn profile'}
-              </button>
+              <a href="/api/linkedin-dma/start" style={{ ...dmaButtonStyle, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                Import full LinkedIn profile
+              </a>
               <button type="button" onClick={disconnectLinkedIn} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11 }}>Disconnect</button>
             </div>
           ) : (
