@@ -19,6 +19,7 @@ import AppNav from './components/AppNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import TipCard from './components/TipCard'
+import './pages/AnalyzerPage.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -110,46 +111,18 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const displayStatus = viewingAnalysis ? 'done' : status
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
+    <div className="analyzePro-page">
       <Confetti active={showConfetti} />
 
-      <main style={{ padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px) 80px', maxWidth: 900, margin: '0 auto' }}>
+      <main className="analyzePro-shell">
 
         {displayStatus !== 'done' && (
-          <div style={{ maxWidth: 600, animation: 'fadeUp 0.4s ease' }}>
+          <div className="analyzePro-layout"><section className="analyzePro-card">
             {status === 'idle' && (
-              <div style={{
-                marginBottom: 24,
-                padding: '24px',
-                borderRadius: 24,
-                background: 'linear-gradient(135deg, rgba(255,122,85,0.12), rgba(255,255,255,0.04))',
-                border: '1px solid rgba(255,255,255,0.08)'
-              }}>
-                <p style={{
-                  margin: 0,
-                  color: 'var(--accent)',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase'
-                }}>
-                  ATS ANALYZER
-                </p>
-                <h1 style={{
-                  margin: '8px 0 0',
-                  color: 'var(--text-primary)',
-                  fontFamily: 'Syne, sans-serif',
-                  fontSize: 'clamp(28px, 4vw, 42px)',
-                  letterSpacing: '-0.05em'
-                }}>
-                  Analyze a job match
-                </h1>
-                <p style={{
-                  margin: '10px 0 0',
-                  color: 'var(--text-muted)',
-                  fontSize: 14,
-                  lineHeight: 1.6
-                }}>
+              <div className="analyzePro-formHero">
+                <p>ATS ANALYZER</p>
+                <h1>Analyze a job match</h1>
+                <p>
                   Paste a job URL or job description, upload your CV, and get your ATS match score with improvement suggestions.
                 </p>
               </div>
@@ -294,6 +267,45 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             {status === 'idle' && (
               <TipCard onGoCoach={() => setPage('coach')} onGoHistory={() => setPage('history')} />
             )}
+          </section>
+
+          <aside className="analyzePro-side">
+            <div className="analyzePro-sideCard">
+              <p className="analyzePro-kicker">How it works</p>
+              <h3>Three steps to a stronger application</h3>
+              <div className="analyzePro-steps">
+                <div className="analyzePro-step">
+                  <span>1</span>
+                  <div>
+                    <strong>Add the job</strong>
+                    <small>Use a URL or paste the full job description.</small>
+                  </div>
+                </div>
+                <div className="analyzePro-step">
+                  <span>2</span>
+                  <div>
+                    <strong>Upload your CV</strong>
+                    <small>We compare your CV against the role requirements.</small>
+                  </div>
+                </div>
+                <div className="analyzePro-step">
+                  <span>3</span>
+                  <div>
+                    <strong>Improve your match</strong>
+                    <small>Get score, missing keywords, gaps, and quick wins.</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="analyzePro-sideCard">
+              <p className="analyzePro-kicker">Pro tip</p>
+              <h3>Paste mode is more reliable</h3>
+              <p>
+                LinkedIn, Indeed, and some job boards block automated reading. For best results, paste the job description text directly.
+              </p>
+            </div>
+          </aside>
           </div>
         )}
 
