@@ -1,15 +1,18 @@
 import React from 'react'
+import { useLang } from '../context/LangContext'
 import UserMenu from './UserMenu'
 import './AppNav.css'
 
 const navItems = [
-  { id: 'dashboard', icon: '✦', label: 'Dashboard' },
-  { id: 'analyzer', icon: '🔍', label: 'Analyze' },
-  { id: 'history', icon: '📊', label: 'History' },
-  { id: 'coach', icon: '🎤', label: 'CV Coach' }
+  { id: 'dashboard', icon: '✦', labelKey: 'dashboard', fallback: 'Dashboard' },
+  { id: 'analyzer', icon: '🔍', labelKey: 'analyze', fallback: 'Analyze' },
+  { id: 'history', icon: '📊', labelKey: 'history', fallback: 'History' },
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' }
 ]
 
 export default function AppNav({ page, setPage, onLogoClick }) {
+  const { t } = useLang()
+
   const goTo = id => {
     if (id === 'dashboard') {
       onLogoClick?.()
@@ -27,16 +30,16 @@ export default function AppNav({ page, setPage, onLogoClick }) {
           type="button"
           className="jobNav-brand"
           onClick={() => goTo('dashboard')}
-          aria-label="Go to dashboard"
+          aria-label={t('go_to_dashboard') || 'Go to dashboard'}
         >
           <span className="jobNav-brandMark">J</span>
           <span>
             <strong>Joblytics</strong>
-            <small>Career growth workspace</small>
+            <small>{t('career_workspace') || 'Career growth workspace'}</small>
           </span>
         </button>
 
-        <nav className="jobNav-links" aria-label="Primary navigation">
+        <nav className="jobNav-links" aria-label={t('primary_navigation') || 'Primary navigation'}>
           {navItems.map(item => (
             <button
               key={item.id}
@@ -45,24 +48,24 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               onClick={() => goTo(item.id)}
             >
               <span>{item.icon}</span>
-              {item.label}
+              {t(item.labelKey) || item.fallback}
             </button>
           ))}
         </nav>
 
         <div className="jobNav-right">
           <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>
-            New check
+            {t('new_check') || 'New check'}
           </button>
 
           <div className="jobNav-menuWrap">
-            <span>Menu</span>
+            <span>{t('menu') || 'Menu'}</span>
             <UserMenu onViewDashboard={() => goTo('history')} />
           </div>
         </div>
       </header>
 
-      <nav className="jobNav-mobile" aria-label="Mobile navigation">
+      <nav className="jobNav-mobile" aria-label={t('mobile_navigation') || 'Mobile navigation'}>
         {navItems.map(item => (
           <button
             key={item.id}
@@ -71,7 +74,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             onClick={() => goTo(item.id)}
           >
             <span>{item.icon}</span>
-            <em>{item.label}</em>
+            <em>{t(item.labelKey) || item.fallback}</em>
           </button>
         ))}
       </nav>
