@@ -1,292 +1,391 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
-import UserMenu from '../components/UserMenu'
 import ScoreHistoryChart from '../components/ScoreHistoryChart'
-import JourneyHero from '../components/JourneyHero'
-import NewAnalysisMenu from '../components/NewAnalysisMenu'
 import StatusPill from '../components/StatusPill'
-import LangSelector from '../components/LangSelector'
 import DeleteAllModal from '../components/DeleteAllModal'
+import './HistoryPage.css'
 
+function scoreValue(analysis) {
+  const score = Number(analysis?.score)
+  return Number.isFinite(score) ? Math.round(score) : 0
+}
 
+function scoreColor(score) {
+  if (score >= 70) return '#4caf7d'
+  if (score >= 50) return '#f5a623'
+  return '#ff6b6b'
+}
 
-function ProgressBar({ label, value, color }) {
+function StatCard({ label, value, helper }) {
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color }}>{value}%</span>
+    <article className="historyWide-stat">
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <span>{helper}</span>
+    </article>
+  )
+}
+
+function ProgressLine({ label, value, color }) {
+  return (
+    <div className="historyWide-progressLine">
+      <div>
+        <span>{label}</span>
+        <strong style={{ color }}>{value}%</strong>
       </div>
-      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2 }}>
-        <div style={{ height: '100%', width: `${value}%`, background: color, borderRadius: 2, transition: 'width 1s ease' }} />
-      </div>
+      <em>
+        <i style={{ width: `${value}%`, background: color }} />
+      </em>
     </div>
   )
 }
 
 export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const { t, lang } = useLang()
+
   const [analyses, setAnalyses] = useState([])
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
   const [filter, setFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('recent') // 'recent' | 'priority'
+  const [sortBy, setSortBy] = useState('recent')
   const [search, setSearch] = useState('')
 
-  useEffect(() => { fetchAnalyses() }, [])
+  useEffect(() => {
+    fetchAnalyses()
+  }, [])
 
   const fetchAnalyses = async () => {
-    const { data } = await supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
+    const { data } = await supabase
+      .from('analyses')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(80)
+
     setAnalyses(data || [])
     setLoading(false)
   }
 
-  const deleteAnalysis = async (id, e) => {
-    e.stopPropagation()
+  const deleteAnalysis = async (id, event) => {
+    event.stopPropagation()
     setDeleting(id)
     await supabase.from('analyses').delete().eq('id', id)
-    setAnalyses(prev => prev.filter(a => a.id !== id))
+    setAnalyses(prev => prev.filter(item => item.id !== id))
+    setDeleting(null)
   }
 
   const handleDeleteAll = async () => {
     if (!user) throw new Error('Not signed in')
+
     const { error } = await supabase
       .from('analyses')
       .delete()
       .eq('user_id', user.id)
+
     if (error) throw error
+
     setAnalyses([])
     setDeleteAllOpen(false)
     setDeleting(null)
   }
 
-  const scoreColor = s => s>=70?'#4caf7d':s>=50?'#f5a623':'#ff6b6b'
-  const verdictLabel = v => ({ likely_passed: t('likely_passed'), borderline: t('borderline'), likely_filtered: t('likely_filtered') })[v] || ''
+  const localeMap = {
+    en: 'en-US',
+    fr: 'fr-FR',
+    es: 'es-ES',
+    de: 'de-DE',
+    it: 'it-IT',
+    pt: 'pt-PT'
+  }
 
-  const avgScore = analyses.length ? Math.round(analyses.reduce((s,a) => s+a.score,0)/analyses.length) : null
-  const bestScore = analyses.length ? Math.max(...analyses.map(a=>a.score)) : null
-  const passedCount = analyses.filter(a => a.result?.overall_verdict === 'likely_passed').length
+  const formatDate = value =>
+    new Date(value).toLocaleDateString(localeMap[lang] || 'en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })
 
-  const filtered = analyses.filter(a => {
-    const matchFilter = filter === 'all' || a.result?.overall_verdict === filter
-    const matchSearch = !search || (a.job_title||'').toLowerCase().includes(search.toLowerCase()) || (a.job_url||'').toLowerCase().includes(search.toLowerCase())
-    return matchFilter && matchSearch
-  }).sort((a, b) => {
-    if (sortBy === 'priority') {
-      // Priority = score, but unapplied jobs first within same score band
-      const aApplied = a.application_status && a.application_status !== 'rejected' && a.application_status !== 'withdrawn' ? 1 : 0
-      const bApplied = b.application_status && b.application_status !== 'rejected' && b.application_status !== 'withdrawn' ? 1 : 0
-      if (aApplied !== bApplied) return aApplied - bApplied
-      return b.score - a.score
+  const verdictLabel = value => ({
+    likely_passed: t('likely_passed') || 'Likely passed',
+    borderline: t('borderline') || 'Borderline',
+    likely_filtered: t('likely_filtered') || 'Likely filtered'
+  })[value] || 'Unknown'
+
+  const stats = useMemo(() => {
+    const scores = analyses.map(scoreValue)
+    const avgScore = scores.length
+      ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+      : 0
+
+    const bestScore = scores.length ? Math.max(...scores) : 0
+    const passedCount = analyses.filter(item => item.result?.overall_verdict === 'likely_passed').length
+    const borderlineCount = analyses.filter(item => item.result?.overall_verdict === 'borderline').length
+    const filteredCount = analyses.filter(item => item.result?.overall_verdict === 'likely_filtered').length
+
+    return {
+      avgScore,
+      bestScore,
+      passedCount,
+      borderlineCount,
+      filteredCount
     }
-    return new Date(b.created_at) - new Date(a.created_at)
-  })
+  }, [analyses])
 
-  const FILTERS = [
-    { value: 'all', label: t('filter_all') },
-    { value: 'likely_passed', label: t('filter_passed') },
-    { value: 'borderline', label: t('filter_borderline') },
-    { value: 'likely_filtered', label: t('filter_filtered') },
+  const total = analyses.length || 1
+  const passedPercent = Math.round((stats.passedCount / total) * 100)
+  const borderlinePercent = Math.round((stats.borderlineCount / total) * 100)
+  const filteredPercent = Math.round((stats.filteredCount / total) * 100)
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase()
+
+    return analyses
+      .filter(item => {
+        const matchFilter = filter === 'all' || item.result?.overall_verdict === filter
+        const title = item.job_title || item.result?.job_context?.title || ''
+        const company = item.result?.job_context?.company || ''
+        const url = item.job_url || ''
+
+        const matchSearch =
+          !query ||
+          title.toLowerCase().includes(query) ||
+          company.toLowerCase().includes(query) ||
+          url.toLowerCase().includes(query)
+
+        return matchFilter && matchSearch
+      })
+      .sort((a, b) => {
+        if (sortBy === 'priority') return scoreValue(b) - scoreValue(a)
+        return new Date(b.created_at) - new Date(a.created_at)
+      })
+  }, [analyses, filter, search, sortBy])
+
+  const filters = [
+    { value: 'all', label: t('filter_all') || 'All' },
+    { value: 'likely_passed', label: t('filter_passed') || 'Passed' },
+    { value: 'borderline', label: t('filter_borderline') || 'Borderline' },
+    { value: 'likely_filtered', label: t('filter_filtered') || 'Filtered' }
   ]
 
-  const localeMap = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-PT' }
-  const formatDate = (d) => new Date(d).toLocaleDateString(localeMap[lang] || 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })
-
   return (
-    <div className="page page-enter">
-      <header className="page-header">
-        <div>
-          <div className="logo">Job<span className="acc">lytics</span></div>
-          <div className="tagline">{t('tagline')}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <NewAnalysisMenu onNewWithCv={onNewAnalysis} onUploadNew={onNewAnalysis} />
-          <UserMenu onViewDashboard={() => {}} />
-        </div>
-      </header>
+    <div className="historyWide-page page-enter">
+      <div className="historyWide-glow historyWide-glowOne" />
+      <div className="historyWide-glow historyWide-glowTwo" />
 
-      <main className="page-main">
-
-        {/* User info row */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <main className="historyWide-shell">
+        <section className="historyWide-hero">
           <div>
-            <p style={{ fontSize: 'clamp(16px,4vw,20px)', fontWeight: 600, fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)', marginBottom: 3 }}>
-              {user.email?.split('@')[0]}
+            <p className="historyWide-kicker">APPLICATION INTELLIGENCE</p>
+            <h1>History board</h1>
+            <p>
+              A complete view of your job-search performance. Compare ATS scores, review saved analyses,
+              identify strong opportunities, and reopen any role to improve your CV match.
             </p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {analyses.length} {t('analyses_count')}
-              {avgScore !== null ? ` · ${t('avg_score')} ${avgScore}%` : ''}
-              {passedCount > 0 ? ` · ${passedCount} ${t('passed')}` : ''}
-            </p>
-          </div>
 
-        </div>
-
-        {/* JOURNEY HERO — momentum-focused */}
-        {!loading && analyses.length > 0 && <JourneyHero analyses={analyses} />}
-
-        {/* Stats cards (kept for now, simpler than journey) */}
-        {!loading && analyses.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
-            {[
-              { label: t('avg_score'), value: `${avgScore}%`, color: scoreColor(avgScore) },
-              { label: t('best_score'), value: `${bestScore}%`, color: scoreColor(bestScore) },
-              { label: t('passed'), value: `${passedCount}/${analyses.length}`, color: '#4caf7d' },
-            ].map(s => (
-              <div key={s.label} className="card" style={{ textAlign: 'center', padding: '12px 8px' }}>
-                <p style={{ fontSize: 'clamp(16px,4vw,22px)', fontWeight: 700, color: s.color, fontFamily: 'Syne, sans-serif', marginBottom: 3 }}>{s.value}</p>
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Chart + breakdown side by side on desktop */}
-        {!loading && analyses.length >= 2 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px,1fr))', gap: 8, marginBottom: 20 }}>
-            <div className="card"><ScoreHistoryChart analyses={analyses} t={t} /></div>
-            <div className="card">
-              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>{t('verdict_breakdown')}</p>
-              <ProgressBar label={t('likely_passed')} value={Math.round((analyses.filter(a=>a.result?.overall_verdict==='likely_passed').length/analyses.length)*100)} color="#4caf7d" />
-              <ProgressBar label={t('borderline')} value={Math.round((analyses.filter(a=>a.result?.overall_verdict==='borderline').length/analyses.length)*100)} color="#f5a623" />
-              <ProgressBar label={t('likely_filtered')} value={Math.round((analyses.filter(a=>a.result?.overall_verdict==='likely_filtered').length/analyses.length)*100)} color="#ff6b6b" />
-            </div>
-          </div>
-        )}
-
-        {/* SECTION TITLE for the saved analyses */}
-        {!loading && analyses.length > 0 && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 4 }}>
-              <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(15px,3.5vw,18px)', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.01em', flex: 1 }}>
-                {t('saved_analyses_title')}
-              </h2>
-              <button
-                onClick={() => setDeleteAllOpen(true)}
-                style={{
-                  background: 'none', border: '1px solid rgba(255,107,107,0.3)',
-                  color: '#ff7878', borderRadius: 20,
-                  padding: '5px 12px', fontSize: 11, fontWeight: 600,
-                  cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                  flexShrink: 0, transition: 'all 0.15s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,107,0.08)'; e.currentTarget.style.borderColor = '#ff6b6b' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'rgba(255,107,107,0.3)' }}
-              >
-                🗑 {t('delete_all') || 'Delete all'}
+            <div className="historyWide-actions">
+              <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
+                New ATS check
               </button>
+
+              {analyses.length > 0 && (
+                <button type="button" className="historyWide-dangerBtn" onClick={() => setDeleteAllOpen(true)}>
+                  Delete all
+                </button>
+              )}
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 14 }}>
-              {t('saved_analyses_subtitle')}
-            </p>
+          </div>
 
-            <input type="text" placeholder={t('search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
+          <aside className="historyWide-heroPanel">
+            <div className="historyWide-orb">
+              <strong>{stats.avgScore}</strong>
+              <span>avg score</span>
+            </div>
+            <div>
+              <p>Current archive</p>
+              <h2>{analyses.length} analyses</h2>
+              <span>{filtered.length} visible after filters</span>
+            </div>
+          </aside>
+        </section>
 
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {FILTERS.map(f => (
-                  <button key={f.value} onClick={() => setFilter(f.value)} style={{
-                    padding: '5px 12px', borderRadius: 20,
-                    border: `1px solid ${filter===f.value?'var(--accent)':'var(--border)'}`,
-                    background: filter===f.value?'var(--accent-bg)':'var(--bg-input)',
-                    color: filter===f.value?'var(--accent)':'var(--text-secondary)',
-                    fontSize: 12, cursor: 'pointer', transition: 'all 0.2s'
-                  }}>{f.label}</button>
+        {!loading && analyses.length > 0 && (
+          <section className="historyWide-stats">
+            <StatCard label="Average score" value={`${stats.avgScore}%`} helper="across all checks" />
+            <StatCard label="Best score" value={`${stats.bestScore}%`} helper="highest role match" />
+            <StatCard label="Likely passed" value={`${stats.passedCount}/${analyses.length}`} helper="strong applications" />
+            <StatCard label="Visible results" value={filtered.length} helper="current filtered view" />
+          </section>
+        )}
+
+        {!loading && analyses.length >= 2 && (
+          <section className="historyWide-insights">
+            <article className="historyWide-card historyWide-chartCard">
+              <p className="historyWide-kicker">SCORE TREND</p>
+              <h2>Progress over time</h2>
+              <div className="historyWide-chartBox">
+                <ScoreHistoryChart analyses={analyses} t={t} />
+              </div>
+            </article>
+
+            <article className="historyWide-card">
+              <p className="historyWide-kicker">VERDICT BREAKDOWN</p>
+              <h2>Match quality</h2>
+
+              <div className="historyWide-progressStack">
+                <ProgressLine label={t('likely_passed') || 'Likely passed'} value={passedPercent} color="#4caf7d" />
+                <ProgressLine label={t('borderline') || 'Borderline'} value={borderlinePercent} color="#f5a623" />
+                <ProgressLine label={t('likely_filtered') || 'Likely filtered'} value={filteredPercent} color="#ff6b6b" />
+              </div>
+            </article>
+          </section>
+        )}
+
+        <section className="historyWide-card historyWide-resultsCard">
+          <div className="historyWide-sectionHead">
+            <div>
+              <p className="historyWide-kicker">SAVED ANALYSES</p>
+              <h2>{t('saved_analyses_title') || 'Your saved analyses'}</h2>
+              <p>Search, filter, and reopen any job analysis from your archive.</p>
+            </div>
+          </div>
+
+          {!loading && analyses.length > 0 && (
+            <div className="historyWide-toolbar">
+              <label className="historyWide-search">
+                <span>⌕</span>
+                <input
+                  type="text"
+                  placeholder={t('search_placeholder') || 'Search by job title, company, or URL'}
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                />
+              </label>
+
+              <div className="historyWide-filterGroup">
+                {filters.map(item => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={filter === item.value ? 'is-active' : ''}
+                    onClick={() => setFilter(item.value)}
+                  >
+                    {item.label}
+                  </button>
                 ))}
               </div>
-              <button onClick={() => setSortBy(s => s === 'recent' ? 'priority' : 'recent')} style={{
-                padding: '5px 12px', borderRadius: 20,
-                border: '1px solid var(--border)', background: 'var(--bg-input)',
-                color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 5
-              }}>
-                {sortBy === 'priority' ? '⭐ ' + (t('sort_priority') || 'Priority') : '🕐 ' + (t('sort_recent') || 'Recent')}
+
+              <button
+                type="button"
+                className="historyWide-sortBtn"
+                onClick={() => setSortBy(value => value === 'recent' ? 'priority' : 'recent')}
+              >
+                {sortBy === 'priority'
+                  ? `⭐ ${t('sort_priority') || 'Priority'}`
+                  : `🕐 ${t('sort_recent') || 'Recent'}`}
               </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Skeleton */}
-        {loading && [1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 72, marginBottom: 8 }} />)}
+          {loading && (
+            <div className="historyWide-grid">
+              {[1, 2, 3, 4, 5, 6].map(item => (
+                <div key={item} className="historyWide-skeleton" />
+              ))}
+            </div>
+          )}
 
-        {/* Empty state */}
-        {!loading && analyses.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 'clamp(48px,10vw,80px) 24px', background: 'var(--bg-card)', borderRadius: 18, border: '1px dashed var(--border)' }}>
-            <div style={{ fontSize: 40, marginBottom: 14 }}>📋</div>
-            <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 6, fontFamily: 'Syne, sans-serif' }}>{t('no_analyses')}</p>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 22, lineHeight: 1.6 }}>{t('no_analyses_desc')}</p>
-            <button onClick={onNewAnalysis} className="btn-primary">{t('start_analyzing')}</button>
-          </div>
-        )}
+          {!loading && analyses.length === 0 && (
+            <div className="historyWide-empty">
+              <div>📋</div>
+              <h3>{t('no_analyses') || 'No analyses yet'}</h3>
+              <p>{t('no_analyses_desc') || 'Run your first ATS check to start building your job-search intelligence.'}</p>
+              <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
+                {t('start_analyzing') || 'Start analyzing'}
+              </button>
+            </div>
+          )}
 
-        {/* No results from filter */}
-        {!loading && analyses.length > 0 && filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
-            {t('no_match_filter')}
-          </div>
-        )}
+          {!loading && analyses.length > 0 && filtered.length === 0 && (
+            <div className="historyWide-empty">
+              <h3>{t('no_match_filter') || 'No analyses match this filter.'}</h3>
+              <p>Try another filter or search term.</p>
+            </div>
+          )}
 
-        {/* History list */}
-        {!loading && filtered.length > 0 && (
-          <div className="history-grid">
-            {filtered.map(a => {
-              const color = scoreColor(a.score)
-              const verdict = verdictLabel(a.result?.overall_verdict)
-              const date = formatDate(a.created_at)
-              const title = a.job_title || (() => { try { return new URL(a.job_url).hostname.replace('www.','') } catch { return 'Job' } })()
+          {!loading && filtered.length > 0 && (
+            <div className="historyWide-grid">
+              {filtered.map(analysis => {
+                const score = scoreValue(analysis)
+                const color = scoreColor(score)
+                const title =
+                  analysis.job_title ||
+                  analysis.result?.job_context?.title ||
+                  (() => {
+                    try {
+                      return new URL(analysis.job_url).hostname.replace('www.', '')
+                    } catch {
+                      return 'Job analysis'
+                    }
+                  })()
 
-              return (
-                <div key={a.id}
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='var(--border-focus)'; e.currentTarget.style.transform='translateY(-1px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='none' }}
-                >
-                  <div style={{ padding: 'clamp(12px,3vw,16px)', display: 'flex', alignItems: 'center', gap: 14 }} onClick={() => onSelectAnalysis(a)}>
-                    <div style={{ width: 52, height: 52, borderRadius: '50%', flexShrink: 0, border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}12` }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'Syne, sans-serif', lineHeight: 1 }}>{a.score}%</span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</p>
-                      {a.result?.job_context?.company && a.result.job_context.company !== 'Not specified' && (
-                        <p style={{ fontSize: 11, color: 'var(--accent)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@ {a.result.job_context.company}</p>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: `${color}18`, color, border: `1px solid ${color}30` }}>{verdict}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{date}</span>
-                        {a.result?.job_context?.location && a.result.job_context.location !== 'Not specified' && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>· 📍 {a.result.job_context.location.split(',')[0]}</span>
-                        )}
-                        <StatusPill analysis={a} onUpdate={updated => setAnalyses(prev => prev.map(x => x.id === updated.id ? updated : x))} compact />
+                const company = analysis.result?.job_context?.company
+                const location = analysis.result?.job_context?.location
+
+                return (
+                  <article key={analysis.id} className="historyWide-item" onClick={() => onSelectAnalysis(analysis)}>
+                    <div className="historyWide-itemTop">
+                      <div className="historyWide-score" style={{ color, borderColor: color }}>
+                        {score}%
                       </div>
-                    </div>
-                    <button onClick={e => deleteAnalysis(a.id, e)} disabled={deleting===a.id}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-hint)', cursor: 'pointer', fontSize: 18, padding: '4px 6px', flexShrink: 0, lineHeight: 1 }}
-                      onMouseEnter={e => e.currentTarget.style.color='#ff6b6b'}
-                      onMouseLeave={e => e.currentTarget.style.color='var(--text-hint)'}
-                    >×</button>
-                  </div>
-                  {a.score < 70 && (
-                    <div style={{ borderTop: '1px solid var(--border)', padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-input)' }}>
-                      <button onClick={() => onSelectAnalysis(a)} style={{ fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 20, background: 'var(--accent)', color: '#1A1B22', border: 'none', cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
-                        {t('improve_optimize') || 'IMPROVE & OPTIMIZE'}
+
+                      <button
+                        type="button"
+                        className="historyWide-delete"
+                        onClick={event => deleteAnalysis(analysis.id, event)}
+                        disabled={deleting === analysis.id}
+                        aria-label="Delete analysis"
+                      >
+                        ×
                       </button>
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
 
-        <div style={{ marginTop: 40, textAlign: 'center' }}>
-          <a href="/privacy" style={{ fontSize: 11, color: 'var(--text-hint)', textDecoration: 'none' }}>{t('privacy')}</a>
-        </div>
+                    <h3>{title}</h3>
+                    {company && company !== 'Not specified' && <p className="historyWide-company">@ {company}</p>}
+
+                    <div className="historyWide-meta">
+                      <span style={{ color, borderColor: `${color}55`, background: `${color}18` }}>
+                        {verdictLabel(analysis.result?.overall_verdict)}
+                      </span>
+                      <em>{formatDate(analysis.created_at)}</em>
+                      {location && location !== 'Not specified' && <em>📍 {location.split(',')[0]}</em>}
+                    </div>
+
+                    <div className="historyWide-status">
+                      <StatusPill
+                        analysis={analysis}
+                        onUpdate={updated => setAnalyses(prev => prev.map(item => item.id === updated.id ? updated : item))}
+                        compact
+                      />
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </main>
-      {deleteAllOpen && <DeleteAllModal count={analyses.length} onConfirm={handleDeleteAll} onClose={() => setDeleteAllOpen(false)} />}
+
+      {deleteAllOpen && (
+        <DeleteAllModal
+          count={analyses.length}
+          onConfirm={handleDeleteAll}
+          onClose={() => setDeleteAllOpen(false)}
+        />
+      )}
     </div>
   )
 }
