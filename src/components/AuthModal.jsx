@@ -49,7 +49,29 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
           <div style={{ flex:1, height:'1px', background:'var(--border)' }}/>
         </div>
 
-        <input type="email" placeholder={t('email_placeholder')} value={email} onChange={e=>setEmail(e.target.value)} style={{ marginBottom: 8 }} />
+                  <button
+            type="button"
+            onClick={async () => {
+              const { error } = await signInWithGoogle()
+              if (error) alert(error.message)
+            }}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.05)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontFamily: 'Syne, sans-serif',
+              marginBottom: 12
+            }}
+          >
+            Continue with Google
+          </button>
+
+<input type="email" placeholder={t('email_placeholder')} value={email} onChange={e=>setEmail(e.target.value)} style={{ marginBottom: 8 }} />
         <input type="password" placeholder={t('password_placeholder')} value={password} onChange={e=>setPassword(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSubmit()} style={{ marginBottom: 14 }} />
 
         {error && <p style={{ fontSize:13, color:'#ff6b6b', marginBottom:10, padding:'10px 12px', background:'rgba(255,107,107,0.08)', borderRadius:8 }}>{error}</p>}
