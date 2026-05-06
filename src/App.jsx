@@ -20,7 +20,6 @@ import CvPanel from './components/CvPanel'
 import AnalyzerHero from './components/AnalyzerHero'
 import LastAnalysisCard from './components/LastAnalysisCard'
 import TipCard from './components/TipCard'
-import LinkedInPromoCard from './components/LinkedInPromoCard'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -47,7 +46,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const detectRiskyDomain = url => {
     if (!isValidUrl(url)) return null
     const lower = url.toLowerCase()
-    if (lower.includes('linkedin.com')) return 'linkedin'
     if (lower.includes('indeed.')) return 'indeed'
     if (lower.includes('glassdoor.')) return 'glassdoor'
     return null
@@ -123,7 +121,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               <>
                 <AnalyzerHero />
                 <LastAnalysisCard onSelectAnalysis={a => setViewingAnalysis(a)} />
-                <LinkedInPromoCard onGo={() => setPage('linkedin')} />
               </>
             )}
 
@@ -319,13 +316,7 @@ export default function App() {
         />
       case 'coach':
         return <CvCoachPage />
-      case 'linkedin':
-      default:
-        return <AnalyzerPage
-          setPage={setPage}
-          prefillAnalysis={selectedAnalysis}
-          onClearPrefill={() => setSelectedAnalysis(null)}
-        />
+
     }
   }
 

@@ -150,8 +150,7 @@ export default function TopNav({ page, setPage, onLogoClick }) {
         <NavLink icon="🔍" label={t('analyze') || 'Analyze'} active={page === 'analyzer'} onClick={() => { onLogoClick ? onLogoClick() : setPage('analyzer') }} />
         <NavLink icon="📊" label={t('history') || 'History'} active={page === 'dashboard'} onClick={() => setPage('dashboard')} />
         <NavLink icon="🎤" label={t('nav_coach') || 'CV Coach'} active={page === 'coach'} onClick={() => setPage('coach')} />
-        <NavLink icon="🔗" label={t('nav_linkedin') || 'LinkedIn'} active={page === 'linkedin'} onClick={() => setPage('linkedin')} />
-      </nav>
+</nav>
 
       {/* Single user menu — combines settings + avatar */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
