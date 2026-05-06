@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '../context/AuthContext'
+import UserMenu from './UserMenu'
 import './AppNav.css'
 
 const navItems = [
@@ -9,29 +9,7 @@ const navItems = [
   { id: 'coach', icon: '🎤', label: 'CV Coach' }
 ]
 
-function getDisplayName(user) {
-  return (
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split('@')?.[0] ||
-    'Roland'
-  )
-}
-
-function getInitials(name) {
-  return name
-    .split(/[.\s_-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
-    .join('') || 'RO'
-}
-
 export default function AppNav({ page, setPage, onLogoClick }) {
-  const { user } = useAuth()
-  const displayName = getDisplayName(user)
-  const initials = getInitials(displayName)
-
   const goTo = id => {
     if (id === 'dashboard') {
       onLogoClick?.()
@@ -77,9 +55,9 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             New check
           </button>
 
-          <div className="jobNav-user">
+          <div className="jobNav-menuWrap">
             <span>Menu</span>
-            <strong>{initials}</strong>
+            <UserMenu onViewDashboard={() => goTo('history')} />
           </div>
         </div>
       </header>
