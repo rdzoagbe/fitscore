@@ -24,17 +24,10 @@ export function AuthProvider({ children }) {
     provider: 'google',
     options: { redirectTo: window.location.origin }
   })
-
-  const signInWithLinkedIn = () => supabase.auth.signInWithOAuth({
-    provider: 'linkedin_oidc',
-    options: {
-      redirectTo: window.location.origin
-    }
-  })
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signInWithLinkedIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   )

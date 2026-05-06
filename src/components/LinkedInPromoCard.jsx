@@ -22,7 +22,6 @@ export default function LinkedInPromoCard({ onGo }) {
           {t('linkedin_promo_kicker') || 'New tool'}
         </p>
         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2, fontFamily: 'Syne, sans-serif' }}>
-          {t('linkedin_promo_title') || 'Optimize your LinkedIn profile'}
         </p>
         <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
           {t('linkedin_promo_desc') || 'Get section-by-section feedback with copy-paste-ready improvements'}

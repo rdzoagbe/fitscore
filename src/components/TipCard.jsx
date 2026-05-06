@@ -28,12 +28,6 @@ export default function TipCard({ onGoCoach, onGoHistory }) {
       action: onGoCoach
     },
     {
-      icon: '📋',
-      title: t('tip_paste_title') || "URL not working? Paste the text",
-      body: t('tip_paste_body') || 'LinkedIn and Indeed often block automated reading. Copying the description works on every site.',
-      cta: null
-    },
-    {
       icon: '🔄',
       title: t('tip_reanalyze_title') || 'Already optimized your CV?',
       body: t('tip_reanalyze_body') || 'Re-run the same job to compare scores. We track your improvement over time with a delta indicator.',

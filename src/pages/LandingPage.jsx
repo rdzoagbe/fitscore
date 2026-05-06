@@ -143,7 +143,6 @@ export default function LandingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,200px), 1fr))', gap: 24 }}>
             {[
               { n: '01', t: t('landing_step1_title') || 'Upload your CV', d: t('landing_step1_desc') || 'PDF or Word. Stored on your device, encrypted.' },
-              { n: '02', t: t('landing_step2_title') || 'Paste a job URL', d: t('landing_step2_desc') || 'LinkedIn, Indeed, WTTJ, Glassdoor — works on all major boards.' },
               { n: '03', t: t('landing_step3_title') || 'Get your full report', d: t('landing_step3_desc') || 'ATS score, gaps, quick wins, interview questions — in 30 seconds.' },
             ].map((s) => (
               <div key={s.n}>

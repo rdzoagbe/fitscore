@@ -9,7 +9,6 @@ import Dashboard from './pages/Dashboard'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CvCoachPage from './pages/CvCoachPage'
-import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -321,7 +320,6 @@ export default function App() {
       case 'coach':
         return <CvCoachPage />
       case 'linkedin':
-        return <LinkedInOptimizerPage />
       default:
         return <AnalyzerPage
           setPage={setPage}
