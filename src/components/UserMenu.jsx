@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { useTheme } from '../context/ThemeContext'
+import LangSelector from './LangSelector'
 
 export default function UserMenu({ onViewDashboard }) {
   const { user, signOut } = useAuth()
@@ -35,28 +36,28 @@ export default function UserMenu({ onViewDashboard }) {
         <div style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 14, padding: 6, zIndex: 60,
+          borderRadius: 14, padding: 6, zIndex: 80,
           boxShadow: '0 12px 32px var(--shadow)',
-          minWidth: 240,
+          minWidth: 270,
           animation: 'fadeUp 0.15s ease'
         }}>
-          {/* User info */}
           <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2, fontFamily: 'Syne, sans-serif' }}>{displayName}</p>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</p>
           </div>
 
-          {/* Dashboard */}
           <button onClick={() => { setOpen(false); onViewDashboard?.() }} style={menuItemStyle}>
             <span style={iconStyle}>📊</span>
-            <span>{t('history')}</span>
+            <span>{t('history') || 'History'}</span>
           </button>
 
-          {/* Theme */}
-          <div style={{ padding: '8px 12px 6px' }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-              {t('theme') || 'Theme'}
-            </p>
+          <div style={sectionStyle}>
+            <p style={sectionTitleStyle}>{t('language') || 'Language'}</p>
+            <LangSelector inline />
+          </div>
+
+          <div style={sectionStyle}>
+            <p style={sectionTitleStyle}>{t('theme') || 'Theme'}</p>
             <div style={{ display: 'flex', gap: 4, background: 'var(--bg-input)', borderRadius: 10, padding: 3 }}>
               {[
                 { v: 'light', icon: '☀️', label: t('light') || 'Light' },
@@ -76,11 +77,11 @@ export default function UserMenu({ onViewDashboard }) {
           <div style={{ borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 6 }}>
             <a href="/privacy" style={{ ...menuItemStyle, textDecoration: 'none' }}>
               <span style={iconStyle}>🔒</span>
-              <span>{t('privacy')}</span>
+              <span>{t('privacy') || 'Privacy'}</span>
             </a>
             <button onClick={() => { setOpen(false); signOut() }} style={menuItemStyle}>
               <span style={iconStyle}>🚪</span>
-              <span style={{ color: '#ff6b6b' }}>{t('sign_out')}</span>
+              <span style={{ color: '#ff6b6b' }}>{t('sign_out') || 'Sign out'}</span>
             </button>
           </div>
         </div>
@@ -98,4 +99,6 @@ const menuItemStyle = {
   transition: 'background 0.15s'
 }
 
+const sectionStyle = { padding: '8px 12px 6px' }
+const sectionTitleStyle = { fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }
 const iconStyle = { fontSize: 14, width: 18, display: 'inline-flex', justifyContent: 'center' }
