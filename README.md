@@ -1,4 +1,4 @@
-# FitScore — Know before you apply
+# Joblytics-ai — Know before you apply
 
 ATS CV analyzer — paste a job offer + your CV, get an instant match score and actionable recommendations.
 
