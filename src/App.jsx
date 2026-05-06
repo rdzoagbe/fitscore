@@ -18,8 +18,6 @@ import EmailVerifyGate from './components/EmailVerifyGate'
 import AppNav from './components/AppNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
-import AnalyzerHero from './components/AnalyzerHero'
-import LastAnalysisCard from './components/LastAnalysisCard'
 import TipCard from './components/TipCard'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
@@ -120,10 +118,41 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
         {displayStatus !== 'done' && (
           <div style={{ maxWidth: 600, animation: 'fadeUp 0.4s ease' }}>
             {status === 'idle' && (
-              <>
-                <AnalyzerHero />
-                <LastAnalysisCard onSelectAnalysis={a => setViewingAnalysis(a)} />
-              </>
+              <div style={{
+                marginBottom: 24,
+                padding: '24px',
+                borderRadius: 24,
+                background: 'linear-gradient(135deg, rgba(255,122,85,0.12), rgba(255,255,255,0.04))',
+                border: '1px solid rgba(255,255,255,0.08)'
+              }}>
+                <p style={{
+                  margin: 0,
+                  color: 'var(--accent)',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase'
+                }}>
+                  ATS ANALYZER
+                </p>
+                <h1 style={{
+                  margin: '8px 0 0',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'Syne, sans-serif',
+                  fontSize: 'clamp(28px, 4vw, 42px)',
+                  letterSpacing: '-0.05em'
+                }}>
+                  Analyze a job match
+                </h1>
+                <p style={{
+                  margin: '10px 0 0',
+                  color: 'var(--text-muted)',
+                  fontSize: 14,
+                  lineHeight: 1.6
+                }}>
+                  Paste a job URL or job description, upload your CV, and get your ATS match score with improvement suggestions.
+                </p>
+              </div>
             )}
 
             {/* Job URL */}
