@@ -1,0 +1,623 @@
+.careerDash-page {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 117, 85, 0.16), transparent 34%),
+    radial-gradient(circle at 82% 12%, rgba(126, 87, 255, 0.14), transparent 30%),
+    linear-gradient(180deg, #15171e 0%, #101116 46%, #0c0d11 100%);
+  color: var(--text-primary, #f7f3ee);
+}
+
+.careerDash-bg {
+  position: absolute;
+  pointer-events: none;
+  filter: blur(22px);
+  opacity: 0.65;
+}
+
+.careerDash-bgOne {
+  width: 360px;
+  height: 360px;
+  right: -140px;
+  top: 120px;
+  border-radius: 999px;
+  background: rgba(255, 117, 85, 0.18);
+}
+
+.careerDash-bgTwo {
+  width: 280px;
+  height: 280px;
+  left: -110px;
+  bottom: 90px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.careerDash-shell {
+  position: relative;
+  width: min(1200px, calc(100% - 34px));
+  margin: 0 auto;
+  padding: 34px 0 96px;
+}
+
+.careerDash-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.careerDash-heroText,
+.careerDash-heroPanel,
+.careerDash-card,
+.careerDash-stat {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+    rgba(255,255,255,0.035);
+  box-shadow: 0 26px 90px rgba(0,0,0,0.28);
+  backdrop-filter: blur(18px);
+}
+
+.careerDash-heroText {
+  min-height: 330px;
+  border-radius: 34px;
+  padding: clamp(28px, 4vw, 52px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.careerDash-pill {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border-radius: 999px;
+  color: #ffd5c8;
+  background: rgba(255, 117, 85, 0.12);
+  border: 1px solid rgba(255, 117, 85, 0.24);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.careerDash-pill span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ff7a55;
+  box-shadow: 0 0 0 6px rgba(255, 122, 85, 0.14);
+}
+
+.careerDash-hero h1 {
+  max-width: 760px;
+  margin: 22px 0 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: clamp(44px, 7vw, 86px);
+  line-height: 0.92;
+  letter-spacing: -0.07em;
+}
+
+.careerDash-hero h1 em {
+  color: #ff8a64;
+  font-style: normal;
+}
+
+.careerDash-hero p {
+  max-width: 680px;
+  margin: 22px 0 0;
+  color: rgba(247, 243, 238, 0.68);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.careerDash-actions,
+.careerDash-cardActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.careerDash-btn {
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.careerDash-btn:hover {
+  transform: translateY(-1px);
+}
+
+.careerDash-btnPrimary {
+  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  color: #151515;
+  box-shadow: 0 18px 40px rgba(255, 122, 85, 0.22);
+}
+
+.careerDash-btnGhost {
+  color: #f7f3ee;
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.careerDash-btn:disabled {
+  cursor: default;
+  opacity: 0.62;
+  transform: none;
+}
+
+.careerDash-heroPanel {
+  border-radius: 34px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background:
+    linear-gradient(160deg, rgba(255, 117, 85, 0.20), rgba(255,255,255,0.05) 52%, rgba(255,255,255,0.035)),
+    rgba(255,255,255,0.035);
+}
+
+.careerDash-scoreCircle {
+  width: 156px;
+  height: 156px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border: 1px solid rgba(255,255,255,0.16);
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.10), rgba(255,255,255,0.035)),
+    rgba(0,0,0,0.18);
+}
+
+.careerDash-scoreCircle span {
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: -0.08em;
+}
+
+.careerDash-scoreCircle small {
+  color: rgba(247, 243, 238, 0.56);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.careerDash-panelLabel,
+.careerDash-kicker {
+  margin: 0;
+  color: #ffad91;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.careerDash-heroPanel h2 {
+  margin: 10px 0 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+
+.careerDash-heroPanel p:last-child {
+  margin-top: 9px;
+  color: rgba(247, 243, 238, 0.62);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.careerDash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.careerDash-stat {
+  border-radius: 24px;
+  padding: 19px;
+}
+
+.careerDash-stat p,
+.careerDash-stat span {
+  margin: 0;
+  color: rgba(247, 243, 238, 0.56);
+  font-size: 12px;
+}
+
+.careerDash-stat p {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 850;
+}
+
+.careerDash-stat strong {
+  display: block;
+  margin: 10px 0 4px;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 34px;
+  letter-spacing: -0.07em;
+}
+
+.careerDash-stat--accent {
+  background: linear-gradient(160deg, rgba(255, 122, 85, 0.16), rgba(255,255,255,0.04));
+}
+
+.careerDash-stat--warm {
+  background: linear-gradient(160deg, rgba(255, 196, 107, 0.14), rgba(255,255,255,0.04));
+}
+
+.careerDash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.75fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.careerDash-main,
+.careerDash-side {
+  display: grid;
+  gap: 18px;
+}
+
+.careerDash-side {
+  position: sticky;
+  top: 92px;
+}
+
+.careerDash-card {
+  border-radius: 28px;
+  padding: 24px;
+}
+
+.careerDash-cardHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.careerDash-card h2 {
+  margin: 8px 0 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 28px;
+  letter-spacing: -0.05em;
+}
+
+.careerDash-cardHeader p:not(.careerDash-kicker),
+.careerDash-card > p,
+.careerDash-sideCard p {
+  color: rgba(247, 243, 238, 0.62);
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.careerDash-tag {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(255, 122, 85, 0.12);
+  color: #ffc2ad;
+  border: 1px solid rgba(255, 122, 85, 0.25);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.careerDash-why {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 20px;
+  display: grid;
+  gap: 6px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.careerDash-why strong {
+  color: #ffb199;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.careerDash-why span {
+  color: rgba(247, 243, 238, 0.72);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.careerDash-challengeBody {
+  margin-top: 18px;
+}
+
+.careerDash-challengeBody > p {
+  color: rgba(247, 243, 238, 0.70);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.careerDash-examples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.careerDash-examples div {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.19);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.careerDash-examples span {
+  color: #ffad91;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+.careerDash-examples p {
+  margin: 8px 0 0;
+  color: rgba(247, 243, 238, 0.74);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.careerDash-pathGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.careerDash-path {
+  text-align: left;
+  padding: 18px;
+  border-radius: 22px;
+  color: inherit;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.careerDash-path:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 122, 85, 0.35);
+  background: rgba(255,255,255,0.055);
+}
+
+.careerDash-pathTop,
+.careerDash-weeklyTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.careerDash-pathIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  color: #151515;
+  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.careerDash-pathPercent,
+.careerDash-weeklyTop span {
+  color: #ffad91;
+  font-weight: 900;
+}
+
+.careerDash-path h3 {
+  margin: 15px 0 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 17px;
+  letter-spacing: -0.035em;
+}
+
+.careerDash-path p {
+  min-height: 58px;
+  margin: 8px 0 0;
+  color: rgba(247, 243, 238, 0.58);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.careerDash-progress {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.08);
+  margin-top: 15px;
+}
+
+.careerDash-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff8a64, #ffc46b);
+}
+
+.careerDash-linkBtn {
+  border: 0;
+  background: transparent;
+  color: #ffad91;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.careerDash-recentList {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.careerDash-recentRow {
+  width: 100%;
+  padding: 14px;
+  border-radius: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  color: inherit;
+  background: rgba(0,0,0,0.17);
+  border: 1px solid rgba(255,255,255,0.07);
+  text-align: left;
+  cursor: pointer;
+}
+
+.careerDash-recentRow strong {
+  display: block;
+  font-size: 14px;
+}
+
+.careerDash-recentRow span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(247, 243, 238, 0.52);
+  font-size: 12px;
+}
+
+.careerDash-recentRow em {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #ffc2ad;
+  border: 1px solid rgba(255, 122, 85, 0.30);
+  background: rgba(255, 122, 85, 0.10);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.careerDash-empty {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px dashed rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.15);
+}
+
+.careerDash-empty h3 {
+  margin: 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+}
+
+.careerDash-empty p {
+  color: rgba(247, 243, 238, 0.58);
+  line-height: 1.55;
+}
+
+.careerDash-weeklyTop strong {
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 32px;
+  letter-spacing: -0.06em;
+}
+
+.careerDash-momentum {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.careerDash-momentum div {
+  padding: 15px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.careerDash-momentum strong {
+  display: block;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 36px;
+  letter-spacing: -0.07em;
+}
+
+.careerDash-momentum span {
+  color: rgba(247, 243, 238, 0.52);
+  font-size: 12px;
+}
+
+.careerDash-coachCard h3 {
+  margin: 10px 0 0;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 22px;
+  letter-spacing: -0.05em;
+}
+
+@media (max-width: 980px) {
+  .careerDash-hero,
+  .careerDash-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .careerDash-side {
+    position: static;
+  }
+
+  .careerDash-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .careerDash-pathGrid,
+  .careerDash-examples {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .careerDash-shell {
+    width: min(100% - 22px, 1200px);
+    padding-top: 18px;
+  }
+
+  .careerDash-heroText,
+  .careerDash-heroPanel,
+  .careerDash-card {
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .careerDash-hero h1 {
+    font-size: 44px;
+  }
+
+  .careerDash-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .careerDash-actions,
+  .careerDash-cardActions {
+    flex-direction: column;
+  }
+
+  .careerDash-btn {
+    width: 100%;
+  }
+}

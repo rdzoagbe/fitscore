@@ -6,10 +6,10 @@ import { useCvPersist } from './hooks/useCvPersist'
 import { useJobUrlHistory } from './hooks/useJobUrlHistory'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
+import CareerDashboardPage from './pages/CareerDashboardPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CvCoachPage from './pages/CvCoachPage'
-import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -263,7 +263,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             )}
 
             {status === 'idle' && (
-              <TipCard onGoCoach={() => setPage('coach')} onGoHistory={() => setPage('dashboard')} />
+              <TipCard onGoCoach={() => setPage('coach')} onGoHistory={() => setPage('history')} />
             )}
           </div>
         )}
@@ -289,7 +289,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
 export default function App() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState('analyzer')
+  const [page, setPage] = useState('dashboard')
   const [selectedAnalysis, setSelectedAnalysis] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -312,27 +312,29 @@ export default function App() {
   const renderPage = () => {
     switch(page) {
       case 'dashboard':
+        return <CareerDashboardPage setPage={setPage} />
+      case 'analyzer':
+        return <AnalyzerPage
+          setPage={setPage}
+          prefillAnalysis={selectedAnalysis}
+          onClearPrefill={() => setSelectedAnalysis(null)}
+        />
+      case 'history':
         return <Dashboard
           onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }}
           onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }}
         />
       case 'coach':
         return <CvCoachPage />
-      case 'linkedin':
-        return <LinkedInOptimizerPage />
-      default:
-        return <AnalyzerPage
-          setPage={setPage}
-          prefillAnalysis={selectedAnalysis}
-          onClearPrefill={() => setSelectedAnalysis(null)}
-        />
+default:
+        return <CareerDashboardPage setPage={setPage} />
     }
   }
 
   return (
     <>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
-      <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('analyzer') }} />
+      <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
       {renderPage()}
     </>
   )

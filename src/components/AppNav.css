@@ -1,0 +1,207 @@
+.jobNav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 68px;
+  padding: 0 clamp(16px, 3vw, 34px);
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(18, 19, 25, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.jobNav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f7f3ee;
+  cursor: pointer;
+  text-align: left;
+}
+
+.jobNav-brandMark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #171717;
+  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-weight: 950;
+}
+
+.jobNav-brand strong {
+  display: block;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.04em;
+}
+
+.jobNav-brand small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(247,243,238,0.48);
+  font-size: 11px;
+}
+
+.jobNav-links {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.jobNav-link {
+  min-height: 38px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 0;
+  color: rgba(247,243,238,0.62);
+  background: transparent;
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.jobNav-link:hover {
+  color: #f7f3ee;
+  background: rgba(255,255,255,0.06);
+}
+
+.jobNav-link.is-active {
+  color: #171717;
+  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  box-shadow: 0 12px 30px rgba(255,122,85,0.22);
+}
+
+.jobNav-right {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.jobNav-newCheck {
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,122,85,0.30);
+  color: #ffc2ad;
+  background: rgba(255,122,85,0.10);
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.jobNav-user {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(247,243,238,0.58);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.jobNav-user strong {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #171717;
+  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  font-size: 10px;
+}
+
+.jobNav-mobile {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .jobNav {
+    grid-template-columns: 1fr auto;
+  }
+
+  .jobNav-links {
+    display: none;
+  }
+
+  .jobNav-brand small,
+  .jobNav-newCheck {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .jobNav {
+    height: 58px;
+    padding: 0 14px;
+  }
+
+  .jobNav-user span {
+    display: none;
+  }
+
+  .jobNav-mobile {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 7px;
+    border-radius: 24px;
+    background: rgba(18,19,25,0.86);
+    border: 1px solid rgba(255,255,255,0.10);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 20px 70px rgba(0,0,0,0.34);
+  }
+
+  .jobNav-mobileItem {
+    min-height: 54px;
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    color: rgba(247,243,238,0.58);
+    display: grid;
+    place-items: center;
+    gap: 3px;
+    font-size: 17px;
+    cursor: pointer;
+  }
+
+  .jobNav-mobileItem em {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .jobNav-mobileItem.is-active {
+    color: #171717;
+    background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  }
+}
