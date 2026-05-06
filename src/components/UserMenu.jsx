@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { useTheme } from '../context/ThemeContext'
-import LangSelector from './LangSelector'
 
 export default function UserMenu({ onViewDashboard }) {
   const { user, signOut } = useAuth()
-  const { t } = useLang()
+  const { t, lang, changeLang, languages } = useLang()
   const { theme, changeTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
@@ -53,7 +52,37 @@ export default function UserMenu({ onViewDashboard }) {
 
           <div style={sectionStyle}>
             <p style={sectionTitleStyle}>{t('language') || 'Language'}</p>
-            <LangSelector inline />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+              {languages.map(item => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    changeLang(item.code)
+                  }}
+                  style={{
+                    minHeight: 44,
+                    padding: '6px 4px',
+                    borderRadius: 10,
+                    border: `1px solid ${lang === item.code ? 'var(--accent)' : 'var(--border)'}`,
+                    background: lang === item.code ? 'var(--accent-bg)' : 'var(--bg-input)',
+                    color: lang === item.code ? 'var(--accent)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{item.flag}</span>
+                  <span style={{ fontSize: 9, fontWeight: lang === item.code ? 700 : 500 }}>{item.code.toUpperCase()}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div style={sectionStyle}>
