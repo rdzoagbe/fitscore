@@ -103,20 +103,8 @@ function MoreSheet({ onClose, setPage }) {
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>
             {t('quick_links') || 'Tools'}
           </p>
-          <button onClick={() => { setPage?.('linkedin'); onClose() }} style={{
-            width: '100%', padding: '12px 14px', borderRadius: 12,
-            background: 'var(--bg-input)', border: '1px solid var(--border)',
-            color: 'var(--text-primary)', fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            transition: 'all 0.15s'
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>🔗</span>
-              <span>{t('nav_linkedin') || 'LinkedIn Optimizer'}</span>
-            </span>
-            <span style={{ color: 'var(--text-hint)' }}>›</span>
-          </button>
+          
+
         </div>
 
         {/* Theme */}
