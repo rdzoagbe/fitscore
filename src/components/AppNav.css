@@ -110,7 +110,7 @@
   cursor: pointer;
 }
 
-.jobNav-user {
+.jobNav-menuWrap {
   height: 38px;
   display: inline-flex;
   align-items: center;
@@ -124,15 +124,14 @@
   font-weight: 800;
 }
 
-.jobNav-user strong {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 999px;
-  color: #171717;
-  background: linear-gradient(135deg, #ff8a64, #ffc46b);
-  font-size: 10px;
+.jobNav-menuWrap > div > button {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  color: #171717 !important;
+  background: linear-gradient(135deg, #ff8a64, #ffc46b) !important;
+  border: 0 !important;
+  font-size: 10px !important;
 }
 
 .jobNav-mobile {
@@ -160,7 +159,7 @@
     padding: 0 14px;
   }
 
-  .jobNav-user span {
+  .jobNav-menuWrap > span {
     display: none;
   }
 
