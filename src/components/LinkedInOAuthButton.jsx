@@ -1,71 +1,49 @@
-import React, { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import React from 'react'
 
-export default function LinkedInOAuthButton({
-  children = 'Connect LinkedIn account',
-  style = {},
-  className = ''
-}) {
-  const { signInWithLinkedIn } = useAuth()
-  const [loading, setLoading] = useState(false)
-
-  async function handleLinkedInLogin(e) {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      const { error } = await signInWithLinkedIn()
-      if (error) {
-        alert(error.message || 'LinkedIn sign-in failed.')
-        setLoading(false)
-      }
-    } catch (err) {
-      alert(err.message || 'LinkedIn sign-in failed.')
-      setLoading(false)
-    }
-  }
-
+export default function LinkedInOAuthButton({ className = '', style = {}, children = 'Continue with LinkedIn' }) {
   return (
     <button
       type="button"
-      onClick={handleLinkedInLogin}
-      disabled={loading}
       className={className}
       style={{
         width: '100%',
-        padding: '12px 16px',
-        borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.12)',
-        background: 'rgba(255,255,255,0.05)',
-        color: 'var(--text-primary)',
-        cursor: loading ? 'not-allowed' : 'pointer',
-        fontWeight: 700,
-        fontFamily: 'Syne, sans-serif',
-        display: 'inline-flex',
+        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        opacity: loading ? 0.7 : 1,
+        gap: 10,
+        padding: '11px 14px',
+        borderRadius: 10,
+        border: '1px solid var(--border, rgba(255,255,255,0.12))',
+        background: 'var(--bg-input, #2b2d38)',
+        color: 'var(--text-primary, #fff)',
+        fontWeight: 600,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
         ...style
+      }}
+      onClick={() => {
+        window.location.href = '/api/auth/linkedin/start'
       }}
     >
       <span
+        aria-hidden="true"
         style={{
-          background: '#0A66C2',
-          color: '#fff',
-          width: 16,
-          height: 16,
-          borderRadius: 3,
+          width: 18,
+          height: 18,
+          borderRadius: 4,
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 11,
-          fontWeight: 800
+          background: '#0A66C2',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 800,
+          lineHeight: 1
         }}
       >
         in
       </span>
-      {loading ? 'Connecting...' : children}
+      {children}
     </button>
   )
 }
