@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
@@ -14,6 +15,13 @@ export function useAnalyze() {
     const timeoutId = setTimeout(() => controller.abort(), 65000)
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+
+      if (!accessToken) {
+        throw new Error('Please sign in again before running an analysis.')
+      }
+
       const cvBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = () => resolve(reader.result.split(',')[1])
@@ -23,14 +31,16 @@ export function useAnalyze() {
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
         body: JSON.stringify({
           jobUrl: jobUrl || null,
           jobText: jobText || null,
           cvBase64,
           cvMimeType: cvFile.type,
-          cvFileName: cvFile.name,
-          userId: user?.id || null
+          cvFileName: cvFile.name
         }),
         signal: controller.signal
       })
