@@ -7,13 +7,13 @@ import { useLang } from '../context/LangContext'
 import './CvCoachPage.css'
 
 const scoreColor = score => score >= 70 ? '#4caf7d' : score >= 50 ? '#f5a623' : '#ff6b6b'
-const jobTitle = item => item?.result?.job_context?.title || item?.job_title || 'Job analysis'
+const jobTitle = (item, t) => item?.result?.job_context?.title || item?.job_title || t('job_analysis')
 const companyName = item => {
   const company = item?.result?.job_context?.company
   return company && company !== 'Not specified' ? company : ''
 }
 
-function CopyButton({ value, children }) {
+function CopyButton({ value, children, t }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
@@ -25,12 +25,12 @@ function CopyButton({ value, children }) {
         setTimeout(() => setCopied(false), 1400)
       }}
     >
-      {copied ? '✓ Copied' : children || 'Copy'}
+      {copied ? `✓ ${t('copied')}` : children || t('copy')}
     </button>
   )
 }
 
-function QuickWin({ item, index }) {
+function QuickWin({ item, index, t }) {
   const tip = typeof item === 'string' ? item : item?.tip || ''
   const example = typeof item === 'object' ? item?.example : null
   return (
@@ -38,21 +38,21 @@ function QuickWin({ item, index }) {
       <div className="coachPro-quickHead">
         <span>{index + 1}</span>
         <strong>{tip}</strong>
-        {!example && <CopyButton value={tip}>📋</CopyButton>}
+        {!example && <CopyButton value={tip} t={t}>📋</CopyButton>}
       </div>
       {example && (
         <div className="coachPro-example">
-          <small>Example</small>
+          <small>{t('example')}</small>
           <p>“{example}”</p>
-          <CopyButton value={example}>📋 Copy</CopyButton>
+          <CopyButton value={example} t={t}>📋 {t('copy')}</CopyButton>
         </div>
       )}
     </article>
   )
 }
 
-function Keyword({ word }) {
-  return <CopyButton value={word}>+ {word}</CopyButton>
+function Keyword({ word, t }) {
+  return <CopyButton value={word} t={t}>+ {word}</CopyButton>
 }
 
 function InsightSection({ label, title, tone, children }) {
@@ -80,31 +80,31 @@ function AnalysisCoach({ analysis, t }) {
       <header className="coachPro-cardTop">
         <div className="coachPro-score" style={{ color, borderColor: color }}>{score}%</div>
         <div>
-          <p className="coachPro-kicker">CV INTELLIGENCE</p>
-          <h2>{jobTitle(analysis)}</h2>
+          <p className="coachPro-kicker">{t('cv_intelligence')}</p>
+          <h2>{jobTitle(analysis, t)}</h2>
           {companyName(analysis) && <span>@ {companyName(analysis)}</span>}
         </div>
       </header>
 
       <div className="coachPro-stack">
         {quickWins.length > 0 && (
-          <InsightSection label="QUICK WINS" title={t('coach_add_hint') || 'Add these to your CV'} tone="accent">
+          <InsightSection label={t('quick_wins_label')} title={t('add_to_cv')} tone="accent">
             <div className="coachPro-listGrid">
-              {quickWins.map((win, index) => <QuickWin key={index} item={win} index={index} />)}
+              {quickWins.map((win, index) => <QuickWin key={index} item={win} index={index} t={t} />)}
             </div>
           </InsightSection>
         )}
 
         {missing.length > 0 && (
-          <InsightSection label="MISSING KEYWORDS" title={t('coach_keyword_hint') || 'Tap to copy, then add to your CV'} tone="warning">
+          <InsightSection label={t('missing_keywords_label')} title={t('tap_copy_cv')} tone="warning">
             <div className="coachPro-keywords">
-              {missing.map(word => <Keyword key={word} word={word} />)}
+              {missing.map(word => <Keyword key={word} word={word} t={t} />)}
             </div>
           </InsightSection>
         )}
 
         {edges.length > 0 && (
-          <InsightSection label="YOUR EDGES" title={t('your_edges') || 'Strengths to highlight'} tone="success">
+          <InsightSection label={t('your_edges_label')} title={t('strengths_to_highlight')} tone="success">
             <div className="coachPro-bullets">
               {edges.map((edge, index) => <p key={index}>✓ {edge}</p>)}
             </div>
@@ -112,7 +112,7 @@ function AnalysisCoach({ analysis, t }) {
         )}
 
         {gaps.length > 0 && (
-          <InsightSection label="GAPS" title={t('coach_gaps_hint') || 'Address these before applying'} tone="danger">
+          <InsightSection label={t('gaps_label')} title={t('address_before_applying')} tone="danger">
             <div className="coachPro-bullets">
               {gaps.map((gap, index) => <p key={index}>✗ {gap}</p>)}
             </div>
@@ -170,26 +170,19 @@ export default function CvCoachPage() {
       let nameToUse = fullName
       if (!nameToUse && tempName.trim()) {
         const saved = await saveFullName(tempName.trim())
-        if (!saved?.success) throw new Error(saved?.error || 'Could not save your name. Please try again.')
+        if (!saved?.success) throw new Error(saved?.error || t('save_name_error'))
         nameToUse = tempName.trim()
         setEditingName(false)
       }
       if (!nameToUse) {
         setEditingName(true)
-        throw new Error(t('name_required_first') || 'Please add your full name first.')
+        throw new Error(t('add_full_name_error'))
       }
 
       const response = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysis: selected.result,
-          lang,
-          tone,
-          length,
-          recipient: recipient.trim() || null,
-          fullName: nameToUse
-        })
+        body: JSON.stringify({ analysis: selected.result, lang, tone, length, recipient: recipient.trim() || null, fullName: nameToUse })
       })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
@@ -198,7 +191,7 @@ export default function CvCoachPage() {
       const data = await response.json()
       setCoverLetter(data.letter || '')
     } catch (error) {
-      setGenError(error.message || 'Could not generate cover letter. Please try again.')
+      setGenError(error.message || t('cover_letter_error'))
     }
     setGenLoading(false)
   }
@@ -209,9 +202,7 @@ export default function CvCoachPage() {
     setTimeout(() => setCopied(false), 1800)
   }
 
-  if (loading) {
-    return <div className="coachPro-page"><main className="coachPro-shell"><div className="coachPro-skeleton" /></main></div>
-  }
+  if (loading) return <div className="coachPro-page"><main className="coachPro-shell"><div className="coachPro-skeleton" /></main></div>
 
   if (!analyses.length) {
     return (
@@ -219,9 +210,9 @@ export default function CvCoachPage() {
         <main className="coachPro-shell">
           <section className="coachPro-empty">
             <div>🎯</div>
-            <p className="coachPro-kicker">CV COACH</p>
-            <h1>{t('no_analyses') || 'No analyses yet'}</h1>
-            <p>{t('coach_empty') || 'Run an analysis first to get CV coaching and cover letter generation.'}</p>
+            <p className="coachPro-kicker">{t('cv_coach_kicker')}</p>
+            <h1>{t('no_analyses_yet')}</h1>
+            <p>{t('coach_empty_premium')}</p>
           </section>
         </main>
       </div>
@@ -231,11 +222,7 @@ export default function CvCoachPage() {
   const selectedScore = Number(selected?.score || 0)
   const selectedColor = scoreColor(selectedScore)
   const toneOptions = ['professional', 'warm', 'formal', 'enthusiastic']
-  const lengthOptions = [
-    ['short', '~80 words'],
-    ['standard', '~200 words'],
-    ['detailed', '~320 words']
-  ]
+  const lengthOptions = [['short', '~80 words'], ['standard', '~200 words'], ['detailed', '~320 words']]
 
   return (
     <div className="coachPro-page page-enter">
@@ -244,18 +231,18 @@ export default function CvCoachPage() {
       <main className="coachPro-shell">
         <section className="coachPro-hero">
           <div>
-            <p className="coachPro-kicker">CV COACH</p>
-            <h1>Turn analysis into action</h1>
-            <p>Transform ATS results into stronger CV bullets, sharper keywords, clearer achievements, and a tailored cover letter for each opportunity.</p>
+            <p className="coachPro-kicker">{t('cv_coach_kicker')}</p>
+            <h1>{t('turn_analysis_action')}</h1>
+            <p>{t('cv_coach_intro')}</p>
           </div>
           <aside className="coachPro-heroPanel">
             <div className="coachPro-orb" style={{ color: selectedColor }}>
               <strong>{selectedScore}</strong>
-              <span>selected score</span>
+              <span>{t('selected_score')}</span>
             </div>
             <div>
-              <p>Current coaching focus</p>
-              <h2>{jobTitle(selected)}</h2>
+              <p>{t('current_coaching_focus')}</p>
+              <h2>{jobTitle(selected, t)}</h2>
               {companyName(selected) && <span>@ {companyName(selected)}</span>}
             </div>
           </aside>
@@ -263,8 +250,8 @@ export default function CvCoachPage() {
 
         <section className="coachPro-selectorCard">
           <div>
-            <p className="coachPro-kicker">SELECT ANALYSIS</p>
-            <h2>{t('select_job') || 'Choose the job you want to improve for'}</h2>
+            <p className="coachPro-kicker">{t('select_analysis')}</p>
+            <h2>{t('choose_job_improve')}</h2>
           </div>
           <div className="coachPro-jobRail">
             {analyses.map(item => {
@@ -272,7 +259,7 @@ export default function CvCoachPage() {
               return (
                 <button key={item.id} type="button" className={`coachPro-jobPill ${selected?.id === item.id ? 'is-active' : ''}`} onClick={() => setSelected(item)}>
                   <span style={{ color: scoreColor(score) }}>{score}%</span>
-                  <strong>{jobTitle(item)}</strong>
+                  <strong>{jobTitle(item, t)}</strong>
                 </button>
               )
             })}
@@ -285,34 +272,34 @@ export default function CvCoachPage() {
             <article className="coachPro-card coachPro-letterCard">
               <header className="coachPro-cardHeader">
                 <div>
-                  <p className="coachPro-kicker">COVER LETTER</p>
-                  <h2>{t('cover_letter') || 'Cover letter'}</h2>
-                  <p>{t('cover_letter_desc') || 'AI-generated and tailored for this role.'}</p>
+                  <p className="coachPro-kicker">{t('cover_letter_label')}</p>
+                  <h2>{t('cover_letter')}</h2>
+                  <p>{t('cover_letter_ai_tailored')}</p>
                 </div>
-                {coverLetter && <button type="button" className="coachPro-copy" onClick={copyLetter}>{copied ? '✓ Copied' : '📋 Copy'}</button>}
+                {coverLetter && <button type="button" className="coachPro-copy" onClick={copyLetter}>{copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}</button>}
               </header>
 
               <div className="coachPro-letterBody">
                 {!coverLetter && !genLoading && (
                   <>
-                    <div className="coachPro-letterIntro"><span>✉️</span><p>{t('cover_letter_prompt') || 'Generate a professional cover letter tailored to this job based on your CV analysis.'}</p></div>
+                    <div className="coachPro-letterIntro"><span>✉️</span><p>{t('cover_letter_prompt')}</p></div>
                     <div className="coachPro-field">
-                      <div className="coachPro-fieldLabel"><span>{t('your_name') || 'Your name'}</span>{!editingName && fullName && <button type="button" onClick={() => { setEditingName(true); setTempName(fullName) }}>{t('edit') || 'Edit'}</button>}</div>
+                      <div className="coachPro-fieldLabel"><span>{t('your_name')}</span>{!editingName && fullName && <button type="button" onClick={() => { setEditingName(true); setTempName(fullName) }}>{t('edit')}</button>}</div>
                       {editingName ? (
-                        <div className="coachPro-inlineInput"><input value={tempName} onChange={e => setTempName(e.target.value)} placeholder={t('your_name_placeholder') || 'e.g. Roland Dzoagbe'} /><button type="button" disabled={!tempName.trim()} onClick={async () => { const saved = await saveFullName(tempName.trim()); if (saved?.success) setEditingName(false) }}>{t('save') || 'Save'}</button></div>
+                        <div className="coachPro-inlineInput"><input value={tempName} onChange={e => setTempName(e.target.value)} placeholder={t('your_name_placeholder')} /><button type="button" disabled={!tempName.trim()} onClick={async () => { const saved = await saveFullName(tempName.trim()); if (saved?.success) setEditingName(false) }}>{t('save')}</button></div>
                       ) : (
-                        <button type="button" className={`coachPro-nameBox ${fullName ? 'has-value' : ''}`} onClick={() => { setEditingName(true); setTempName(fullName || '') }}>{fullName || (t('your_name_hint') || 'Click to add your full name')}</button>
+                        <button type="button" className={`coachPro-nameBox ${fullName ? 'has-value' : ''}`} onClick={() => { setEditingName(true); setTempName(fullName || '') }}>{fullName || t('your_name_hint')}</button>
                       )}
                     </div>
-                    <div className="coachPro-field"><div className="coachPro-fieldLabel"><span>{t('recipient_label') || 'Recipient'} <em>· {t('optional') || 'optional'}</em></span></div><input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder={t('recipient_placeholder') || 'e.g. Marie Dupont'} /></div>
-                    <div className="coachPro-field"><p className="coachPro-smallTitle">{t('cover_letter_tone') || 'Tone'}</p><div className="coachPro-optionGrid coachPro-optionGrid--two">{toneOptions.map(option => <button key={option} type="button" className={tone === option ? 'is-active' : ''} onClick={() => setTone(option)}>{t(`tone_${option}`) || option}</button>)}</div></div>
-                    <div className="coachPro-field"><p className="coachPro-smallTitle">{t('cover_letter_length') || 'Length'}</p><div className="coachPro-optionGrid coachPro-optionGrid--three">{lengthOptions.map(([value, sub]) => <button key={value} type="button" className={length === value ? 'is-active' : ''} onClick={() => setLength(value)}><span>{t(`length_${value}`) || value}</span><em>{sub}</em></button>)}</div></div>
+                    <div className="coachPro-field"><div className="coachPro-fieldLabel"><span>{t('recipient_label')} <em>· {t('optional')}</em></span></div><input value={recipient} onChange={e => setRecipient(e.target.value)} placeholder={t('recipient_placeholder')} /></div>
+                    <div className="coachPro-field"><p className="coachPro-smallTitle">{t('cover_letter_tone')}</p><div className="coachPro-optionGrid coachPro-optionGrid--two">{toneOptions.map(option => <button key={option} type="button" className={tone === option ? 'is-active' : ''} onClick={() => setTone(option)}>{t(`tone_${option}`)}</button>)}</div></div>
+                    <div className="coachPro-field"><p className="coachPro-smallTitle">{t('cover_letter_length')}</p><div className="coachPro-optionGrid coachPro-optionGrid--three">{lengthOptions.map(([value, sub]) => <button key={value} type="button" className={length === value ? 'is-active' : ''} onClick={() => setLength(value)}><span>{t(`length_${value}`)}</span><em>{sub}</em></button>)}</div></div>
                     {genError && <p className="coachPro-error">⚠ {genError}</p>}
-                    <button type="button" className="coachPro-generateBtn" onClick={generateCoverLetter}>{t('generate_letter') || 'Generate cover letter'} →</button>
+                    <button type="button" className="coachPro-generateBtn" onClick={generateCoverLetter}>{t('generate_letter')} →</button>
                   </>
                 )}
-                {genLoading && <div className="coachPro-generating"><div /><p>{t('generating') || 'Writing your cover letter...'}</p></div>}
-                {coverLetter && <div className="coachPro-letterResult"><pre>{coverLetter}</pre><div><button type="button" onClick={copyLetter}>{copied ? '✓ Copied' : '📋 Copy'}</button><button type="button" onClick={generateCoverLetter}>↺ {t('regenerate') || 'Regenerate'}</button></div></div>}
+                {genLoading && <div className="coachPro-generating"><div /><p>{t('writing_cover_letter')}</p></div>}
+                {coverLetter && <div className="coachPro-letterResult"><pre>{coverLetter}</pre><div><button type="button" onClick={copyLetter}>{copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}</button><button type="button" onClick={generateCoverLetter}>↺ {t('regenerate')}</button></div></div>}
               </div>
             </article>
             <div className="coachPro-optimizeWrap"><OptimizeCvCard selected={selected} /></div>
