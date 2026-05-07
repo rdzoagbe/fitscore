@@ -18,7 +18,7 @@ export function useAnalyze() {
       const { data: sessionData } = await supabase.auth.getSession()
       const accessToken = sessionData?.session?.access_token
 
-      if (!accessToken) {
+      if (!accessToken || !user?.id) {
         throw new Error('Please sign in again before running an analysis.')
       }
 
@@ -40,7 +40,8 @@ export function useAnalyze() {
           jobText: jobText || null,
           cvBase64,
           cvMimeType: cvFile.type,
-          cvFileName: cvFile.name
+          cvFileName: cvFile.name,
+          userId: user.id
         }),
         signal: controller.signal
       })
