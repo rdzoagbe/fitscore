@@ -7,11 +7,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
+      includeAssets: ['icons/icon.svg'],
       manifest: {
-        name: 'FitScore — Know before you apply',
-        short_name: 'FitScore',
-        description: 'ATS CV analyzer — match your resume to any job offer before applying',
+        name: 'Joblytics — Career growth workspace',
+        short_name: 'Joblytics',
+        description: 'ATS CV analyzer and career growth workspace',
         theme_color: '#0f0f0f',
         background_color: '#0f0f0f',
         display: 'standalone',
@@ -19,9 +19,7 @@ export default defineConfig({
         scope: '/',
         start_url: '/',
         icons: [
-          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          { src: 'icons/icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
         ]
       }
     })
