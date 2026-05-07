@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Joblytics icon">
+  <defs>
+    <linearGradient id="g" x1="80" y1="60" x2="430" y2="460" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb076"/>
+      <stop offset="0.55" stop-color="#ff7f5f"/>
+      <stop offset="1" stop-color="#242733"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="#161821"/>
+  <rect x="46" y="46" width="420" height="420" rx="106" fill="url(#g)"/>
+  <path d="M307 131v193c0 23-7 41-22 55-14 14-34 21-58 21-22 0-41-6-56-19-15-12-23-30-25-53h63c2 7 5 12 9 15 4 4 10 6 17 6 8 0 14-2 18-7 4-5 6-11 6-20V131h48Z" fill="#ffffff"/>
+</svg>
