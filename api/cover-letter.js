@@ -1,6 +1,52 @@
+import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const COVER_LETTER_DAILY_LIMIT = Number(process.env.COVER_LETTER_DAILY_LIMIT || 20)
+
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Supabase server configuration is missing.')
+  return createClient(url, key, { auth: { persistSession: false } })
+}
+
+async function getAuthenticatedUser(req, supabase) {
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '').trim()
+  if (!token) return null
+  const { data, error } = await supabase.auth.getUser(token)
+  if (error || !data?.user?.id) return null
+  return data.user
+}
+
+async function checkAndRecordUsage(supabase, userId, endpoint) {
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { count, error: countError } = await supabase
+    .from('api_usage')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('endpoint', endpoint)
+    .gte('created_at', oneDayAgo)
+
+  if (countError) throw countError
+  const used = count || 0
+  if (used >= COVER_LETTER_DAILY_LIMIT) {
+    return {
+      allowed: false,
+      used,
+      limit: COVER_LETTER_DAILY_LIMIT,
+      message: `Daily cover letter limit reached (${COVER_LETTER_DAILY_LIMIT}/day). Please try again tomorrow.`
+    }
+  }
+
+  const { error: insertError } = await supabase
+    .from('api_usage')
+    .insert({ user_id: userId, endpoint })
+  if (insertError) throw insertError
+
+  return { allowed: true, used: used + 1, limit: COVER_LETTER_DAILY_LIMIT }
+}
 
 // Locale-aware salutations and sign-offs
 const SALUTATIONS = {
@@ -21,7 +67,6 @@ const SIGN_OFFS = {
 
 function pickSalutation(recipient, lang) {
   if (recipient && recipient.trim()) {
-    // Use the supplied recipient name
     const name = recipient.trim()
     if (lang === 'fr') return `Bonjour ${name},`
     if (lang === 'es') return `Estimado/a ${name},`
@@ -38,6 +83,15 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
+    const supabase = getSupabaseAdmin()
+    const user = await getAuthenticatedUser(req, supabase)
+    if (!user) return res.status(401).json({ error: 'Please sign in again before generating a cover letter.' })
+
+    const usage = await checkAndRecordUsage(supabase, user.id, 'cover-letter')
+    if (!usage.allowed) {
+      return res.status(429).json({ error: usage.message, rate_limited: true, usage })
+    }
+
     const { analysis, lang = 'en', tone = 'professional', length = 'standard', recipient = null, fullName = null } = req.body
     if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context' })
 
@@ -119,15 +173,12 @@ INSTRUCTIONS:
     })
 
     const body = message.content.map(b => b.text || '').join('').trim()
-
-    // Compose the full letter with salutation + body + sign-off + name
     const salutation = pickSalutation(recipient, lang)
     const signOff = (SIGN_OFFS[tone] || SIGN_OFFS.professional)[lang] || (SIGN_OFFS[tone] || SIGN_OFFS.professional).en
     const name = (fullName && fullName.trim()) ? fullName.trim() : ''
-
     const letter = `${salutation}\n\n${body}\n\n${signOff},\n${name}`.trim()
 
-    return res.status(200).json({ success: true, letter, salutation, signOff, body })
+    return res.status(200).json({ success: true, letter, salutation, signOff, body, usage })
   } catch (e) {
     console.error('Cover letter error:', e.message)
     return res.status(500).json({ error: e.message || 'Failed to generate cover letter' })
