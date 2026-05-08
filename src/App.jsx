@@ -24,6 +24,23 @@ import './pages/AnalyzerPage.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
+function GlobalFooter() {
+  return (
+    <div style={{ width: 'min(1500px, calc(100% - 56px))', margin: '0 auto', padding: '0 0 96px' }}>
+      <Footer compact />
+    </div>
+  )
+}
+
+function PageWithFooter({ children }) {
+  return (
+    <>
+      {children}
+      <GlobalFooter />
+    </>
+  )
+}
+
 function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const { t } = useLang()
   const [jobUrl, setJobUrl] = useState('')
@@ -268,8 +285,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             <ResultsView data={displayData} savedRow={viewingAnalysis ? viewingAnalysis : savedRow} rateLimit={rateLimit} onReset={handleReset} onGoCoach={() => setPage('coach')} />
           </div>
         )}
-
-        <Footer compact />
       </main>
       <PWAInstallPrompt />
     </div>
@@ -289,9 +304,9 @@ export default function App() {
   if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
 
   const path = window.location.pathname
-  if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
-  if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
-  if (path === '/contact' || path === '/support') return <ContactPage onBack={() => window.history.back()} />
+  if (path === '/privacy') return <PageWithFooter><PrivacyPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/terms') return <PageWithFooter><TermsPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
 
@@ -305,5 +320,5 @@ export default function App() {
     }
   }
 
-  return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}</>
+  return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}<GlobalFooter /></>
 }
