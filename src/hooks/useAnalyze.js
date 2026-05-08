@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { trackEvent } from '../utils/analytics'
 
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
@@ -9,6 +10,7 @@ export function useAnalyze() {
   // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
     setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
+    trackEvent('analysis_started', { source: jobText ? 'paste' : 'url', has_cv: !!cvFile })
 
     // Client-side timeout matches Vercel hobby cap (60s)
     const controller = new AbortController()
@@ -71,6 +73,13 @@ export function useAnalyze() {
         throw new Error('Invalid response from server. Please try again.')
       }
 
+      trackEvent('analysis_completed', {
+        score: data.analysis.display_score ?? null,
+        verdict: data.analysis.overall_verdict || null,
+        source: jobText ? 'paste' : 'url',
+        cached: !!data.cached
+      })
+
       setState({
         status: 'done',
         data: data.analysis,
@@ -83,6 +92,7 @@ export function useAnalyze() {
       const msg = e.name === 'AbortError'
         ? 'The analysis timed out. Try a shorter job description.'
         : (e.message || 'Analysis failed. Please try again.')
+      trackEvent('analysis_failed', { reason: msg.slice(0, 160) })
       setState({ status: 'error', data: null, error: msg, savedRow: null, rateLimit: null })
     }
   }
