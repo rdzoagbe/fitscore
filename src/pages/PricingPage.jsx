@@ -2,54 +2,43 @@ import React from 'react'
 import { useAuth } from '../context/AuthContext'
 import './PricingPage.css'
 
-const plans = [
+const pricingPlans = [
   {
     name: 'Free',
     price: '€0',
-    period: 'for job seekers',
-    badge: 'Live now',
-    description: 'Everything you need to test your CV against real job offers and improve your applications.',
+    period: 'current plan',
+    badge: 'Available now',
+    description: 'For job seekers who want to test Joblytics, improve their CV, and track applications without paying upfront.',
     cta: 'Start free',
     href: '/',
     highlighted: true,
     features: [
-      'ATS match analysis',
-      'Saved analysis history',
-      'Multiple CV versions',
+      'ATS job match checks',
       'CV Coach quick wins',
       'Cover letter generation',
-      'Application status tracking',
-      'Light and dark mode',
-      'EN / FR friendly workflow'
+      'Saved analysis history',
+      'Multiple CV workflow',
+      'Application status tracking'
     ]
   },
   {
     name: 'Pro',
-    price: 'Coming soon',
-    period: 'for heavy job search',
-    badge: 'Planned',
-    description: 'More analyses, deeper tracking, exports, reminders, and advanced career intelligence.',
-    cta: 'Join waitlist',
+    price: 'To be decided',
+    period: 'coming later',
+    badge: 'Not launched yet',
+    description: 'For active job seekers who need higher limits, reminders, exports, deeper salary insights, and a complete job-search cockpit.',
+    cta: 'Contact / waitlist',
     href: '/contact',
     highlighted: false,
     features: [
-      'Higher daily analysis limits',
+      'Higher analysis limits',
       'Advanced salary intelligence',
-      'Interview prep exports',
       'Follow-up reminders',
-      'Application notes and recruiter fields',
-      'Priority AI processing',
       'PDF report exports',
-      'Early access to new features'
+      'Application notes and recruiter fields',
+      'Priority processing when available'
     ]
   }
-]
-
-const faqs = [
-  ['Is Joblytics free?', 'Yes. The current version is free for individual job seekers while the product is in active development.'],
-  ['Do you sell CV data?', 'No. Joblytics is built for job seekers. Candidate data is not sold to recruiters, agencies, or employers.'],
-  ['Why are there usage limits?', 'AI analysis has real processing costs. Limits protect the service from abuse and keep the free version available.'],
-  ['Will Pro be required?', 'No. A useful free plan will remain. Pro will be for users who want higher limits and advanced workflow features.']
 ]
 
 export default function PricingPage({ onBack }) {
@@ -60,26 +49,27 @@ export default function PricingPage({ onBack }) {
       <main className="pricingPro-shell">
         <section className="pricingPro-hero">
           <div>
-            <p className="pricingPro-kicker">Pricing & limits</p>
-            <h1>Start free. Upgrade only when your job search gets serious.</h1>
+            <p className="pricingPro-kicker">Pricing</p>
+            <h1>Pricing is simple for now: start free.</h1>
             <p>
-              Joblytics is free for individual job seekers today. Pro features are planned for heavier job-search workflows,
-              exports, reminders, and advanced tracking.
+              Joblytics is currently free while the product is being refined. Pro pricing will be decided after real usage data,
+              user feedback, and AI cost validation.
             </p>
             <div className="pricingPro-actions">
               <button type="button" className="pricingPro-secondary" onClick={onBack || (() => window.history.back())}>← Back</button>
-              <a className="pricingPro-primary" href={user ? '/' : '/'}>{user ? 'Open app' : 'Get started'}</a>
+              <a className="pricingPro-primary" href={user ? '/' : '/'}>{user ? 'Open app' : 'Start free'}</a>
+              <a className="pricingPro-secondary" href="/limits">View limits</a>
             </div>
           </div>
           <aside className="pricingPro-panel">
-            <span>🛡️</span>
-            <h2>Built for job seekers first.</h2>
-            <p>No recruiter marketplace. No CV resale. No hidden candidate scoring.</p>
+            <span>💳</span>
+            <h2>No paid plan is active yet.</h2>
+            <p>Free access remains available. Pro will be introduced only when the value and limits are clear.</p>
           </aside>
         </section>
 
         <section className="pricingPro-plans">
-          {plans.map(plan => (
+          {pricingPlans.map(plan => (
             <article key={plan.name} className={`pricingPro-plan ${plan.highlighted ? 'is-highlighted' : ''}`}>
               <div className="pricingPro-planTop">
                 <div>
@@ -100,26 +90,32 @@ export default function PricingPage({ onBack }) {
 
         <section className="pricingPro-limits">
           <div>
-            <p className="pricingPro-kicker">Current fair-use limits</p>
-            <h2>Limits protect the service while keeping it useful.</h2>
+            <p className="pricingPro-kicker">Pricing decision</p>
+            <h2>We should decide pricing after testing demand.</h2>
           </div>
           <div className="pricingPro-limitGrid">
-            <div><strong>ATS analyses</strong><span>Daily/hourly limits apply to prevent abuse.</span></div>
-            <div><strong>Cover letters</strong><span>Default daily limit is active per authenticated user.</span></div>
-            <div><strong>CV library</strong><span>Multiple CVs are supported in the app workflow.</span></div>
+            <div><strong>Usage data</strong><span>Measure how often users run ATS checks and generate cover letters.</span></div>
+            <div><strong>AI costs</strong><span>Understand the real cost per active user before setting a paid price.</span></div>
+            <div><strong>User value</strong><span>Price Pro only around features users actually come back for.</span></div>
           </div>
         </section>
 
         <section className="pricingPro-faq">
           <p className="pricingPro-kicker">FAQ</p>
-          <h2>Questions before launch</h2>
+          <h2>Pricing questions</h2>
           <div>
-            {faqs.map(([q, a]) => (
-              <details key={q}>
-                <summary>{q}</summary>
-                <p>{a}</p>
-              </details>
-            ))}
+            <details open>
+              <summary>Is Joblytics paid today?</summary>
+              <p>No. The current product is free while the workflow is being validated.</p>
+            </details>
+            <details>
+              <summary>When will Pro launch?</summary>
+              <p>After enough real users have tested the product and the most valuable Pro features are clear.</p>
+            </details>
+            <details>
+              <summary>Will the free plan disappear?</summary>
+              <p>No. A useful free plan should remain so job seekers can always test the product.</p>
+            </details>
           </div>
         </section>
       </main>
