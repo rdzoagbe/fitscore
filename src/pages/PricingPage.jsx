@@ -6,37 +6,55 @@ const pricingPlans = [
   {
     name: 'Free',
     price: '€0',
-    period: 'current plan',
+    period: 'forever',
     badge: 'Available now',
-    description: 'For job seekers who want to test Joblytics, improve their CV, and track applications without paying upfront.',
+    description: 'For job seekers who want to try Joblytics, improve a few applications, and understand their CV match.',
     cta: 'Start free',
     href: '/',
-    highlighted: true,
+    highlighted: false,
     features: [
-      'ATS job match checks',
+      '5 ATS analyses / month',
+      '3 cover letters / month',
+      '2 stored CVs',
+      'Basic analysis history',
       'CV Coach quick wins',
-      'Cover letter generation',
-      'Saved analysis history',
-      'Multiple CV workflow',
       'Application status tracking'
     ]
   },
   {
-    name: 'Pro',
-    price: 'To be decided',
-    period: 'coming later',
-    badge: 'Not launched yet',
-    description: 'For active job seekers who need higher limits, reminders, exports, deeper salary insights, and a complete job-search cockpit.',
-    cta: 'Contact / waitlist',
+    name: 'Job Search Pass',
+    price: '€9.99',
+    period: '14 days, no auto-renewal',
+    badge: 'Recommended launch offer',
+    description: 'For an active two-week application sprint without committing to another monthly subscription.',
+    cta: 'Coming soon',
+    href: '/contact',
+    highlighted: true,
+    features: [
+      '100 ATS analyses for 14 days',
+      '30 cover letters for 14 days',
+      '10 stored CVs',
+      'CV Coach + interview prep',
+      'Application tracker',
+      'No auto-renewal trap'
+    ]
+  },
+  {
+    name: 'Pro Monthly',
+    price: '€14.99',
+    period: 'per month',
+    badge: 'Planned',
+    description: 'For serious job seekers who want a complete job-search cockpit with higher limits and exports.',
+    cta: 'Join waitlist',
     href: '/contact',
     highlighted: false,
     features: [
-      'Higher analysis limits',
+      '150 ATS analyses / month',
+      '60 cover letters / month',
+      '20 stored CVs',
       'Advanced salary intelligence',
       'Follow-up reminders',
-      'PDF report exports',
-      'Application notes and recruiter fields',
-      'Priority processing when available'
+      'PDF report exports'
     ]
   }
 ]
@@ -50,25 +68,25 @@ export default function PricingPage({ onBack }) {
         <section className="pricingPro-hero">
           <div>
             <p className="pricingPro-kicker">Pricing</p>
-            <h1>Pricing is simple for now: start free.</h1>
+            <h1>Simple pricing for focused job searches.</h1>
             <p>
-              Joblytics is currently free while the product is being refined. Pro pricing will be decided after real usage data,
-              user feedback, and AI cost validation.
+              Pricing is based on the AI actions that create the most value: ATS analyses, cover letters, CV coaching,
+              salary insights, and interview preparation. Billing is not active yet — these plans prepare the product for launch.
             </p>
             <div className="pricingPro-actions">
               <button type="button" className="pricingPro-secondary" onClick={onBack || (() => window.history.back())}>← Back</button>
               <a className="pricingPro-primary" href={user ? '/' : '/'}>{user ? 'Open app' : 'Start free'}</a>
-              <a className="pricingPro-secondary" href="/limits">View limits</a>
+              <a className="pricingPro-secondary" href="/limits">View usage limits</a>
             </div>
           </div>
           <aside className="pricingPro-panel">
             <span>💳</span>
-            <h2>No paid plan is active yet.</h2>
-            <p>Free access remains available. Pro will be introduced only when the value and limits are clear.</p>
+            <h2>Billing will be connected later.</h2>
+            <p>Once the billing account is ready, each paid CTA can be linked to its product or price ID.</p>
           </aside>
         </section>
 
-        <section className="pricingPro-plans">
+        <section className="pricingPro-plans pricingPro-plans--three">
           {pricingPlans.map(plan => (
             <article key={plan.name} className={`pricingPro-plan ${plan.highlighted ? 'is-highlighted' : ''}`}>
               <div className="pricingPro-planTop">
@@ -90,13 +108,13 @@ export default function PricingPage({ onBack }) {
 
         <section className="pricingPro-limits">
           <div>
-            <p className="pricingPro-kicker">Pricing decision</p>
-            <h2>We should decide pricing after testing demand.</h2>
+            <p className="pricingPro-kicker">Pricing logic</p>
+            <h2>What users pay for</h2>
           </div>
           <div className="pricingPro-limitGrid">
-            <div><strong>Usage data</strong><span>Measure how often users run ATS checks and generate cover letters.</span></div>
-            <div><strong>AI costs</strong><span>Understand the real cost per active user before setting a paid price.</span></div>
-            <div><strong>User value</strong><span>Price Pro only around features users actually come back for.</span></div>
+            <div><strong>AI volume</strong><span>More ATS analyses and cover letters cost more to process.</span></div>
+            <div><strong>Workflow depth</strong><span>Paid plans unlock reminders, exports, notes, and salary intelligence.</span></div>
+            <div><strong>Trust</strong><span>The 14-day pass avoids subscription anxiety and is easier to sell early.</span></div>
           </div>
         </section>
 
@@ -105,12 +123,12 @@ export default function PricingPage({ onBack }) {
           <h2>Pricing questions</h2>
           <div>
             <details open>
-              <summary>Is Joblytics paid today?</summary>
-              <p>No. The current product is free while the workflow is being validated.</p>
+              <summary>Is billing active today?</summary>
+              <p>No. These plans define the commercial structure before connecting the billing provider.</p>
             </details>
             <details>
-              <summary>When will Pro launch?</summary>
-              <p>After enough real users have tested the product and the most valuable Pro features are clear.</p>
+              <summary>Why offer a 14-day pass?</summary>
+              <p>Many job seekers need intensive help for a short period and may prefer a non-renewing pass over a monthly subscription.</p>
             </details>
             <details>
               <summary>Will the free plan disappear?</summary>
