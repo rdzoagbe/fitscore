@@ -119,7 +119,16 @@ function MoreSheet({ onClose, setPage }) {
         </div>
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <a href="/privacy" style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ padding: '0 0 8px', fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {t('billing') || 'Billing'}
+          </p>
+          <a href="/pricing" style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>💳 {t('pricing') || 'Pricing'}</span><span style={{ color: 'var(--text-hint)' }}>›</span>
+          </a>
+          <a href="/limits" style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
+            <span>🛡️ {t('limits') || 'Limits'}</span><span style={{ color: 'var(--text-hint)' }}>›</span>
+          </a>
+          <a href="/privacy" style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
             <span>🔒 {t('privacy') || 'Privacy'}</span><span style={{ color: 'var(--text-hint)' }}>›</span>
           </a>
           <a href="/terms" style={{ padding: '12px 0', fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)' }}>
