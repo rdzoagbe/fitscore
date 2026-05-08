@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import ScoreRing from './ScoreRing'
-import VerdictBadge from './VerdictBadge'
+import React, { useState, useEffect } from 'react'
 import JobContextCard from './JobContextCard'
-import MatchProbability from './MatchProbability'
 import FitScoreCard from './FitScoreCard'
 import NextStepsCard from './NextStepsCard'
 import SalaryInsightCard from './SalaryInsightCard'
@@ -15,28 +12,69 @@ import CvCoachPreview from './CvCoachPreview'
 import CvPreview from './CvPreview'
 import StatusPill from './StatusPill'
 import WaitlistBanner from './WaitlistBanner'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
+import { trackEvent } from '../utils/analytics'
+import './ResultsView.css'
 
-const Tag = ({ label, type }) => {
-  const styles = {
-    found:   { bg: 'rgba(76,175,125,0.12)',  color: '#4caf7d', border: 'rgba(76,175,125,0.2)' },
-    missing: { bg: 'rgba(255,107,107,0.1)',  color: '#ff7878', border: 'rgba(255,107,107,0.2)' },
-    nice:    { bg: 'rgba(245,166,35,0.1)',   color: '#f5a623', border: 'rgba(245,166,35,0.2)' },
-  }
-  const s = styles[type] || styles.found
-  return <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 20, background: s.bg, color: s.color, border: `1px solid ${s.border}`, display: 'inline-block', margin: '2px 2px 2px 0' }}>{label}</span>
+const verdictCopy = {
+  likely_passed: { label: 'Strong match', tone: 'good', icon: '✓' },
+  borderline: { label: 'Possible match', tone: 'mid', icon: '!' },
+  likely_filtered: { label: 'Needs work', tone: 'bad', icon: '×' }
 }
 
-const MiniCard = ({ title, children, accent }) => (
-  <div style={{ background: 'var(--bg-card)', border: `1px solid ${accent ? `${accent}30` : 'var(--border)'}`, borderRadius: 14, overflow: 'hidden' }}>
-    <div style={{ padding: '12px 14px 0' }}>
-      <span style={{ fontSize: 10, fontWeight: 700, color: accent || 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{title}</span>
+function scoreTone(score) {
+  if (score >= 70) return 'good'
+  if (score >= 50) return 'mid'
+  return 'bad'
+}
+
+function Tag({ label, type }) {
+  return <span className={`resultsPro-tag resultsPro-tag--${type || 'found'}`}>{label}</span>
+}
+
+function MetricCard({ label, value, sub, tone }) {
+  return (
+    <div className="resultsPro-metric">
+      <p>{label}</p>
+      <strong className={tone ? `is-${tone}` : ''}>{value}</strong>
+      {sub && <span>{sub}</span>}
     </div>
-    <div style={{ padding: '8px 14px 14px' }}>{children}</div>
-  </div>
-)
+  )
+}
+
+function ProgressLine({ label, value, tone }) {
+  const safe = Math.max(0, Math.min(100, Number(value) || 0))
+  return (
+    <div className="resultsPro-progressLine">
+      <div>
+        <span>{label}</span>
+        <strong className={`is-${tone}`}>{safe}%</strong>
+      </div>
+      <em><i className={`is-${tone}`} style={{ width: `${safe}%` }} /></em>
+    </div>
+  )
+}
+
+function InsightList({ title, items, empty, tone, icon }) {
+  return (
+    <section className={`resultsPro-insight resultsPro-insight--${tone || 'neutral'}`}>
+      <div className="resultsPro-insightHead">
+        <span>{icon}</span>
+        <h3>{title}</h3>
+      </div>
+      {items?.length ? (
+        <div className="resultsPro-list">
+          {items.map((item, index) => (
+            <p key={index}>{typeof item === 'string' ? item : item?.area ? `${item.area}: ${item.prep_tip || ''}` : JSON.stringify(item)}</p>
+          ))}
+        </div>
+      ) : (
+        <p className="resultsPro-emptyText">{empty}</p>
+      )}
+    </section>
+  )
+}
 
 export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit, onReset, onGoCoach }) {
   const { user } = useAuth()
@@ -44,184 +82,193 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
   const km = data.keyword_match || {}
   const req = data.requirements_check || {}
   const score = data.display_score ?? 0
+  const tone = scoreTone(score)
   const jobUrl = data.job_url || null
-  // No more client-side insert — server saves once with cache_key dedup
+  const verdict = verdictCopy[data.overall_verdict] || verdictCopy.borderline
+
   const [analysisRow, setAnalysisRow] = useState(() => {
-    // Use the server-saved row if provided, or use existing row when viewing history
     if (serverSavedRow) return serverSavedRow
     if (data.id) return data
     return null
   })
+
   const autoSaveStatus = analysisRow ? 'saved' : 'idle'
   const scoreDelta = useScoreDelta(analysisRow || data)
 
-  // Update analysisRow if serverSavedRow arrives later (e.g. fresh analysis)
+  useEffect(() => {
+    trackEvent('results_viewed', {
+      score,
+      verdict: data.overall_verdict || null,
+      has_salary: !!data.salary_intelligence,
+      has_interview_prep: !!data.interview_prep?.show_prep
+    })
+  }, [])
+
   useEffect(() => {
     if (serverSavedRow && (!analysisRow || analysisRow.id !== serverSavedRow.id)) {
       setAnalysisRow(serverSavedRow)
     }
   }, [serverSavedRow])
 
-  const handleStatusUpdate = (updated) => setAnalysisRow(updated)
+  const handleStatusUpdate = (updated) => {
+    setAnalysisRow(updated)
+    trackEvent('application_status_changed', { status: updated?.application_status || null })
+  }
+
+  const found = km.found || []
+  const missingRequired = km.missing_required || []
+  const missingNice = km.missing_nice || []
+  const criticalGaps = data.critical_gaps || []
+  const met = req.met || []
+  const unmet = req.unmet || []
 
   return (
-    <div style={{ animation: 'fadeUp 0.5s ease' }}>
-      {/* WAITLIST BANNER — shown when user nears their daily limit */}
+    <div className="resultsPro-page page-enter">
       <WaitlistBanner rateLimit={rateLimit} />
 
-      {/* CV PREVIEW — shown FIRST so users immediately see what was extracted */}
-      <CvPreview preview={data.cv_preview} truncated={data.cv_preview_truncated} />
+      <section className="resultsPro-hero">
+        <div className="resultsPro-heroMain">
+          <p className="resultsPro-kicker">{t('results') || 'Results'}</p>
+          <h1>{verdict.label}</h1>
+          <p>{data.overall_reason || data.match_reasoning || 'Here is how your CV compares to this role.'}</p>
 
-      <JobContextCard
-        context={data.job_context}
-        summary={data.job_summary}
-        jobUrl={jobUrl}
-        redFlags={data.red_flags}
-        salary={data.salary_assessment}
-      />
-
-      {/* Status row + Run another button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '0 4px', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {autoSaveStatus === 'saving' && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, border: '1.5px solid var(--border)', borderTop: '1.5px solid var(--text-muted)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              {t('auto_saving') || 'saving...'}
-            </span>
-          )}
-          {autoSaveStatus === 'saved' && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>✓ {t('saved_to_history') || 'Saved'}</span>
-          )}
-          {autoSaveStatus === 'saved' && analysisRow && (
-            <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
-          )}
+          <div className="resultsPro-actions">
+            <button className="resultsPro-primaryBtn" onClick={onGoCoach} disabled={!onGoCoach}>
+              🎤 {t('nav_coach') || 'Improve with CV Coach'}
+            </button>
+            <button className="resultsPro-secondaryBtn" onClick={onReset}>
+              ↻ {t('run_another') || 'Run another'}
+            </button>
+          </div>
         </div>
 
-        {/* Run another button — always visible so users can quickly start fresh */}
-        <button onClick={onReset} style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 20, padding: '6px 14px', cursor: 'pointer',
-          color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600,
-          fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
-          transition: 'all 0.15s', whiteSpace: 'nowrap'
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-        >
-          ↻ {t('run_another') || 'Run another'}
-        </button>
-      </div>
+        <aside className={`resultsPro-scorePanel is-${tone}`}>
+          <div className="resultsPro-scoreOrb">
+            <strong>{score}%</strong>
+            <span>{t('match_score') || 'Match score'}</span>
+          </div>
+          <div>
+            <p>{verdict.icon} {data.verdict || verdict.label}</p>
+            <h2>{data.job_context?.title || data.job_title || 'Job analysis'}</h2>
+            <span>{data.job_context?.company && data.job_context.company !== 'Not specified' ? data.job_context.company : 'Company not specified'}</span>
+          </div>
+        </aside>
+      </section>
 
-      {/* Unified Joblytics card */}
-      <FitScoreCard data={data} scoreDelta={scoreDelta} />
-
-      {/* NEXT STEPS — score-aware action card */}
-      <NextStepsCard
-        score={score}
-        onGoCoach={onGoCoach}
-        onReset={onReset}
-        jobUrl={jobUrl}
-        easyApply={data.job_context?.easy_apply}
-      />
-
-      {/* Salary intelligence — collapsible card with target/stretch ranges */}
-      <SalaryInsightCard data={data} />
-
-      <SeniorityCard seniority={data.seniority} />
-      <InterviewPrepCard prep={data.interview_prep} score={score} />
-
-      {/* 4 MINI CARDS */}
-      <div className="mini-cards" style={{ marginBottom: 10 }}>
-        <MiniCard title={t('score_breakdown')} accent="#7b8cff">
-          {[[t('keywords_60'), km.score??0, '#7b8cff'], [t('requirements_40'), req.score??0, '#4caf7d']].map(([label, val, color]) => (
-            <div key={label} style={{ marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color }}>{val}%</span>
-              </div>
-              <div style={{ height: 3, background: 'var(--border)', borderRadius: 2 }}>
-                <div style={{ height: '100%', width: `${val}%`, background: color, borderRadius: 2, transition: 'width 0.8s ease' }} />
-              </div>
-            </div>
-          ))}
-        </MiniCard>
-
-        <MiniCard title={`${t('gaps')}${data.critical_gaps?.length ? ` (${data.critical_gaps.length})` : ''}`} accent="#ff6b6b">
-          {data.critical_gaps?.length > 0 ? data.critical_gaps.map((g, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-              <span style={{ color: '#ff6b6b', flexShrink: 0, fontSize: 11 }}>✗</span>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{g}</p>
-            </div>
-          )) : <p style={{ fontSize: 11, color: '#4caf7d', marginTop: 4 }}>{t('no_critical_gaps')}</p>}
-        </MiniCard>
-
-        <MiniCard title={t('keywords')} accent="var(--accent)">
-          {km.found?.length > 0 && <div style={{ marginBottom: 8 }}>
-            <p style={{ fontSize: 10, color: '#4caf7d', marginBottom: 4, fontWeight: 600 }}>{t('found')}</p>
-            {km.found.slice(0,6).map(k => <Tag key={k} label={k} type="found" />)}
-          </div>}
-          {km.missing_required?.length > 0 && <div style={{ marginBottom: 6 }}>
-            <p style={{ fontSize: 10, color: '#ff7878', marginBottom: 4, fontWeight: 600 }}>{t('missing')}</p>
-            {km.missing_required.slice(0,5).map(k => <Tag key={k} label={k} type="missing" />)}
-          </div>}
-          {km.missing_nice?.length > 0 && <div>
-            <p style={{ fontSize: 10, color: '#f5a623', marginBottom: 4, fontWeight: 600 }}>{t('nice_to_have')}</p>
-            {km.missing_nice.slice(0,3).map(k => <Tag key={k} label={k} type="nice" />)}
-          </div>}
-        </MiniCard>
-
-        <MiniCard title={t('requirements')} accent="#f5a623">
-          {req.met?.length > 0 && <div style={{ marginBottom: 8 }}>
-            <p style={{ fontSize: 10, color: '#4caf7d', marginBottom: 4, fontWeight: 600 }}>{t('met')}</p>
-            {req.met.slice(0,3).map((r,i) => (
-              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                <span style={{ color: '#4caf7d', fontSize: 11, flexShrink: 0 }}>✓</span>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{r}</p>
-              </div>
-            ))}
-          </div>}
-          {req.unmet?.length > 0 && <div>
-            <p style={{ fontSize: 10, color: '#ff7878', marginBottom: 4, fontWeight: 600 }}>{t('unmet')}</p>
-            {req.unmet.slice(0,3).map((r,i) => (
-              <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                <span style={{ color: '#ff7878', fontSize: 11, flexShrink: 0 }}>✗</span>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{r}</p>
-              </div>
-            ))}
-          </div>}
-        </MiniCard>
-      </div>
-
-      {/* QUICK WINS — now with example sentences */}
-      <QuickWinsCard wins={data.quick_wins} />
-
-      {/* CV Coach inline preview */}
-      {onGoCoach && <CvCoachPreview data={data} onGoCoach={onGoCoach} />}
-
-      {/* Format warnings */}
-      {data.format_warnings?.filter(w => w?.length > 5).length > 0 && (
-        <div style={{ background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#f5a623', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{t('format_warnings')}</p>
-          {data.format_warnings.filter(w => w?.length > 5).map((w, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <span style={{ color: '#f5a623', flexShrink: 0 }}>⚠</span>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>{w}</p>
-            </div>
-          ))}
+      <div className="resultsPro-statusBar">
+        <div>
+          {autoSaveStatus === 'saved' && <span className="resultsPro-saveState">✓ {t('saved_to_history') || 'Saved to History'}</span>}
+          {autoSaveStatus === 'saved' && analysisRow && <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />}
         </div>
-      )}
+        <button onClick={onReset}>↻ {t('run_another') || 'Run another'}</button>
+      </div>
 
+      <section className="resultsPro-metrics">
+        <MetricCard label={t('keywords') || 'Keywords'} value={`${km.score ?? 0}%`} sub={t('keywords_60') || '60% of score'} tone={scoreTone(km.score ?? 0)} />
+        <MetricCard label={t('requirements') || 'Requirements'} value={`${req.score ?? 0}%`} sub={t('requirements_40') || '40% of score'} tone={scoreTone(req.score ?? 0)} />
+        <MetricCard label={t('match_probability') || 'Probability'} value={`${data.match_probability ?? score}%`} sub={data.seniority?.alignment_label || 'Fit estimate'} tone={scoreTone(data.match_probability ?? score)} />
+        <MetricCard label={t('gaps') || 'Gaps'} value={criticalGaps.length} sub={criticalGaps.length ? 'Needs attention' : 'No critical gap'} tone={criticalGaps.length ? 'bad' : 'good'} />
+      </section>
 
+      <section className="resultsPro-workspace">
+        <main className="resultsPro-mainColumn">
+          <div className="resultsPro-card resultsPro-card--score">
+            <div className="resultsPro-sectionHead">
+              <p className="resultsPro-kicker">{t('score_breakdown') || 'Score breakdown'}</p>
+              <h2>{t('ats_score_detail') || 'Why this score?'}</h2>
+            </div>
+            <div className="resultsPro-progressStack">
+              <ProgressLine label={t('keywords_60') || 'Keywords'} value={km.score ?? 0} tone={scoreTone(km.score ?? 0)} />
+              <ProgressLine label={t('requirements_40') || 'Requirements'} value={req.score ?? 0} tone={scoreTone(req.score ?? 0)} />
+            </div>
+            <FitScoreCard data={data} scoreDelta={scoreDelta} />
+          </div>
+
+          <div className="resultsPro-gridTwo">
+            <InsightList
+              title={t('critical_gaps') || 'Critical gaps'}
+              icon="⚠"
+              tone={criticalGaps.length ? 'danger' : 'success'}
+              items={criticalGaps}
+              empty={t('no_critical_gaps') || 'No critical gaps detected.'}
+            />
+            <InsightList
+              title={t('requirements') || 'Requirements'}
+              icon="📋"
+              tone="neutral"
+              items={[...met.slice(0, 3).map(x => `✓ ${x}`), ...unmet.slice(0, 3).map(x => `✗ ${x}`)]}
+              empty="No specific requirements were extracted."
+            />
+          </div>
+
+          <section className="resultsPro-card">
+            <div className="resultsPro-sectionHead">
+              <p className="resultsPro-kicker">{t('keywords') || 'Keywords'}</p>
+              <h2>{t('keyword_match') || 'Keyword match'}</h2>
+            </div>
+            <div className="resultsPro-keywordBlocks">
+              <div>
+                <h3>{t('found') || 'Found'}</h3>
+                <div>{found.length ? found.slice(0, 10).map(k => <Tag key={k} label={k} type="found" />) : <p className="resultsPro-emptyText">No strong keyword matches found.</p>}</div>
+              </div>
+              <div>
+                <h3>{t('missing') || 'Missing required'}</h3>
+                <div>{missingRequired.length ? missingRequired.slice(0, 8).map(k => <Tag key={k} label={k} type="missing" />) : <p className="resultsPro-emptyText">No required keyword gap detected.</p>}</div>
+              </div>
+              <div>
+                <h3>{t('nice_to_have') || 'Nice to have'}</h3>
+                <div>{missingNice.length ? missingNice.slice(0, 6).map(k => <Tag key={k} label={k} type="nice" />) : <p className="resultsPro-emptyText">No optional keyword gap detected.</p>}</div>
+              </div>
+            </div>
+          </section>
+
+          <QuickWinsCard wins={data.quick_wins} />
+          {onGoCoach && <CvCoachPreview data={data} onGoCoach={onGoCoach} />}
+
+          {data.format_warnings?.filter(w => w?.length > 5).length > 0 && (
+            <section className="resultsPro-card resultsPro-warningBox">
+              <p className="resultsPro-kicker">{t('format_warnings') || 'Format warnings'}</p>
+              {data.format_warnings.filter(w => w?.length > 5).map((warning, index) => (
+                <p key={index}>⚠ {warning}</p>
+              ))}
+            </section>
+          )}
+        </main>
+
+        <aside className="resultsPro-sideColumn">
+          <NextStepsCard
+            score={score}
+            onGoCoach={onGoCoach}
+            onReset={onReset}
+            jobUrl={jobUrl}
+            easyApply={data.job_context?.easy_apply}
+          />
+          <SalaryInsightCard data={data} />
+          <SeniorityCard seniority={data.seniority} />
+          <InterviewPrepCard prep={data.interview_prep} score={score} />
+        </aside>
+      </section>
+
+      <section className="resultsPro-contextGrid">
+        <div className="resultsPro-card">
+          <CvPreview preview={data.cv_preview} truncated={data.cv_preview_truncated} />
+        </div>
+        <div className="resultsPro-card">
+          <JobContextCard
+            context={data.job_context}
+            summary={data.job_summary}
+            jobUrl={jobUrl}
+            redFlags={data.red_flags}
+            salary={data.salary_assessment}
+          />
+        </div>
+      </section>
 
       <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
 
-      <div className="btn-row">
-        <button onClick={onReset} className="btn-primary" style={{ width: '100%' }}>↻ {t('run_another') || 'Run another'}</button>
-        {onGoCoach && (
-          <button onClick={onGoCoach} style={{ padding: '14px', borderRadius: 12, background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--border)', fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            🎤 {t('nav_coach') || 'CV Coach'}
-          </button>
-        )}
+      <div className="resultsPro-bottomActions">
+        <button onClick={onReset} className="resultsPro-primaryBtn">↻ {t('run_another') || 'Run another'}</button>
+        {onGoCoach && <button onClick={onGoCoach} className="resultsPro-secondaryBtn">🎤 {t('nav_coach') || 'CV Coach'}</button>}
       </div>
     </div>
   )
