@@ -10,12 +10,14 @@ const navItems = [
   { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' }
 ]
 
-function BillingDropdown() {
+function PlanDropdown() {
   const { t } = useLang()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const path = window.location.pathname
   const active = path === '/pricing' || path === '/limits'
+  const planLabel = t('plan') || 'Plan'
+  const usageLimitsLabel = t('usage_limits') || 'Usage limits'
 
   useEffect(() => {
     const close = e => {
@@ -34,20 +36,20 @@ function BillingDropdown() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span>💳</span>
-        {t('billing') || 'Billing'}
+        <span>📦</span>
+        {planLabel}
         <small>{open ? '▲' : '▼'}</small>
       </button>
 
       {open && (
         <div className="jobNav-billingMenu" role="menu">
-          <p>{t('billing') || 'Billing'}</p>
+          <p>{planLabel}</p>
           <a href="/pricing" className={path === '/pricing' ? 'is-active' : ''} role="menuitem">
             <span>💳 {t('pricing') || 'Pricing'}</span>
             <em>›</em>
           </a>
           <a href="/limits" className={path === '/limits' ? 'is-active' : ''} role="menuitem">
-            <span>🛡️ {t('limits') || 'Limits'}</span>
+            <span>🧮 {usageLimitsLabel}</span>
             <em>›</em>
           </a>
         </div>
@@ -97,7 +99,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               {t(item.labelKey) || item.fallback}
             </button>
           ))}
-          <BillingDropdown />
+          <PlanDropdown />
         </nav>
 
         <div className="jobNav-right">
@@ -125,10 +127,14 @@ export default function AppNav({ page, setPage, onLogoClick }) {
           </button>
         ))}
         <a className="jobNav-mobileItem" href="/pricing">
-          <span>💳</span>
-          <em>{t('billing') || 'Billing'}</em>
+          <span>📦</span>
+          <em>{planLabelSafe(t)}</em>
         </a>
       </nav>
     </>
   )
+}
+
+function planLabelSafe(t) {
+  return t('plan') || 'Plan'
 }
