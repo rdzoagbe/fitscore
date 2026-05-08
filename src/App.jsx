@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useLang } from './context/LangContext'
 import { useAnalyze } from './hooks/useAnalyze'
@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import CareerDashboardPage from './pages/CareerDashboardPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
+import ContactPage from './pages/ContactPage'
 import CvCoachPage from './pages/CvCoachPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
@@ -34,9 +35,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const [uploadTrigger, setUploadTrigger] = useState(0)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
-  const { user } = useAuth()
   const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
-  const { cvFile, clearCv } = useCvPersist()
+  const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -168,9 +168,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                         const color = h.score >= 70 ? '#4caf7d' : h.score >= 50 ? '#f5a623' : '#ff6b6b'
                         return (
                           <button key={i} onClick={() => { setJobUrl(h.job_url); setShowHistory(false) }}
-                            style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                            style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 32 }}>{h.score}%</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <p style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -190,16 +188,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
               {showTextPaste && (
                 <div style={{ animation: 'fadeUp 0.2s ease' }}>
-                  {status === 'error' && error && (error.toLowerCase().includes('blocked') || error.toLowerCase().includes('blocking') || error.toLowerCase().includes('paste')) && (
-                    <div style={{ marginBottom: 12, padding: '11px 14px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.3)', borderRadius: 12, animation: 'fadeUp 0.3s ease' }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#4caf7d', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        ✨ {t('auto_switched_title')}
-                      </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('auto_switched_desc')}
-                      </p>
-                    </div>
-                  )}
                   <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
                     {t('paste_job_label')}
                   </label>
@@ -265,48 +253,19 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               <p className="analyzePro-kicker">{t('how_it_works')}</p>
               <h3>{t('three_steps_application')}</h3>
               <div className="analyzePro-steps">
-                <div className="analyzePro-step">
-                  <span>1</span>
-                  <div>
-                    <strong>{t('add_the_job')}</strong>
-                    <small>{t('add_the_job_desc')}</small>
-                  </div>
-                </div>
-                <div className="analyzePro-step">
-                  <span>2</span>
-                  <div>
-                    <strong>{t('upload_your_cv')}</strong>
-                    <small>{t('upload_your_cv_desc')}</small>
-                  </div>
-                </div>
-                <div className="analyzePro-step">
-                  <span>3</span>
-                  <div>
-                    <strong>{t('improve_your_match')}</strong>
-                    <small>{t('improve_your_match_desc')}</small>
-                  </div>
-                </div>
+                <div className="analyzePro-step"><span>1</span><div><strong>{t('add_the_job')}</strong><small>{t('add_the_job_desc')}</small></div></div>
+                <div className="analyzePro-step"><span>2</span><div><strong>{t('upload_your_cv')}</strong><small>{t('upload_your_cv_desc')}</small></div></div>
+                <div className="analyzePro-step"><span>3</span><div><strong>{t('improve_your_match')}</strong><small>{t('improve_your_match_desc')}</small></div></div>
               </div>
             </div>
-
-            <div className="analyzePro-sideCard">
-              <p className="analyzePro-kicker">{t('pro_tip')}</p>
-              <h3>{t('paste_mode_reliable')}</h3>
-              <p>{t('paste_mode_reliable_desc')}</p>
-            </div>
+            <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('pro_tip')}</p><h3>{t('paste_mode_reliable')}</h3><p>{t('paste_mode_reliable_desc')}</p></div>
           </aside>
           </div>
         )}
 
         {displayStatus === 'done' && displayData && (
           <div ref={resultRef} className="page-enter">
-            <ResultsView
-              data={displayData}
-              savedRow={viewingAnalysis ? viewingAnalysis : savedRow}
-              rateLimit={rateLimit}
-              onReset={handleReset}
-              onGoCoach={() => setPage('coach')}
-            />
+            <ResultsView data={displayData} savedRow={viewingAnalysis ? viewingAnalysis : savedRow} rateLimit={rateLimit} onReset={handleReset} onGoCoach={() => setPage('coach')} />
           </div>
         )}
 
@@ -327,45 +286,24 @@ export default function App() {
     if (user && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
   }, [user])
 
-  if (loading) return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-    </div>
-  )
+  if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
 
   const path = window.location.pathname
   if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
   if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
+  if (path === '/contact' || path === '/support') return <ContactPage onBack={() => window.history.back()} />
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
 
   const renderPage = () => {
     switch(page) {
-      case 'dashboard':
-        return <CareerDashboardPage setPage={setPage} />
-      case 'analyzer':
-        return <AnalyzerPage
-          setPage={setPage}
-          prefillAnalysis={selectedAnalysis}
-          onClearPrefill={() => setSelectedAnalysis(null)}
-        />
-      case 'history':
-        return <Dashboard
-          onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }}
-          onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }}
-        />
-      case 'coach':
-        return <CvCoachPage />
-      default:
-        return <CareerDashboardPage setPage={setPage} />
+      case 'dashboard': return <CareerDashboardPage setPage={setPage} />
+      case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
+      case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
+      case 'coach': return <CvCoachPage />
+      default: return <CareerDashboardPage setPage={setPage} />
     }
   }
 
-  return (
-    <>
-      {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
-      <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
-      {renderPage()}
-    </>
-  )
+  return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}</>
 }
