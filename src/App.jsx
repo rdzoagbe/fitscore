@@ -308,6 +308,7 @@ export default function App() {
   if (path === '/privacy') return <PageWithFooter><PrivacyPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/terms') return <PageWithFooter><TermsPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/pricing' || path === '/limits') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
 
@@ -323,4 +324,5 @@ export default function App() {
 
   return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}<GlobalFooter /></>
 }
+
 
