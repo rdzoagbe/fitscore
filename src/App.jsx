@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+﻿import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useLang } from './context/LangContext'
 import { useAnalyze } from './hooks/useAnalyze'
@@ -10,6 +10,7 @@ import CareerDashboardPage from './pages/CareerDashboardPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import ContactPage from './pages/ContactPage'
+import PricingPage from './pages/PricingPage'
 import CvCoachPage from './pages/CvCoachPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
@@ -153,7 +154,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               {!showTextPaste && (
                 <>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)' }}>🔗</span>
+                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)' }}>ðŸ”—</span>
                     <input type="url" value={jobUrl} onChange={e => { setJobUrl(e.target.value); if (status === 'error') reset() }}
                       placeholder={t('job_url_placeholder')} disabled={status === 'loading'}
                       style={{ paddingLeft: 40, borderColor: isValidUrl(jobUrl) ? 'var(--accent)' : undefined }}
@@ -162,7 +163,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                   {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 5 }}>{t('job_url_invalid')}</p>}
                   {riskyDomain ? (
                     <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
+                      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>ðŸ’¡</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 12, color: '#f5a623', fontWeight: 600, marginBottom: 2 }}>
                           {t(`risky_${riskyDomain}_title`) || `${riskyDomain.charAt(0).toUpperCase() + riskyDomain.slice(1)} often blocks automated reading`}
@@ -171,7 +172,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                           {t('risky_hint_desc')}
                         </p>
                         <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ background: 'none', border: 'none', color: '#f5a623', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-                          {t('switch_to_paste') || 'Switch to paste mode →'}
+                          {t('switch_to_paste') || 'Switch to paste mode â†’'}
                         </button>
                       </div>
                     </div>
@@ -223,7 +224,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               <button onClick={() => { setShowTextPaste(s => !s); setUserToggledMode(true); reset() }} style={{ fontSize: 12, color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent)', cursor: 'pointer', padding: '6px 14px', whiteSpace: 'nowrap', fontWeight: 600, borderRadius: 20, fontFamily: 'inherit' }}>
-                {showTextPaste ? `↑ ${t('use_url')}` : (t('or_paste_text'))}
+                {showTextPaste ? `â†‘ ${t('use_url')}` : (t('or_paste_text'))}
               </button>
               <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
             </div>
@@ -242,7 +243,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
             {status === 'error' && !showTextPaste && (
               <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
-                <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
+                <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>âš  {error}</p>
                 <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
                   {t('try_paste_instead')}
                 </button>
@@ -322,3 +323,4 @@ export default function App() {
 
   return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}<GlobalFooter /></>
 }
+
