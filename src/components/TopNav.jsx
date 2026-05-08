@@ -13,6 +13,70 @@ function NavLink({ icon, label, active, onClick }) {
   )
 }
 
+function BillingNavDropdown() {
+  const { t } = useLang()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const path = window.location.pathname
+  const active = path === '/pricing' || path === '/limits'
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const linkStyle = {
+    minHeight: 44,
+    padding: '9px 12px',
+    borderRadius: 14,
+    color: 'var(--text-secondary)',
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
+    fontSize: 13,
+    fontWeight: 800
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button onClick={() => setOpen(o => !o)} className={`nav-pill ${active || open ? 'is-active' : ''}`}>
+        <span style={{ fontSize: 14 }}>💳</span>
+        <span>{t('billing') || 'Billing'}</span>
+        <span style={{ fontSize: 10, opacity: 0.8 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 10px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 260,
+          padding: 10,
+          borderRadius: 20,
+          border: '1px solid var(--border-soft)',
+          background: 'var(--bg-card)',
+          boxShadow: 'var(--shadow-lg)',
+          zIndex: 140
+        }}>
+          <p style={{ margin: '2px 8px 8px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 950, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            {t('billing') || 'Billing'}
+          </p>
+          <a href="/pricing" style={{ ...linkStyle, background: path === '/pricing' ? 'var(--accent-soft)' : 'transparent', color: path === '/pricing' ? 'var(--accent)' : 'var(--text-secondary)' }}>
+            <span>💳 {t('pricing') || 'Pricing'}</span><span style={{ color: 'var(--text-hint)' }}>›</span>
+          </a>
+          <a href="/limits" style={{ ...linkStyle, background: path === '/limits' ? 'var(--accent-soft)' : 'transparent', color: path === '/limits' ? 'var(--accent)' : 'var(--text-secondary)' }}>
+            <span>🛡️ {t('limits') || 'Limits'}</span><span style={{ color: 'var(--text-hint)' }}>›</span>
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Unified user menu — combines Settings + Account
 function UserMenu({ onClose }) {
   const { user, signOut } = useAuth()
@@ -60,6 +124,8 @@ function UserMenu({ onClose }) {
       </div>
 
       <div className="user-menu-links">
+        <a href="/pricing">💳 {t('pricing') || 'Pricing'}</a>
+        <a href="/limits">🛡️ {t('limits') || 'Limits'}</a>
         <a href="/privacy">🔒 {t('privacy') || 'Privacy'}</a>
         <a href="/terms">📋 {t('footer_terms') || 'Terms'}</a>
         {user && (
@@ -91,6 +157,7 @@ export default function TopNav({ page, setPage, onLogoClick }) {
         <NavLink icon="🔍" label={t('analyze') || 'Analyze'} active={page === 'analyzer'} onClick={() => { onLogoClick ? onLogoClick() : setPage('analyzer') }} />
         <NavLink icon="📊" label={t('history') || 'History'} active={page === 'history'} onClick={() => setPage('history')} />
         <NavLink icon="🎤" label={t('nav_coach') || 'CV Coach'} active={page === 'coach'} onClick={() => setPage('coach')} />
+        <BillingNavDropdown />
       </nav>
 
       <div className="nav-actions">
