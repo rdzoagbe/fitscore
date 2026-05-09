@@ -43,6 +43,27 @@ export function getPlanLimits(planId = DEFAULT_PLAN_ID) {
   return PLAN_LIMITS[normalizePlanId(planId)]
 }
 
+export function getAdminIdentifiers() {
+  const env = typeof import.meta !== 'undefined' ? import.meta.env : {}
+  const emails = (env?.VITE_ADMIN_EMAILS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean)
+  const ids = (env?.VITE_ADMIN_USER_IDS || '').split(',').map(v => v.trim()).filter(Boolean)
+  return { emails, ids }
+}
+
+export function isClientAdmin(user) {
+  if (!user) return false
+  const { emails, ids } = getAdminIdentifiers()
+  return Boolean(
+    (user.id && ids.includes(user.id)) ||
+    (user.email && emails.includes(user.email.toLowerCase()))
+  )
+}
+
+export function getEffectiveClientPlanId(user, profilePlanId = DEFAULT_PLAN_ID) {
+  if (isClientAdmin(user)) return 'admin'
+  return normalizePlanId(profilePlanId)
+}
+
 export function getMonthWindow(now = new Date()) {
   const start = new Date(now.getFullYear(), now.getMonth(), 1)
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
@@ -64,4 +85,9 @@ export function getUsagePercent(used = 0, limit = 0) {
 
 export function isLimitReached(used = 0, limit = 0) {
   return Boolean(limit && limit < 9999 && used >= limit)
+}
+
+export function getLimitWarning(label, used, limit) {
+  if (!isLimitReached(used, limit)) return null
+  return `You have reached your ${label} limit for your current plan.`
 }
