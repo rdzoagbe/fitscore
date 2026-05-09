@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
+import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -304,45 +305,27 @@ async function callAnthropicWithFallback({ system, jobText, cvText }) {
   throw error
 }
 
-// RATE LIMIT: max 15 analyses per user per hour, max 50 per day
-const WHITELIST = (process.env.RATE_LIMIT_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean)
-const HOURLY_LIMIT = 15
-const DAILY_LIMIT = 50
-const WHITELIST_DAILY = 500
+async function checkRateLimit(supabase, user) {
+  if (!supabase || !user?.id) return { allowed: true, used: 0, limit: 5, plan: { label: 'Free', id: 'free' } }
 
-async function checkRateLimit(supabase, userId) {
-  if (!supabase || !userId) return { allowed: true, dayCount: 0, dayLimit: DAILY_LIMIT }
+  const plan = await getUserPlan(supabase, user)
+  const monthStart = getMonthStartIso()
 
-  const isWhitelisted = WHITELIST.includes(userId)
-  const dayLimit = isWhitelisted ? WHITELIST_DAILY : DAILY_LIMIT
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
-  const { count: hourCount, error: hourError } = await supabase
+  const { count, error } = await supabase
     .from('analyses')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', oneHourAgo)
+    .eq('user_id', user.id)
+    .gte('created_at', monthStart)
 
-  if (hourError) throw hourError
+  if (error) throw error
 
-  if (!isWhitelisted && (hourCount ?? 0) >= HOURLY_LIMIT) {
-    return { allowed: false, reason: 'hourly', message: `Hourly limit reached (${HOURLY_LIMIT} analyses/hour). Please try again later.`, dayCount: 0, dayLimit }
+  const used = count ?? 0
+  const limit = plan.analysisLimit
+  if (!isUnlimited(plan) && used >= limit) {
+    return { allowed: false, used, limit, plan, payload: buildLimitPayload({ action: 'analysis', plan, used, limit }) }
   }
 
-  const { count: dayCount, error: dayError } = await supabase
-    .from('analyses')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', oneDayAgo)
-
-  if (dayError) throw dayError
-
-  if ((dayCount ?? 0) >= dayLimit) {
-    return { allowed: false, reason: 'daily', message: `Daily limit reached (${dayLimit} analyses/day). Please try again tomorrow.`, dayCount: dayCount ?? 0, dayLimit }
-  }
-
-  return { allowed: true, dayCount: dayCount ?? 0, dayLimit }
+  return { allowed: true, used, limit, plan }
 }
 
 export default async function handler(req, res) {
@@ -359,11 +342,16 @@ export default async function handler(req, res) {
 
     const supabaseClient = createClient(url, key, { auth: { persistSession: false } })
     const authUser = await requireAuthenticatedUser(req, supabaseClient)
-    const userId = authUser.id
 
-    const rl = await checkRateLimit(supabaseClient, userId)
-    const rateLimitInfo = { dayCount: rl.dayCount, dayLimit: rl.dayLimit }
-    if (!rl.allowed) return res.status(429).json({ error: rl.message, rate_limited: true, reason: rl.reason })
+    const rl = await checkRateLimit(supabaseClient, authUser)
+    const rateLimitInfo = {
+      planId: rl.plan.id,
+      planLabel: rl.plan.label,
+      analysisUsed: rl.used,
+      analysisLimit: rl.limit,
+      analysisRemaining: rl.limit >= 9999 ? Infinity : Math.max(0, rl.limit - rl.used)
+    }
+    if (!rl.allowed) return res.status(429).json({ ...rl.payload, rateLimit: rateLimitInfo })
 
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl),
@@ -378,7 +366,7 @@ export default async function handler(req, res) {
     const { data: cached, error: cacheError } = await supabaseClient
       .from('analyses')
       .select('result, created_at')
-      .eq('user_id', userId)
+      .eq('user_id', authUser.id)
       .eq('cache_key', cacheKey)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -405,7 +393,7 @@ export default async function handler(req, res) {
       const { data: existing } = await supabaseClient
         .from('analyses')
         .select('id, application_status, status_updated_at')
-        .eq('user_id', userId)
+        .eq('user_id', authUser.id)
         .eq('cache_key', cacheKey)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -422,7 +410,7 @@ export default async function handler(req, res) {
             cv_file_name: cvFileName || null
           })
           .eq('id', existing.id)
-          .eq('user_id', userId)
+          .eq('user_id', authUser.id)
           .select()
           .single()
         if (updateError) throw updateError
@@ -431,7 +419,7 @@ export default async function handler(req, res) {
         const { data: inserted, error: insertError } = await supabaseClient
           .from('analyses')
           .insert({
-            user_id: userId,
+            user_id: authUser.id,
             job_url: jobUrl || 'manual_paste',
             job_title: analysis.job_context?.title || null,
             score: analysis.display_score,
