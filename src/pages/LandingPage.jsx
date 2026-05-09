@@ -3,252 +3,171 @@ import { useLang } from '../context/LangContext'
 import LangSelector from '../components/LangSelector'
 import ThemeToggle from '../components/ThemeToggle'
 import AuthModal from '../components/AuthModal'
-import ContactModal from '../components/ContactModal'
 
-function FeatureCard({ icon, title, desc, accent }) {
+function Card({ children, style }) {
+  return <div style={{ background: 'linear-gradient(180deg,var(--pro-card-strong),var(--pro-card-soft)),var(--bg-card)', border: '1px solid var(--pro-border)', borderRadius: 28, boxShadow: 'var(--shadow-sm)', ...style }}>{children}</div>
+}
+
+function Feature({ icon, title, text }) {
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, padding: 'clamp(20px,4vw,28px)', transition: 'all 0.2s', height: '100%' }}>
-      <div style={{ width: 44, height: 44, borderRadius: 12, background: `${accent}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 14, border: `1px solid ${accent}30` }}>
-        {icon}
-      </div>
-      <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, letterSpacing: '-0.01em' }}>{title}</h3>
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{desc}</p>
+    <Card style={{ padding: 22 }}>
+      <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', borderRadius: 18, background: 'var(--accent-soft)', fontSize: 24, marginBottom: 16 }}>{icon}</div>
+      <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 19, letterSpacing: '-0.045em' }}>{title}</h3>
+      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.65 }}>{text}</p>
+    </Card>
+  )
+}
+
+function Step({ n, title, text }) {
+  return (
+    <div style={{ padding: 18, borderRadius: 22, background: 'var(--bg-input)', border: '1px solid var(--border-soft)' }}>
+      <span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 950, letterSpacing: '0.12em' }}>{n}</span>
+      <h3 style={{ margin: '10px 0 6px', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 18, letterSpacing: '-0.04em' }}>{title}</h3>
+      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>{text}</p>
     </div>
+  )
+}
+
+function MiniResult() {
+  return (
+    <Card style={{ padding: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <div style={{ width: 82, height: 82, borderRadius: 28, background: 'rgba(76,175,125,.12)', border: '1px solid rgba(76,175,125,.3)', display: 'grid', placeItems: 'center' }}>
+          <strong style={{ color: '#4caf7d', fontFamily: 'Syne, sans-serif', fontSize: 24 }}>84%</strong>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: '0 0 5px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Example result</p>
+          <h3 style={{ margin: 0, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 21, letterSpacing: '-.055em' }}>Strong ATS match</h3>
+          <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>Missing: ITIL, Power BI, vendor management</p>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {['Add one quantified service delivery achievement', 'Mirror 3 missing keywords naturally', 'Prepare for 5 interview questions'].map(item => (
+          <div key={item} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 16, background: 'var(--bg-input)', border: '1px solid var(--border-soft)', color: 'var(--text-secondary)', fontSize: 13 }}>
+            <span style={{ color: 'var(--success)', fontWeight: 900 }}>✓</span>{item}
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
 
 export default function LandingPage() {
   const { t } = useLang()
   const [authOpen, setAuthOpen] = useState(false)
-  const [contactOpen, setContactOpen] = useState(false)
   const [authMode, setAuthMode] = useState('signup')
-
-  const openAuth = (mode) => { setAuthMode(mode); setAuthOpen(true) }
+  const openAuth = mode => { setAuthMode(mode); setAuthOpen(true) }
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh' }}>
-
-      {/* Sticky header */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50, background: 'rgba(26,27,34,0.85)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border)',
-        padding: 'clamp(12px,2vw,16px) clamp(16px,5vw,48px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1200, margin: '0 auto'
-      }}>
-        <div>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(18px,4vw,22px)', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
-            Job<span style={{ color: 'var(--accent)' }}>lytics</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <LangSelector />
-          <ThemeToggle />
-          <button onClick={() => openAuth('signin')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 13, padding: '8px 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
-            {t('sign_in')}
-          </button>
-          <button onClick={() => openAuth('signup')} style={{ background: 'var(--accent)', color: '#1A1B22', border: 'none', borderRadius: 20, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
-            {t('get_started') || 'Get started'}
-          </button>
+    <div style={{ minHeight: '100dvh', color: 'var(--text-primary)', background: 'radial-gradient(circle at 18% 7%,rgba(96,165,250,.18),transparent 32%),radial-gradient(circle at 88% 13%,rgba(37,99,235,.12),transparent 30%),linear-gradient(180deg,var(--pro-bg-top) 0%,var(--pro-bg-mid) 48%,var(--pro-bg-bottom) 100%)' }}>
+      <header style={{ position: 'sticky', top: 0, zIndex: 50, borderBottom: '1px solid var(--border-soft)', background: 'var(--pro-nav)', backdropFilter: 'blur(18px)' }}>
+        <div style={{ width: 'min(1180px, calc(100% - 32px))', height: 72, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 11, color: 'var(--text-primary)', textDecoration: 'none' }}>
+            <span style={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 15, background: 'var(--accent)', color: 'var(--text-inverse)', fontFamily: 'Syne, sans-serif', fontWeight: 950, boxShadow: '0 10px 24px var(--accent-ring)' }}>J</span>
+            <span><strong style={{ display: 'block', fontFamily: 'Syne, sans-serif', letterSpacing: '-.04em' }}>Joblytics</strong><small style={{ color: 'var(--text-muted)' }}>Career workspace</small></span>
+          </a>
+          <nav style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <a href="/pricing" style={topLink}>Pricing</a>
+            <a href="/limits" style={topLink}>Limits</a>
+            <LangSelector />
+            <ThemeToggle />
+            <button onClick={() => openAuth('signin')} style={ghostBtn}>{t('sign_in') || 'Sign in'}</button>
+            <button onClick={() => openAuth('signup')} style={primaryBtn}>{t('get_started') || 'Get started'}</button>
+          </nav>
         </div>
       </header>
 
-      {/* HERO */}
-      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px) clamp(60px,10vw,100px)', maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ display: 'inline-block', padding: '5px 14px', borderRadius: 20, background: 'var(--accent-bg)', border: '1px solid var(--accent)', marginBottom: 24 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', letterSpacing: '0.05em' }}>
-            ✨ {t('landing_badge') || 'AI-powered ATS scoring + interview coach'}
+      <main>
+        <section style={{ width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', padding: 'clamp(48px,8vw,98px) 0 52px', display: 'grid', gridTemplateColumns: 'minmax(0,1.08fr) minmax(320px,.92fr)', gap: 24, alignItems: 'center' }}>
+          <div>
+            <p style={kicker}>AI ATS checker · CV coach · job tracker</p>
+            <h1 style={{ margin: '14px 0 0', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(54px,8vw,104px)', lineHeight: .88, letterSpacing: '-.09em' }}>Stop applying blind.</h1>
+            <p style={{ maxWidth: 680, margin: '24px 0 0', color: 'var(--text-secondary)', fontSize: 'clamp(16px,2.2vw,19px)', lineHeight: 1.75 }}>
+              Upload your CV, paste a job offer, and get a clear ATS match score with keyword gaps, quick CV fixes, cover letter help, salary intelligence, and interview preparation.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
+              <button onClick={() => openAuth('signup')} style={{ ...primaryBtn, minHeight: 52, padding: '0 22px' }}>Run a free ATS check →</button>
+              <a href="/pricing" style={{ ...ghostBtn, minHeight: 52, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>View pricing</a>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
+              {['Free start', 'EN / FR workflow', 'No CV resale', 'Paste mode for LinkedIn'].map(item => <span key={item} style={pill}>✓ {item}</span>)}
+            </div>
+          </div>
+          <MiniResult />
+        </section>
+
+        <section style={sectionStyle}>
+          <div style={sectionHeader}>
+            <p style={kicker}>How it works</p>
+            <h2 style={sectionTitle}>From job offer to better application in minutes.</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 14 }}>
+            <Step n="01" title="Upload your CV" text="Store multiple CV versions for different roles, languages, and seniority levels." />
+            <Step n="02" title="Paste the job" text="Use a URL or paste the description directly when job boards block automated reading." />
+            <Step n="03" title="Improve before applying" text="Fix missing keywords, strengthen achievements, generate a letter, and prepare interviews." />
+          </div>
+        </section>
+
+        <section style={sectionStyle}>
+          <div style={sectionHeader}>
+            <p style={kicker}>Product</p>
+            <h2 style={sectionTitle}>Everything a focused job search needs.</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 14 }}>
+            <Feature icon="🎯" title="ATS match score" text="See how your CV aligns with the role, including keyword and hard-requirement gaps." />
+            <Feature icon="🧠" title="CV Coach" text="Turn vague CV bullets into quantified, recruiter-friendly achievements." />
+            <Feature icon="✉️" title="Cover letters" text="Generate role-specific cover letters using the analysis and your strongest edges." />
+            <Feature icon="💶" title="Salary intelligence" text="Understand ranges, leverage points, and negotiation angles before interview." />
+            <Feature icon="📊" title="Application tracker" text="Save every analysis, track statuses, and compare roles over time." />
+            <Feature icon="🛡️" title="Privacy-first" text="Built for job seekers. No recruiter marketplace. No CV resale." />
+          </div>
+        </section>
+
+        <section style={sectionStyle}>
+          <Card style={{ padding: 'clamp(24px,5vw,44px)', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'center' }}>
+            <div>
+              <p style={kicker}>Pricing preview</p>
+              <h2 style={sectionTitle}>Start free. Upgrade only when your search gets serious.</h2>
+              <p style={{ margin: '14px 0 0', color: 'var(--text-secondary)', lineHeight: 1.7 }}>Free includes a useful monthly allowance. The future Job Search Pass is designed as a short, non-renewing sprint for active applications.</p>
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <a href="/pricing" style={wideLink}>Pricing plans →</a>
+              <a href="/limits" style={wideLink}>Usage limits →</a>
+            </div>
+          </Card>
+        </section>
+
+        <section style={{ ...sectionStyle, textAlign: 'center', paddingBottom: 100 }}>
+          <p style={kicker}>Ready</p>
+          <h2 style={{ ...sectionTitle, margin: '10px auto 0', maxWidth: 760 }}>Make every application sharper before you send it.</h2>
+          <p style={{ margin: '16px auto 26px', maxWidth: 650, color: 'var(--text-secondary)', lineHeight: 1.7 }}>Create your account, upload your CV, and run your first ATS check in less than one minute.</p>
+          <button onClick={() => openAuth('signup')} style={{ ...primaryBtn, minHeight: 52, padding: '0 24px' }}>Get started free</button>
+        </section>
+      </main>
+
+      <footer style={{ borderTop: '1px solid var(--border-soft)', padding: '32px 0 44px' }}>
+        <div style={{ width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: 12 }}>
+          <span>© {new Date().getFullYear()} Joblytics AI</span>
+          <span style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+            <a href="/privacy" style={footerLink}>Privacy</a>
+            <a href="/terms" style={footerLink}>Terms</a>
+            <a href="/contact" style={footerLink}>Contact</a>
           </span>
-        </div>
-
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(32px,7vw,56px)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 20 }}>
-          {t('landing_h1_part1') || 'Beat the algorithm.'}<br/>
-          <span style={{ color: 'var(--accent)' }}>{t('landing_h1_part2') || 'Get hired.'}</span>
-        </h1>
-
-        <p style={{ fontSize: 'clamp(15px,3vw,18px)', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 600, margin: '0 auto 32px' }}>
-          {t('landing_subtitle') || 'Stop guessing. Joblytics tells you exactly why your CV gets filtered, what to fix in 5 minutes, and how to win the interview if you apply.'}
-        </p>
-
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          <button onClick={() => openAuth('signup')} className="btn-primary" style={{ padding: '15px 28px', fontSize: 15 }}>
-            {t('landing_cta_primary') || 'Run a free analysis →'}
-          </button>
-          <button onClick={() => openAuth('signin')} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 12, padding: '15px 28px', fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
-            {t('sign_in')}
-          </button>
-        </div>
-
-        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          {t('landing_no_card') || 'No credit card · 30 free analyses per day'}
-        </p>
-
-        {/* Demo preview card */}
-        <div style={{ marginTop: 56, padding: 24, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 24, maxWidth: 720, margin: '56px auto 0', textAlign: 'left', boxShadow: '0 20px 60px var(--shadow)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', flexShrink: 0, border: '3px solid #4caf7d', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(76,175,125,0.1)' }}>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#4caf7d', fontFamily: 'Syne, sans-serif' }}>84%</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>{t('job_offer')}</p>
-              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: 2 }}>Senior Product Designer</p>
-              <p style={{ fontSize: 13, color: 'var(--accent)' }}>@ Notion Labs · Paris</p>
-            </div>
-          </div>
-          <div style={{ background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#4caf7d', display: 'flex', alignItems: 'center', gap: 8 }}>
-            ✓ <span>{t('landing_demo_verdict') || 'Likely to pass ATS — strong fit, missing 2 keywords'}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* FEATURES */}
-      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-            {t('landing_features_kicker') || 'How it works'}
-          </p>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(24px,5vw,36px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            {t('landing_features_h2') || 'Three signals real recruiters use'}
-          </h2>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,260px), 1fr))', gap: 16 }}>
-          <FeatureCard
-            icon="🎯" accent="#FF8E6B"
-            title={t('landing_feat1_title') || 'Real ATS simulation'}
-            desc={t('landing_feat1_desc') || 'We mimic Workday, Greenhouse, Taleo — the same systems Fortune 500 companies use to filter you out.'}
-          />
-          <FeatureCard
-            icon="📊" accent="#7b8cff"
-            title={t('landing_feat2_title') || 'Seniority alignment'}
-            desc={t('landing_feat2_desc') || 'Find out if you are at the right level, stretching, or overqualified — before you waste 2 hours on the application.'}
-          />
-          <FeatureCard
-            icon="🎤" accent="#4caf7d"
-            title={t('landing_feat3_title') || 'Interview prep'}
-            desc={t('landing_feat3_desc') || '5 specific questions tailored to your CV gaps, your edges to lean on, and salary negotiation tactics.'}
-          />
-        </div>
-      </section>
-
-      {/* HOW IT WORKS - 3 steps */}
-      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 24, padding: 'clamp(28px,5vw,48px)' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>
-            {t('landing_steps_kicker') || '60 seconds to clarity'}
-          </p>
-          <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(22px,4.5vw,32px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, textAlign: 'center', marginBottom: 36 }}>
-            {t('landing_steps_h2') || 'Three steps. No excuses.'}
-          </h2>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,200px), 1fr))', gap: 24 }}>
-            {[
-              { n: '01', t: t('landing_step1_title') || 'Upload your CV', d: t('landing_step1_desc') || 'PDF or Word. Stored on your device, encrypted.' },
-              { n: '02', t: t('landing_step2_title') || 'Paste a job URL', d: t('landing_step2_desc') || 'LinkedIn, Indeed, WTTJ, Glassdoor — works on all major boards.' },
-              { n: '03', t: t('landing_step3_title') || 'Get your full report', d: t('landing_step3_desc') || 'ATS score, gaps, quick wins, interview questions — in 30 seconds.' },
-            ].map((s) => (
-              <div key={s.n}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', marginBottom: 8 }}>{s.n}</div>
-                <h4 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{s.t}</h4>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{s.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WE'RE ON YOUR SIDE — explicit jobseeker positioning */}
-      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 24, padding: 'clamp(28px,5vw,48px)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'var(--accent-bg)', filter: 'blur(60px)', opacity: 0.5, pointerEvents: 'none' }} />
-          <div style={{ position: 'relative' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>
-              🤝 {t('for_jobseekers_kicker') || 'Who we build for'}
-            </p>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(22px,4.5vw,32px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16, maxWidth: 720 }}>
-              {t('for_jobseekers_title') || "We're on your side, not the recruiter's"}
-            </h2>
-            <p style={{ fontSize: 'clamp(14px,3vw,16px)', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 32, maxWidth: 720 }}>
-              {t('for_jobseekers_desc') || "Joblytics is independent. We don't sell candidate data, we don't work with recruiters, and we don't power any ATS. We're a tool built by a job seeker, for job seekers."}
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,220px), 1fr))', gap: 20 }}>
-              {[
-                { icon: '🔒', title: t('for_jobseekers_point1_title') || 'Privacy first', desc: t('for_jobseekers_point1_desc') || 'Your CV is stored locally on your device.' },
-                { icon: '🔍', title: t('for_jobseekers_point2_title') || 'Transparent scoring', desc: t('for_jobseekers_point2_desc') || 'See exactly what we read and why your score is what it is.' },
-                { icon: '🎁', title: t('for_jobseekers_point3_title') || 'Free for individuals', desc: t('for_jobseekers_point3_desc') || 'Always free for personal use. No upsells.' }
-              ].map((p, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: 26, marginBottom: 10 }}>{p.icon}</div>
-                  <h4 style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>{p.title}</h4>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{p.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 28, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10, lineHeight: 1.6, fontStyle: 'italic' }}>
-              ℹ️ {t('jobseekers_only_disclaimer') || 'Joblytics is for personal use by job seekers only. Use by recruiters, agencies, or HR is prohibited.'}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{ padding: 'clamp(40px,8vw,80px) clamp(20px,5vw,48px)', maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(24px,5vw,36px)', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16 }}>
-          {t('landing_cta_h2') || 'Stop applying blind.'}
-        </h2>
-        <p style={{ fontSize: 'clamp(14px,3vw,16px)', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 28 }}>
-          {t('landing_cta_desc') || 'Free forever for individual job seekers. No credit card. No spam. Just better applications.'}
-        </p>
-        <button onClick={() => openAuth('signup')} className="btn-primary" style={{ padding: '15px 32px', fontSize: 15 }}>
-          {t('landing_cta_primary') || 'Run a free analysis →'}
-        </button>
-      </section>
-
-      {/* FOOTER */}
-      <footer style={{ borderTop: '1px solid var(--border)', padding: 'clamp(32px,5vw,48px) clamp(20px,5vw,48px)', maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,160px), 1fr))', gap: 28, marginBottom: 32 }}>
-          <div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-              Job<span style={{ color: 'var(--accent)' }}>lytics</span>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              {t('footer_tagline') || 'Beat the algorithm. Get hired.'}
-            </p>
-          </div>
-
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>{t('footer_product') || 'Product'}</p>
-            <a onClick={() => openAuth('signup')} style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer', marginBottom: 8 }}>{t('get_started') || 'Get started'}</a>
-            <a onClick={() => openAuth('signin')} style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer' }}>{t('sign_in')}</a>
-          </div>
-
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>{t('footer_legal') || 'Legal'}</p>
-            <a href="/privacy" style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 8 }}>{t('privacy_policy')}</a>
-            <a href="/terms" style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 8 }}>{t('footer_terms') || 'Terms of service'}</a>
-            <a href="/cookies" style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>{t('footer_cookies') || 'Cookies'}</a>
-          </div>
-
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>{t('footer_contact') || 'Contact'}</p>
-            <button onClick={() => setContactOpen(true)} style={{ display: 'block', fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>{t('contact_us') || 'Get in touch'}</button>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{t('footer_made_in') || 'Made in France 🇫🇷'}</p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 24, borderTop: '1px solid var(--border)', flexWrap: 'wrap', gap: 12 }}>
-          <p style={{ fontSize: 11, color: 'var(--text-hint)' }}>
-            © {new Date().getFullYear()} Joblytics. {t('footer_rights') || 'All rights reserved.'}
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--text-hint)' }}>
-            {t('footer_rgpd_note') || 'RGPD-compliant · Data stored in EU'}
-          </p>
         </div>
       </footer>
 
       {authOpen && <AuthModal initialMode={authMode} onClose={() => setAuthOpen(false)} />}
-      {contactOpen && <ContactModal onClose={() => setContactOpen(false)} />}
     </div>
   )
 }
+
+const kicker = { margin: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 950, letterSpacing: '.13em', textTransform: 'uppercase' }
+const primaryBtn = { border: 0, borderRadius: 999, background: 'var(--accent)', color: 'var(--text-inverse)', padding: '0 18px', minHeight: 42, fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 900, cursor: 'pointer', boxShadow: '0 16px 34px var(--accent-ring)' }
+const ghostBtn = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--bg-card)', color: 'var(--text-primary)', padding: '0 15px', minHeight: 42, fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 850, cursor: 'pointer' }
+const topLink = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 800, padding: '10px 8px' }
+const pill = { display: 'inline-flex', minHeight: 30, alignItems: 'center', padding: '0 11px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border-soft)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800 }
+const sectionStyle = { width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', padding: '44px 0' }
+const sectionHeader = { marginBottom: 22 }
+const sectionTitle = { margin: '10px 0 0', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(32px,5vw,56px)', lineHeight: .98, letterSpacing: '-.075em' }
+const wideLink = { minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderRadius: 18, background: 'var(--bg-input)', border: '1px solid var(--border-soft)', color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 900 }
+const footerLink = { color: 'var(--text-muted)', textDecoration: 'none' }
