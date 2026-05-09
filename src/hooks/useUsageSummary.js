@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { getMonthWindow, getPlanLimits, getResetLabel } from '../utils/planLimits'
+import { getEffectiveClientPlanId, getMonthWindow, getPlanLimits, getResetLabel } from '../utils/planLimits'
 import { useCvPersist } from './useCvPersist'
 
 function iso(date) {
@@ -14,7 +14,7 @@ export function useUsageSummary() {
   const [loading, setLoading] = useState(true)
   const [analysisUsed, setAnalysisUsed] = useState(0)
   const [coverLetterUsed, setCoverLetterUsed] = useState(0)
-  const [planId, setPlanId] = useState('free')
+  const [profilePlanId, setProfilePlanId] = useState('free')
 
   useEffect(() => {
     if (!user?.id) {
@@ -52,11 +52,11 @@ export function useUsageSummary() {
 
         setAnalysisUsed(analysisResult.count || 0)
         setCoverLetterUsed(coverResult.count || 0)
-        setPlanId(profileResult.data?.plan || 'free')
+        setProfilePlanId(profileResult.data?.plan || 'free')
       } catch (error) {
         if (!cancelled) {
           console.warn('Usage summary failed:', error.message)
-          setPlanId('free')
+          setProfilePlanId('free')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -68,27 +68,31 @@ export function useUsageSummary() {
   }, [user?.id])
 
   return useMemo(() => {
+    const planId = getEffectiveClientPlanId(user, profilePlanId)
     const limits = getPlanLimits(planId)
+    const unlimited = limits.id === 'admin'
     return {
       loading,
       planId: limits.id,
       planLabel: limits.label,
+      isAdmin: limits.id === 'admin',
       resetLabel: getResetLabel(limits.id),
+      unlimited,
       analysis: {
         used: analysisUsed,
         limit: limits.analysisLimit,
-        remaining: Math.max(0, limits.analysisLimit - analysisUsed)
+        remaining: unlimited ? Infinity : Math.max(0, limits.analysisLimit - analysisUsed)
       },
       coverLetters: {
         used: coverLetterUsed,
         limit: limits.coverLetterLimit,
-        remaining: Math.max(0, limits.coverLetterLimit - coverLetterUsed)
+        remaining: unlimited ? Infinity : Math.max(0, limits.coverLetterLimit - coverLetterUsed)
       },
       cvs: {
         used: cvFiles.length,
         limit: limits.cvLimit,
-        remaining: Math.max(0, limits.cvLimit - cvFiles.length)
+        remaining: unlimited ? Infinity : Math.max(0, limits.cvLimit - cvFiles.length)
       }
     }
-  }, [loading, planId, analysisUsed, coverLetterUsed, cvFiles.length])
+  }, [loading, user, profilePlanId, analysisUsed, coverLetterUsed, cvFiles.length])
 }
