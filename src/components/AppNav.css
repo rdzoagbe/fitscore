@@ -205,7 +205,9 @@
   box-shadow: 0 8px 18px var(--accent-ring) !important;
 }
 
-.jobNav-mobile {
+.jobNav-mobile,
+.jobNav-mobileOverlay,
+.jobNav-planSheet {
   display: none;
 }
 
@@ -295,6 +297,7 @@
     cursor: pointer;
     transition: background .18s ease, color .18s ease, transform .18s ease;
     text-decoration: none;
+    font-family: inherit;
   }
 
   .jobNav-mobileItem:hover {
@@ -315,5 +318,104 @@
 
   .jobNav-mobileItem.is-active span {
     color: var(--accent);
+  }
+
+  .jobNav-mobileOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: block;
+    background: rgba(15, 23, 42, 0.44);
+    backdrop-filter: blur(4px);
+  }
+
+  .jobNav-planSheet {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 86px;
+    z-index: 90;
+    display: block;
+    padding: 18px;
+    border-radius: 28px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .jobNav-sheetHandle {
+    width: 42px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    margin: 0 auto 14px;
+  }
+
+  .jobNav-planSheet > p {
+    margin: 0;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .jobNav-planSheet h3 {
+    margin: 6px 0 14px;
+    color: var(--text-primary);
+    font-family: Syne, Inter, system-ui, sans-serif;
+    font-size: 24px;
+    letter-spacing: -0.055em;
+  }
+
+  .jobNav-planSheet a {
+    min-height: 68px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 18px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-soft);
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .jobNav-planSheet a > span {
+    font-size: 24px;
+  }
+
+  .jobNav-planSheet a strong {
+    display: block;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .jobNav-planSheet a small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.35;
+  }
+
+  .jobNav-planSheet a em {
+    color: var(--text-hint);
+    font-style: normal;
+    font-weight: 900;
+  }
+
+  .jobNav-planSheet button {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-weight: 850;
+    font-family: inherit;
   }
 }
