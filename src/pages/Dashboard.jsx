@@ -5,6 +5,8 @@ import { useLang } from '../context/LangContext'
 import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import StatusPill from '../components/StatusPill'
 import DeleteAllModal from '../components/DeleteAllModal'
+import ApplicationTrackerModal from '../components/ApplicationTrackerModal'
+import { trackEvent, analyticsEvents } from '../utils/analytics'
 import './HistoryPage.css'
 
 function scoreValue(analysis) {
@@ -42,12 +44,24 @@ function ProgressLine({ label, value, color }) {
   )
 }
 
+function TrackerMini({ tracker }) {
+  if (!tracker) return null
+  const items = []
+  if (tracker.stage) items.push(`Stage: ${tracker.stage}`)
+  if (tracker.recruiter_name) items.push(`Recruiter: ${tracker.recruiter_name}`)
+  if (tracker.follow_up_date) items.push(`Follow-up: ${tracker.follow_up_date}`)
+  if (tracker.next_action) items.push(`Next: ${tracker.next_action}`)
+  if (!items.length) return null
+  return <div className="trackerMini">{items.slice(0, 2).map(item => <span key={item}>{item}</span>)}</div>
+}
+
 export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
   const { user } = useAuth()
   const { t, lang } = useLang()
 
   const [analyses, setAnalyses] = useState([])
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
+  const [trackerOpenFor, setTrackerOpenFor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
   const [filter, setFilter] = useState('all')
@@ -87,6 +101,20 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     setDeleting(null)
   }
 
+  const openTracker = (analysis, event) => {
+    event.stopPropagation()
+    setTrackerOpenFor(analysis)
+    trackEvent(analyticsEvents.APPLICATION_DETAILS_OPENED, {
+      status: analysis.application_status || 'not_applied',
+      has_tracker: Boolean(analysis.result?.application_tracker)
+    })
+  }
+
+  const handleTrackerSaved = updated => {
+    setAnalyses(prev => prev.map(item => item.id === updated.id ? updated : item))
+    setTrackerOpenFor(updated)
+  }
+
   const localeMap = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-PT' }
   const formatDate = value => new Date(value).toLocaleDateString(localeMap[lang] || 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })
 
@@ -115,11 +143,14 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     const query = search.trim().toLowerCase()
     return analyses
       .filter(item => {
+        const tracker = item.result?.application_tracker || {}
         const matchFilter = filter === 'all' || item.result?.overall_verdict === filter
         const title = item.job_title || item.result?.job_context?.title || ''
         const company = item.result?.job_context?.company || ''
         const url = item.job_url || ''
-        const matchSearch = !query || title.toLowerCase().includes(query) || company.toLowerCase().includes(query) || url.toLowerCase().includes(query)
+        const recruiter = `${tracker.recruiter_name || ''} ${tracker.recruiter_email || ''}`
+        const notes = `${tracker.notes || ''} ${tracker.next_action || ''} ${tracker.stage || ''}`
+        const matchSearch = !query || [title, company, url, recruiter, notes].some(value => String(value).toLowerCase().includes(query))
         return matchFilter && matchSearch
       })
       .sort((a, b) => sortBy === 'priority' ? scoreValue(b) - scoreValue(a) : new Date(b.created_at) - new Date(a.created_at))
@@ -244,6 +275,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                 const title = analysis.job_title || analysis.result?.job_context?.title || (() => { try { return new URL(analysis.job_url).hostname.replace('www.', '') } catch { return t('job_analysis') } })()
                 const company = analysis.result?.job_context?.company
                 const location = analysis.result?.job_context?.location
+                const tracker = analysis.result?.application_tracker
 
                 return (
                   <article key={analysis.id} className="historyWide-item" onClick={() => onSelectAnalysis(analysis)}>
@@ -259,8 +291,10 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                       <em>{formatDate(analysis.created_at)}</em>
                       {location && location !== 'Not specified' && <em>📍 {location.split(',')[0]}</em>}
                     </div>
+                    <TrackerMini tracker={tracker} />
                     <div className="historyWide-status">
                       <StatusPill analysis={analysis} onUpdate={updated => setAnalyses(prev => prev.map(item => item.id === updated.id ? updated : item))} compact />
+                      <button type="button" className="trackerBtn" onClick={event => openTracker(analysis, event)}>Tracker</button>
                     </div>
                   </article>
                 )
@@ -270,6 +304,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
         </section>
       </main>
 
+      {trackerOpenFor && <ApplicationTrackerModal analysis={trackerOpenFor} onClose={() => setTrackerOpenFor(null)} onSaved={handleTrackerSaved} />}
       {deleteAllOpen && <DeleteAllModal count={analyses.length} onConfirm={handleDeleteAll} onClose={() => setDeleteAllOpen(false)} />}
     </div>
   )
