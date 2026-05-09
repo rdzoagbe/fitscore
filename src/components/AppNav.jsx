@@ -60,6 +60,7 @@ function PlanDropdown() {
 
 function MobilePlanSheet({ onClose }) {
   const { t } = useLang()
+  const path = window.location.pathname
   const planLabel = t('plan') || 'Plan'
   const usageLimitsLabel = t('usage_limits') || 'Usage limits'
 
@@ -70,7 +71,7 @@ function MobilePlanSheet({ onClose }) {
         <div className="jobNav-sheetHandle" />
         <p>{planLabel}</p>
         <h3>Pricing and usage</h3>
-        <a href="/pricing">
+        <a href="/pricing" className={path === '/pricing' ? 'is-active' : ''}>
           <span>💳</span>
           <div>
             <strong>{t('pricing') || 'Pricing'}</strong>
@@ -78,7 +79,7 @@ function MobilePlanSheet({ onClose }) {
           </div>
           <em>›</em>
         </a>
-        <a href="/limits">
+        <a href="/limits" className={path === '/limits' ? 'is-active' : ''}>
           <span>🧮</span>
           <div>
             <strong>{usageLimitsLabel}</strong>
@@ -96,6 +97,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
   const { t } = useLang()
   const [mobilePlanOpen, setMobilePlanOpen] = useState(false)
   const planLabel = t('plan') || 'Plan'
+  const planActive = window.location.pathname === '/pricing' || window.location.pathname === '/limits'
 
   const goTo = id => {
     if (id === 'dashboard') {
@@ -162,7 +164,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             <em>{t(item.labelKey) || item.fallback}</em>
           </button>
         ))}
-        <button className="jobNav-mobileItem" type="button" onClick={() => setMobilePlanOpen(true)}>
+        <button className={`jobNav-mobileItem ${planActive ? 'is-active' : ''}`} type="button" onClick={() => setMobilePlanOpen(true)}>
           <span>📦</span>
           <em>{planLabel}</em>
         </button>
