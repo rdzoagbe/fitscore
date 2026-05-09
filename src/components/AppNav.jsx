@@ -58,8 +58,44 @@ function PlanDropdown() {
   )
 }
 
+function MobilePlanSheet({ onClose }) {
+  const { t } = useLang()
+  const planLabel = t('plan') || 'Plan'
+  const usageLimitsLabel = t('usage_limits') || 'Usage limits'
+
+  return (
+    <>
+      <div className="jobNav-mobileOverlay" onClick={onClose} />
+      <section className="jobNav-planSheet" aria-label={planLabel}>
+        <div className="jobNav-sheetHandle" />
+        <p>{planLabel}</p>
+        <h3>Pricing and usage</h3>
+        <a href="/pricing">
+          <span>💳</span>
+          <div>
+            <strong>{t('pricing') || 'Pricing'}</strong>
+            <small>Plans, prices, and future paid options</small>
+          </div>
+          <em>›</em>
+        </a>
+        <a href="/limits">
+          <span>🧮</span>
+          <div>
+            <strong>{usageLimitsLabel}</strong>
+            <small>ATS checks, cover letters, CV quotas</small>
+          </div>
+          <em>›</em>
+        </a>
+        <button type="button" onClick={onClose}>Close</button>
+      </section>
+    </>
+  )
+}
+
 export default function AppNav({ page, setPage, onLogoClick }) {
   const { t } = useLang()
+  const [mobilePlanOpen, setMobilePlanOpen] = useState(false)
+  const planLabel = t('plan') || 'Plan'
 
   const goTo = id => {
     if (id === 'dashboard') {
@@ -126,15 +162,13 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             <em>{t(item.labelKey) || item.fallback}</em>
           </button>
         ))}
-        <a className="jobNav-mobileItem" href="/pricing">
+        <button className="jobNav-mobileItem" type="button" onClick={() => setMobilePlanOpen(true)}>
           <span>📦</span>
-          <em>{planLabelSafe(t)}</em>
-        </a>
+          <em>{planLabel}</em>
+        </button>
       </nav>
+
+      {mobilePlanOpen && <MobilePlanSheet onClose={() => setMobilePlanOpen(false)} />}
     </>
   )
-}
-
-function planLabelSafe(t) {
-  return t('plan') || 'Plan'
 }
