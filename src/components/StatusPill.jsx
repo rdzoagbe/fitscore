@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useLang } from '../context/LangContext'
+import { trackEvent, analyticsEvents } from '../utils/analytics'
 
 const STATUSES = [
-  { value: null, key: 'status_not_applied', icon: '○', color: 'var(--text-muted)', bg: 'var(--bg-input)' },
-  { value: 'applied', key: 'status_applied', icon: '📨', color: '#7b8cff', bg: 'rgba(123,140,255,0.12)' },
-  { value: 'interview', key: 'status_interview', icon: '💬', color: '#FF8E6B', bg: 'rgba(255,142,107,0.12)' },
-  { value: 'offer', key: 'status_offer', icon: '🎉', color: '#4caf7d', bg: 'rgba(76,175,125,0.12)' },
-  { value: 'rejected', key: 'status_rejected', icon: '✗', color: '#ff6b6b', bg: 'rgba(255,107,107,0.12)' },
-  { value: 'withdrawn', key: 'status_withdrawn', icon: '↩', color: '#8DA3BD', bg: 'rgba(141,163,189,0.12)' }
+  { value: null, key: 'status_not_applied', label: 'Not applied', icon: '○', color: 'var(--text-muted)', bg: 'var(--bg-input)' },
+  { value: 'applied', key: 'status_applied', label: 'Applied', icon: '📨', color: '#7b8cff', bg: 'rgba(123,140,255,0.12)' },
+  { value: 'interview', key: 'status_interview', label: 'Interview', icon: '💬', color: '#FF8E6B', bg: 'rgba(255,142,107,0.12)' },
+  { value: 'technical_test', key: 'status_technical_test', label: 'Technical test', icon: '🧪', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  { value: 'follow_up', key: 'status_follow_up', label: 'Follow-up', icon: '⏰', color: '#0ea5e9', bg: 'rgba(14,165,233,0.12)' },
+  { value: 'offer', key: 'status_offer', label: 'Offer', icon: '🎉', color: '#4caf7d', bg: 'rgba(76,175,125,0.12)' },
+  { value: 'rejected', key: 'status_rejected', label: 'Rejected', icon: '✗', color: '#ff6b6b', bg: 'rgba(255,107,107,0.12)' },
+  { value: 'withdrawn', key: 'status_withdrawn', label: 'Withdrawn', icon: '↩', color: '#8DA3BD', bg: 'rgba(141,163,189,0.12)' }
 ]
 
 export default function StatusPill({ analysis, onUpdate, compact = false }) {
@@ -28,12 +31,14 @@ export default function StatusPill({ analysis, onUpdate, compact = false }) {
   const setStatus = async (newStatus) => {
     setUpdating(true)
     setOpen(false)
+    const updatedAt = new Date().toISOString()
     try {
       const { error } = await supabase
         .from('analyses')
-        .update({ application_status: newStatus, status_updated_at: new Date().toISOString() })
+        .update({ application_status: newStatus, status_updated_at: updatedAt })
         .eq('id', analysis.id)
-      if (!error && onUpdate) onUpdate({ ...analysis, application_status: newStatus, status_updated_at: new Date().toISOString() })
+      if (!error && onUpdate) onUpdate({ ...analysis, application_status: newStatus, status_updated_at: updatedAt })
+      if (!error) trackEvent(analyticsEvents.APPLICATION_STATUS_CHANGED, { status: newStatus || 'not_applied' })
     } catch (e) {
       console.error('Status update error:', e.message)
     }
@@ -52,7 +57,7 @@ export default function StatusPill({ analysis, onUpdate, compact = false }) {
         fontFamily: 'inherit', transition: 'all 0.15s', whiteSpace: 'nowrap'
       }}>
         <span style={{ fontSize: compact ? 10 : 11 }}>{current.icon}</span>
-        <span>{t(current.key) || current.key.replace('status_', '').replace('_', ' ')}</span>
+        <span>{t(current.key) || current.label}</span>
         <span style={{ fontSize: 8, opacity: 0.6 }}>▾</span>
       </button>
 
@@ -61,7 +66,7 @@ export default function StatusPill({ analysis, onUpdate, compact = false }) {
           position: 'absolute', top: 'calc(100% + 4px)', right: 0,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
           borderRadius: 10, padding: 4, zIndex: 30,
-          minWidth: 160, boxShadow: '0 8px 24px var(--shadow)',
+          minWidth: 178, boxShadow: '0 8px 24px var(--shadow)',
           animation: 'fadeUp 0.15s ease'
         }}>
           {STATUSES.map(s => {
@@ -80,7 +85,7 @@ export default function StatusPill({ analysis, onUpdate, compact = false }) {
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
               >
                 <span style={{ fontSize: 13 }}>{s.icon}</span>
-                <span style={{ fontWeight: isActive ? 600 : 400 }}>{t(s.key) || s.key}</span>
+                <span style={{ fontWeight: isActive ? 600 : 400 }}>{t(s.key) || s.label}</span>
                 {isActive && <span style={{ marginLeft: 'auto', color: s.color }}>✓</span>}
               </button>
             )
