@@ -3,13 +3,40 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { trackEvent } from '../utils/analytics'
 
+function buildLimitError(data, fallback) {
+  const usage = data?.usage || data?.rateLimit
+  if (!data?.rate_limited && !usage) return { message: fallback, details: null }
+
+  const action = usage?.action || 'analysis'
+  const plan = usage?.planLabel || data?.rateLimit?.planLabel || 'current plan'
+  const used = usage?.used ?? data?.rateLimit?.analysisUsed
+  const limit = usage?.limit ?? data?.rateLimit?.analysisLimit
+
+  const message = action === 'cover letter'
+    ? `You’ve reached your ${plan} cover letter limit.`
+    : `You’ve reached your ${plan} ATS analysis limit.`
+
+  return {
+    message,
+    details: {
+      type: 'limit',
+      action,
+      plan,
+      used,
+      limit,
+      reason: data?.reason || 'limit_reached',
+      original: data?.error || fallback
+    }
+  }
+}
+
 export function useAnalyze() {
-  const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const [state, setState] = useState({ status: 'idle', data: null, error: null, errorDetails: null, savedRow: null, rateLimit: null })
   const { user } = useAuth()
 
   // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
-    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
+    setState({ status: 'loading', data: null, error: null, errorDetails: null, savedRow: null, rateLimit: null })
     trackEvent('analysis_started', { source: jobText ? 'paste' : 'url', has_cv: !!cvFile })
 
     // Client-side timeout matches Vercel hobby cap (60s)
@@ -58,13 +85,14 @@ export function useAnalyze() {
       }
 
       if (!res.ok) {
-        // Specific error for timeout
         if (res.status === 504 || res.status === 524) {
           throw new Error('The analysis took too long and timed out. This usually happens with very long job descriptions. Try a shorter version (just the key requirements section).')
         }
-        // Specific error for rate limit
         if (res.status === 429) {
-          throw new Error(data?.error || "You've reached your daily limit. Try again tomorrow or join the waitlist for unlimited access.")
+          const limitError = buildLimitError(data, data?.error || "You've reached your plan limit.")
+          const err = new Error(limitError.message)
+          err.details = limitError.details
+          throw err
         }
         throw new Error(data?.error || `Server error (${res.status}). Please try again in a moment.`)
       }
@@ -84,6 +112,7 @@ export function useAnalyze() {
         status: 'done',
         data: data.analysis,
         error: null,
+        errorDetails: null,
         savedRow: data.savedRow || null,
         rateLimit: data.rateLimit || null
       })
@@ -92,11 +121,11 @@ export function useAnalyze() {
       const msg = e.name === 'AbortError'
         ? 'The analysis timed out. Try a shorter job description.'
         : (e.message || 'Analysis failed. Please try again.')
-      trackEvent('analysis_failed', { reason: msg.slice(0, 160) })
-      setState({ status: 'error', data: null, error: msg, savedRow: null, rateLimit: null })
+      trackEvent('analysis_failed', { reason: msg.slice(0, 160), type: e.details?.type || 'generic' })
+      setState({ status: 'error', data: null, error: msg, errorDetails: e.details || null, savedRow: null, rateLimit: null })
     }
   }
 
-  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const reset = () => setState({ status: 'idle', data: null, error: null, errorDetails: null, savedRow: null, rateLimit: null })
   return { ...state, analyze, reset }
 }
