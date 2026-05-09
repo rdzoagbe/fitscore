@@ -7,19 +7,20 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon.svg'],
+      includeAssets: ['icons/icon.svg', 'og-image.svg', 'robots.txt', 'sitemap.xml'],
       manifest: {
-        name: 'Joblytics — Career growth workspace',
+        name: 'Joblytics AI — Career growth workspace',
         short_name: 'Joblytics',
-        description: 'ATS CV analyzer and career growth workspace',
-        theme_color: '#0f0f0f',
-        background_color: '#0f0f0f',
+        description: 'ATS CV checker, cover letter generator, job tracker, and interview preparation workspace for job seekers.',
+        theme_color: '#0f172a',
+        background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        categories: ['business', 'productivity', 'education'],
         icons: [
-          { src: 'icons/icon.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+          { src: '/icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
         ]
       }
     })
