@@ -44,16 +44,27 @@ async function dbDel(key) {
 }
 
 function toStoredCv(file, label) {
+  const inferredLang = inferLanguage(file.name)
   return file.arrayBuffer().then(buffer => ({
     id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     blob: new Blob([buffer], { type: file.type }),
     name: file.name,
-    label: label || inferLabel(file.name),
+    displayName: cleanDisplayName(file.name),
+    label: label || inferredLang || inferLabel(file.name),
+    languageTag: inferredLang || 'Auto',
+    roleTag: '',
+    isDefault: false,
     type: file.type,
     size: file.size,
     lastModified: file.lastModified || Date.now(),
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastUsedAt: null
   }))
+}
+
+function cleanDisplayName(name = '') {
+  return name.replace(/\.(pdf|doc|docx)$/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim() || name || 'CV'
 }
 
 function inferLabel(name = '') {
@@ -61,6 +72,32 @@ function inferLabel(name = '') {
   if (/(^|[_\-.\s])(fr|fra|french|francais|français)([_\-.\s]|$)/.test(lower)) return 'FR'
   if (/(^|[_\-.\s])(en|eng|english)([_\-.\s]|$)/.test(lower)) return 'EN'
   return 'CV'
+}
+
+function inferLanguage(name = '') {
+  const label = inferLabel(name)
+  return ['FR', 'EN'].includes(label) ? label : ''
+}
+
+function normalizeStoredCv(cv, selectedId) {
+  if (!cv) return cv
+  const languageTag = cv.languageTag || (['FR', 'EN'].includes(cv.label) ? cv.label : 'Auto')
+  return {
+    ...cv,
+    displayName: cv.displayName || cleanDisplayName(cv.name),
+    label: cv.label || languageTag || inferLabel(cv.name),
+    languageTag,
+    roleTag: cv.roleTag || '',
+    isDefault: Boolean(cv.isDefault || (selectedId && cv.id === selectedId)),
+    updatedAt: cv.updatedAt || cv.createdAt || cv.lastModified || Date.now(),
+    lastUsedAt: cv.lastUsedAt || null
+  }
+}
+
+function ensureOneDefault(list, selectedId = null) {
+  if (!list.length) return []
+  const defaultId = list.find(cv => cv.isDefault)?.id || selectedId || list[0].id
+  return list.map(cv => ({ ...cv, isDefault: cv.id === defaultId }))
 }
 
 function storedToFile(stored) {
@@ -78,13 +115,14 @@ export function useCvPersist() {
   const [loading, setLoading] = useState(true)
   const userId = user?.id
 
-  const selectedCv = useMemo(() => cvFiles.find(cv => cv.id === selectedCvId) || cvFiles[0] || null, [cvFiles, selectedCvId])
+  const selectedCv = useMemo(() => cvFiles.find(cv => cv.id === selectedCvId) || cvFiles.find(cv => cv.isDefault) || cvFiles[0] || null, [cvFiles, selectedCvId])
   const cvFile = useMemo(() => storedToFile(selectedCv), [selectedCv])
 
   const persistList = async (nextFiles, nextSelectedId) => {
     if (!userId) return
-    await dbSet(`cvs_${userId}`, nextFiles)
-    await dbSet(`selected_cv_${userId}`, nextSelectedId || nextFiles[0]?.id || null)
+    const normalized = ensureOneDefault(nextFiles.map(cv => normalizeStoredCv(cv, nextSelectedId)), nextSelectedId)
+    await dbSet(`cvs_${userId}`, normalized)
+    await dbSet(`selected_cv_${userId}`, nextSelectedId || normalized.find(cv => cv.isDefault)?.id || normalized[0]?.id || null)
   }
 
   useEffect(() => {
@@ -103,16 +141,25 @@ export function useCvPersist() {
               ...legacy,
               id: `legacy_${userId}`,
               label: inferLabel(legacy.name),
-              createdAt: legacy.lastModified || Date.now()
+              languageTag: inferLanguage(legacy.name) || 'Auto',
+              displayName: cleanDisplayName(legacy.name),
+              roleTag: '',
+              isDefault: true,
+              createdAt: legacy.lastModified || Date.now(),
+              updatedAt: Date.now(),
+              lastUsedAt: null
             }]
             selected = storedList[0].id
             await persistList(storedList, selected)
           }
         }
 
+        const normalized = ensureOneDefault((storedList || []).map(cv => normalizeStoredCv(cv, selected)), selected)
+        const defaultSelected = selected || normalized.find(cv => cv.isDefault)?.id || normalized[0]?.id || null
+
         if (!cancelled) {
-          setCvFiles(storedList || [])
-          setSelectedCvId(selected || storedList?.[0]?.id || null)
+          setCvFiles(normalized)
+          setSelectedCvId(defaultSelected)
         }
       } catch (e) {
         console.log('CV load error:', e.message)
@@ -126,24 +173,60 @@ export function useCvPersist() {
   const saveCv = async (file, label) => {
     if (!file) return
     const stored = await toStoredCv(file, label)
-    const nextFiles = [stored, ...cvFiles.filter(cv => cv.name !== file.name)]
-    setCvFiles(nextFiles)
+    const shouldBeDefault = cvFiles.length === 0
+    const nextFiles = [
+      { ...stored, isDefault: shouldBeDefault },
+      ...cvFiles.filter(cv => cv.name !== file.name)
+    ]
+    const normalized = ensureOneDefault(nextFiles, stored.id)
+    setCvFiles(normalized)
     setSelectedCvId(stored.id)
     if (userId) {
-      try { await persistList(nextFiles, stored.id) } catch (e) { console.log('CV save error:', e.message) }
+      try { await persistList(normalized, stored.id) } catch (e) { console.log('CV save error:', e.message) }
     }
   }
 
   const selectCv = async (id) => {
+    const nextFiles = cvFiles.map(cv => cv.id === id ? { ...cv, lastUsedAt: Date.now() } : cv)
+    setCvFiles(nextFiles)
     setSelectedCvId(id)
     if (userId) {
-      try { await dbSet(`selected_cv_${userId}`, id) } catch (e) { console.log('CV select error:', e.message) }
+      try {
+        await persistList(nextFiles, id)
+        await dbSet(`selected_cv_${userId}`, id)
+      } catch (e) { console.log('CV select error:', e.message) }
+    }
+  }
+
+  const setDefaultCv = async (id) => {
+    const nextFiles = cvFiles.map(cv => ({ ...cv, isDefault: cv.id === id, lastUsedAt: cv.id === id ? Date.now() : cv.lastUsedAt, updatedAt: cv.id === id ? Date.now() : cv.updatedAt }))
+    setCvFiles(nextFiles)
+    setSelectedCvId(id)
+    if (userId) {
+      try { await persistList(nextFiles, id) } catch (e) { console.log('CV default error:', e.message) }
+    }
+  }
+
+  const updateCvMetadata = async (id, patch = {}) => {
+    const cleanPatch = {
+      ...patch,
+      displayName: patch.displayName !== undefined ? String(patch.displayName).trim().slice(0, 80) : undefined,
+      languageTag: patch.languageTag !== undefined ? String(patch.languageTag).trim().slice(0, 12) : undefined,
+      roleTag: patch.roleTag !== undefined ? String(patch.roleTag).trim().slice(0, 60) : undefined,
+      updatedAt: Date.now()
+    }
+    Object.keys(cleanPatch).forEach(key => cleanPatch[key] === undefined && delete cleanPatch[key])
+    const nextFiles = cvFiles.map(cv => cv.id === id ? { ...cv, ...cleanPatch, label: cleanPatch.languageTag || cv.label } : cv)
+    setCvFiles(nextFiles)
+    if (userId) {
+      try { await persistList(nextFiles, selectedCvId) } catch (e) { console.log('CV metadata update error:', e.message) }
     }
   }
 
   const removeCv = async (id) => {
-    const nextFiles = cvFiles.filter(cv => cv.id !== id)
-    const nextSelected = selectedCvId === id ? nextFiles[0]?.id || null : selectedCvId
+    const nextRaw = cvFiles.filter(cv => cv.id !== id)
+    const nextSelected = selectedCvId === id ? nextRaw.find(cv => cv.isDefault)?.id || nextRaw[0]?.id || null : selectedCvId
+    const nextFiles = ensureOneDefault(nextRaw, nextSelected)
     setCvFiles(nextFiles)
     setSelectedCvId(nextSelected)
     if (userId) {
@@ -164,5 +247,5 @@ export function useCvPersist() {
     }
   }
 
-  return { cvFile, cvFiles, selectedCvId, loading, saveCv, selectCv, removeCv, clearCv }
+  return { cvFile, cvFiles, selectedCv, selectedCvId, loading, saveCv, selectCv, setDefaultCv, updateCvMetadata, removeCv, clearCv }
 }
