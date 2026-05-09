@@ -13,17 +13,32 @@ const STATUS_OPTIONS = [
   { value: 'withdrawn', label: 'Withdrawn' }
 ]
 
+const STAGE_OPTIONS = [
+  'Not applied',
+  'Applied',
+  'Recruiter screen',
+  'Interview',
+  'Technical test',
+  'Final interview',
+  'Offer',
+  'Rejected',
+  'Withdrawn'
+]
+
 function getInitialTracker(analysis) {
   const tracker = analysis?.result?.application_tracker || {}
   return {
-    application_date: tracker.application_date || '',
-    recruiter_name: tracker.recruiter_name || '',
-    recruiter_email: tracker.recruiter_email || '',
-    interview_date: tracker.interview_date || '',
-    follow_up_date: tracker.follow_up_date || '',
+    application_date: tracker.application_date || tracker.applicationDate || '',
+    recruiter_name: tracker.recruiter_name || tracker.recruiterName || '',
+    recruiter_email: tracker.recruiter_email || tracker.recruiterEmail || '',
+    interview_date: tracker.interview_date || tracker.interviewDate || '',
+    follow_up_date: tracker.follow_up_date || tracker.followUpDate || '',
     notes: tracker.notes || '',
     source: tracker.source || '',
-    next_action: tracker.next_action || ''
+    next_action: tracker.next_action || tracker.nextAction || '',
+    stage: tracker.stage || '',
+    salary_notes: tracker.salary_notes || tracker.salaryNotes || '',
+    contact_phone: tracker.contact_phone || tracker.contactPhone || ''
   }
 }
 
@@ -43,6 +58,12 @@ function normalizeDate(value, isDateTime = false) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
+function prettyDate(value) {
+  if (!value) return 'Not set'
+  try { return new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) }
+  catch { return value }
+}
+
 export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -57,6 +78,12 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
     try { return new URL(analysis?.job_url).hostname.replace('www.', '') } catch { return '' }
   }, [tracker.source, analysis?.job_url])
 
+  const summary = useMemo(() => ([
+    { label: 'Applied', value: prettyDate(tracker.application_date) },
+    { label: 'Interview', value: prettyDate(tracker.interview_date) },
+    { label: 'Follow-up', value: prettyDate(tracker.follow_up_date) }
+  ]), [tracker.application_date, tracker.interview_date, tracker.follow_up_date])
+
   const update = (field, value) => setTracker(prev => ({ ...prev, [field]: value }))
 
   const save = async () => {
@@ -67,11 +94,14 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
         application_date: normalizeDate(tracker.application_date),
         recruiter_name: tracker.recruiter_name.trim() || null,
         recruiter_email: tracker.recruiter_email.trim() || null,
+        contact_phone: tracker.contact_phone.trim() || null,
         interview_date: normalizeDate(tracker.interview_date, true),
         follow_up_date: normalizeDate(tracker.follow_up_date),
         notes: tracker.notes.trim() || null,
+        salary_notes: tracker.salary_notes.trim() || null,
         source: tracker.source.trim() || derivedSource || null,
         next_action: tracker.next_action.trim() || null,
+        stage: tracker.stage.trim() || null,
         updated_at: new Date().toISOString()
       }
 
@@ -96,9 +126,11 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
       if (saveError) throw saveError
       trackEvent(analyticsEvents.APPLICATION_TRACKER_UPDATED, {
         status: status || 'not_applied',
+        stage: nextTracker.stage || 'unset',
         has_recruiter: Boolean(nextTracker.recruiter_name || nextTracker.recruiter_email),
         has_follow_up: Boolean(nextTracker.follow_up_date),
-        has_interview: Boolean(nextTracker.interview_date)
+        has_interview: Boolean(nextTracker.interview_date),
+        has_salary_notes: Boolean(nextTracker.salary_notes)
       })
       onSaved?.(data)
       onClose?.()
@@ -117,6 +149,12 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
         <h2>{title}</h2>
         {company && company !== 'Not specified' && <p className="trackerModal-company">@ {company}</p>}
 
+        <div className="trackerModal-summary">
+          {summary.map(item => (
+            <div key={item.label}><span>{item.label}</span><strong>{item.value}</strong></div>
+          ))}
+        </div>
+
         <div className="trackerModal-grid">
           <label>
             <span>Status</span>
@@ -125,16 +163,15 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
             </select>
           </label>
           <label>
+            <span>Pipeline stage</span>
+            <select value={tracker.stage || ''} onChange={event => update('stage', event.target.value)}>
+              <option value="">Choose stage</option>
+              {STAGE_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label>
             <span>Application date</span>
             <input type="date" value={tracker.application_date || ''} onChange={event => update('application_date', event.target.value)} />
-          </label>
-          <label>
-            <span>Recruiter name</span>
-            <input value={tracker.recruiter_name || ''} onChange={event => update('recruiter_name', event.target.value)} placeholder="e.g. Marie Dupont" />
-          </label>
-          <label>
-            <span>Recruiter email</span>
-            <input type="email" value={tracker.recruiter_email || ''} onChange={event => update('recruiter_email', event.target.value)} placeholder="name@company.com" />
           </label>
           <label>
             <span>Interview date</span>
@@ -149,14 +186,31 @@ export default function ApplicationTrackerModal({ analysis, onClose, onSaved }) 
             <input value={tracker.source || derivedSource || ''} onChange={event => update('source', event.target.value)} placeholder="LinkedIn, Welcome to the Jungle…" />
           </label>
           <label>
+            <span>Recruiter name</span>
+            <input value={tracker.recruiter_name || ''} onChange={event => update('recruiter_name', event.target.value)} placeholder="e.g. Marie Dupont" />
+          </label>
+          <label>
+            <span>Recruiter email</span>
+            <input type="email" value={tracker.recruiter_email || ''} onChange={event => update('recruiter_email', event.target.value)} placeholder="name@company.com" />
+          </label>
+          <label>
+            <span>Recruiter phone</span>
+            <input value={tracker.contact_phone || ''} onChange={event => update('contact_phone', event.target.value)} placeholder="+33…" />
+          </label>
+          <label>
             <span>Next action</span>
             <input value={tracker.next_action || ''} onChange={event => update('next_action', event.target.value)} placeholder="Follow up, prepare interview…" />
           </label>
         </div>
 
         <label className="trackerModal-notes">
+          <span>Salary notes</span>
+          <textarea value={tracker.salary_notes || ''} onChange={event => update('salary_notes', event.target.value)} placeholder="Salary range, target, negotiation notes…" rows={3} />
+        </label>
+
+        <label className="trackerModal-notes">
           <span>Notes</span>
-          <textarea value={tracker.notes || ''} onChange={event => update('notes', event.target.value)} placeholder="Add recruiter context, interview feedback, salary notes, next steps…" rows={5} />
+          <textarea value={tracker.notes || ''} onChange={event => update('notes', event.target.value)} placeholder="Add recruiter context, interview feedback, next steps…" rows={5} />
         </label>
 
         {error && <p className="trackerModal-error">{error}</p>}
