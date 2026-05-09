@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
+import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const COVER_LETTER_DAILY_LIMIT = Number(process.env.COVER_LETTER_DAILY_LIMIT || 20)
 
 function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL
@@ -20,32 +19,50 @@ async function getAuthenticatedUser(req, supabase) {
   return data.user
 }
 
-async function checkAndRecordUsage(supabase, userId, endpoint) {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+async function checkAndRecordUsage(supabase, user, endpoint) {
+  const plan = await getUserPlan(supabase, user)
+  const monthStart = getMonthStartIso()
+
   const { count, error: countError } = await supabase
     .from('api_usage')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
+    .eq('user_id', user.id)
     .eq('endpoint', endpoint)
-    .gte('created_at', oneDayAgo)
+    .gte('created_at', monthStart)
 
   if (countError) throw countError
   const used = count || 0
-  if (used >= COVER_LETTER_DAILY_LIMIT) {
+  const limit = plan.coverLetterLimit
+
+  if (!isUnlimited(plan) && used >= limit) {
     return {
       allowed: false,
       used,
-      limit: COVER_LETTER_DAILY_LIMIT,
-      message: `Daily cover letter limit reached (${COVER_LETTER_DAILY_LIMIT}/day). Please try again tomorrow.`
+      limit,
+      plan,
+      payload: buildLimitPayload({ action: 'cover letter', plan, used, limit })
     }
   }
 
   const { error: insertError } = await supabase
     .from('api_usage')
-    .insert({ user_id: userId, endpoint })
+    .insert({ user_id: user.id, endpoint })
   if (insertError) throw insertError
 
-  return { allowed: true, used: used + 1, limit: COVER_LETTER_DAILY_LIMIT }
+  return {
+    allowed: true,
+    used: used + 1,
+    limit,
+    plan,
+    usage: {
+      action: 'cover letter',
+      planId: plan.id,
+      planLabel: plan.label,
+      used: used + 1,
+      limit,
+      remaining: isUnlimited(plan) ? 9999 : Math.max(0, limit - used - 1)
+    }
+  }
 }
 
 // Locale-aware salutations and sign-offs
@@ -87,9 +104,9 @@ export default async function handler(req, res) {
     const user = await getAuthenticatedUser(req, supabase)
     if (!user) return res.status(401).json({ error: 'Please sign in again before generating a cover letter.' })
 
-    const usage = await checkAndRecordUsage(supabase, user.id, 'cover-letter')
+    const usage = await checkAndRecordUsage(supabase, user, 'cover-letter')
     if (!usage.allowed) {
-      return res.status(429).json({ error: usage.message, rate_limited: true, usage })
+      return res.status(429).json({ ...usage.payload, rate_limited: true, usage: usage.payload.usage })
     }
 
     const { analysis, lang = 'en', tone = 'professional', length = 'standard', recipient = null, fullName = null } = req.body
@@ -166,7 +183,7 @@ INSTRUCTIONS:
 - Return ONLY the paragraphs separated by blank lines. No preamble, no headers, no signature.`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: process.env.ANTHROPIC_COVER_LETTER_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: lengthSpec.maxTokens,
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }]
@@ -178,7 +195,7 @@ INSTRUCTIONS:
     const name = (fullName && fullName.trim()) ? fullName.trim() : ''
     const letter = `${salutation}\n\n${body}\n\n${signOff},\n${name}`.trim()
 
-    return res.status(200).json({ success: true, letter, salutation, signOff, body, usage })
+    return res.status(200).json({ success: true, letter, salutation, signOff, body, usage: usage.usage })
   } catch (e) {
     console.error('Cover letter error:', e.message)
     return res.status(500).json({ error: e.message || 'Failed to generate cover letter' })
