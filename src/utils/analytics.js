@@ -5,16 +5,23 @@ export const analyticsEvents = {
   SIGN_UP_STARTED: 'sign_up_started',
   CV_UPLOADED: 'cv_uploaded',
   CV_SELECTED: 'cv_selected',
+  CV_METADATA_UPDATED: 'cv_metadata_updated',
+  CV_DEFAULT_SET: 'cv_default_set',
+  CV_DELETED: 'cv_deleted',
   ANALYSIS_STARTED: 'analysis_started',
   ANALYSIS_COMPLETED: 'analysis_completed',
   ANALYSIS_FAILED: 'analysis_failed',
   RESULT_VIEWED: 'result_viewed',
   COVER_LETTER_GENERATED: 'cover_letter_generated',
   APPLICATION_STATUS_CHANGED: 'application_status_changed',
+  APPLICATION_TRACKER_UPDATED: 'application_tracker_updated',
+  APPLICATION_DETAILS_OPENED: 'application_details_opened',
   LANGUAGE_CHANGED: 'language_changed',
   THEME_CHANGED: 'theme_changed',
   CONTACT_OPENED: 'contact_opened',
   PRICING_VIEWED: 'pricing_viewed',
+  LIMITS_VIEWED: 'limits_viewed',
+  PLAN_MENU_OPENED: 'plan_menu_opened',
   ONBOARDING_COMPLETED: 'onboarding_completed'
 }
 
@@ -44,7 +51,7 @@ export function trackEvent(name, payload = {}) {
 
     const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
     existing.push(event)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing.slice(-150)))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existing.slice(-250)))
 
     if (import.meta.env.DEV) console.log('[analytics]', event)
   } catch {
