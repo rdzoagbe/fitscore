@@ -1,0 +1,95 @@
+.limitReached-card {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  background: linear-gradient(160deg, var(--accent-soft), var(--pro-card-soft)), var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.limitReached-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.limitReached-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.limitReached-kicker {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.limitReached-content h3 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-family: Syne, Inter, system-ui, sans-serif;
+  font-size: 19px;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.limitReached-content p:not(.limitReached-kicker) {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.limitReached-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.limitReached-actions a,
+.limitReached-content button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-focus);
+  background: var(--bg-card);
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.limitReached-content button {
+  margin-top: 10px;
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 640px) {
+  .limitReached-card {
+    flex-direction: column;
+  }
+
+  .limitReached-actions a,
+  .limitReached-content button {
+    width: 100%;
+  }
+}
