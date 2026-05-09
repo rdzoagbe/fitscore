@@ -2,8 +2,10 @@ import React, { useRef, useState } from 'react'
 import { useLang } from '../context/LangContext'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { useUsageSummary } from '../hooks/useUsageSummary'
+import { trackEvent, analyticsEvents } from '../utils/analytics'
 
 const ACCEPTED = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/msword']
+const LANG_OPTIONS = ['Auto', 'EN', 'FR', 'ES', 'DE', 'IT', 'PT']
 
 function formatSize(size) {
   return size ? `${(size / 1024).toFixed(0)} KB` : ''
@@ -11,6 +13,11 @@ function formatSize(size) {
 
 function fileIcon(type) {
   return type === 'application/pdf' ? '📄' : '📝'
+}
+
+function formatDate(ts) {
+  if (!ts) return ''
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function LimitNotice({ usage }) {
@@ -29,13 +36,43 @@ function LimitNotice({ usage }) {
   )
 }
 
+function CvEditPanel({ file, onSave, onCancel }) {
+  const [displayName, setDisplayName] = useState(file.displayName || file.name || '')
+  const [languageTag, setLanguageTag] = useState(file.languageTag || file.label || 'Auto')
+  const [roleTag, setRoleTag] = useState(file.roleTag || '')
+
+  return (
+    <div style={editPanelStyle} onClick={event => event.stopPropagation()}>
+      <label style={editLabelStyle}>CV name</label>
+      <input value={displayName} onChange={event => setDisplayName(event.target.value)} placeholder="e.g. IT Manager CV" style={editInputStyle} />
+      <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 8, marginTop: 8 }}>
+        <div>
+          <label style={editLabelStyle}>Language</label>
+          <select value={languageTag} onChange={event => setLanguageTag(event.target.value)} style={editInputStyle}>
+            {LANG_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={editLabelStyle}>Role tag</label>
+          <input value={roleTag} onChange={event => setRoleTag(event.target.value)} placeholder="IT Manager, SDM…" style={editInputStyle} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+        <button type="button" onClick={onCancel} style={smallButtonStyle}>Cancel</button>
+        <button type="button" onClick={() => onSave({ displayName, languageTag, roleTag })} style={{ ...smallButtonStyle, background: 'var(--accent)', color: 'var(--text-inverse)', borderColor: 'transparent' }}>Save</button>
+      </div>
+    </div>
+  )
+}
+
 export default function CvPanel() {
   const { t } = useLang()
-  const { cvFile, cvFiles, selectedCvId, loading, saveCv, selectCv, removeCv } = useCvPersist()
+  const { cvFiles, selectedCvId, loading, saveCv, selectCv, setDefaultCv, updateCvMetadata, removeCv } = useCvPersist()
   const usage = useUsageSummary()
   const fileInputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [limitMessage, setLimitMessage] = useState('')
+  const [editingId, setEditingId] = useState(null)
 
   const cvLimitReached = usage?.cvs?.limit < 9999 && cvFiles.length >= usage.cvs.limit
 
@@ -48,7 +85,7 @@ export default function CvPanel() {
     fileInputRef.current?.click()
   }
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return
     if (cvLimitReached) {
       setLimitMessage(`Your ${usage.planLabel} plan allows ${usage.cvs.limit} stored CVs. Delete one CV or view upgrade options.`)
@@ -56,7 +93,8 @@ export default function CvPanel() {
     }
     if (!ACCEPTED.includes(file.type)) { alert(t('cv_pdf_word_only') || 'PDF or Word only'); return }
     if (file.size > 10 * 1024 * 1024) { alert(t('cv_max_10mb') || 'Max 10MB'); return }
-    saveCv(file)
+    await saveCv(file)
+    trackEvent(analyticsEvents.CV_UPLOADED, { type: file.type, size: file.size })
     setLimitMessage('')
   }
 
@@ -118,27 +156,43 @@ export default function CvPanel() {
         {cvFiles.map(file => {
           const active = file.id === selectedCvId
           return (
-            <div key={file.id} onClick={() => selectCv(file.id)} style={{
+            <div key={file.id} onClick={() => { selectCv(file.id); trackEvent(analyticsEvents.CV_SELECTED, { language: file.languageTag || file.label || 'unknown', role: file.roleTag || 'none' }) }} style={{
               background: active ? 'rgba(255,142,107,0.10)' : 'var(--bg-card)',
               border: `1px solid ${active ? 'rgba(255,142,107,0.45)' : 'transparent'}`,
               borderRadius: 12,
               padding: '10px 12px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: 10,
               cursor: 'pointer'
             }}>
-              <span style={{ fontSize: 22, flexShrink: 0 }}>{fileIcon(file.type)}</span>
+              <span style={{ fontSize: 22, flexShrink: 0, marginTop: 2 }}>{fileIcon(file.type)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: active ? 'var(--accent)' : 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>{file.label || 'CV'}</span>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: active ? 'var(--accent)' : 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>{file.languageTag || file.label || 'CV'}</span>
+                  {file.roleTag && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>{file.roleTag}</span>}
+                  {file.isDefault && <span style={{ fontSize: 10, fontWeight: 900, color: '#4caf7d', border: '1px solid rgba(76,175,125,0.3)', background: 'rgba(76,175,125,0.10)', borderRadius: 999, padding: '2px 7px', flexShrink: 0 }}>Default</span>}
                 </div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{formatSize(file.size)}{active ? ` · ${t('selected_cv') || 'Selected'}` : ''}</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 5 }}>{file.displayName || file.name}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{formatSize(file.size)}{active ? ` · ${t('selected_cv') || 'Selected'}` : ''}{file.lastUsedAt ? ` · Last used ${formatDate(file.lastUsedAt)}` : ''}</p>
+
+                {editingId === file.id && (
+                  <CvEditPanel
+                    file={file}
+                    onCancel={() => setEditingId(null)}
+                    onSave={patch => {
+                      updateCvMetadata(file.id, patch)
+                      trackEvent(analyticsEvents.CV_METADATA_UPDATED, { language: patch.languageTag, role: patch.roleTag ? 'set' : 'empty' })
+                      setEditingId(null)
+                    }}
+                  />
+                )}
               </div>
-              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={event => event.stopPropagation()}>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }} onClick={event => event.stopPropagation()}>
                 <button onClick={() => openPreview(file)} title={t('preview_cv') || 'Preview'} style={iconBtnStyle}>👁</button>
-                <button onClick={() => { setLimitMessage(''); removeCv(file.id) }} title={t('clear_cv') || 'Remove'} style={{ ...iconBtnStyle, color: '#ff6b6b' }}>🗑</button>
+                <button onClick={() => setEditingId(editingId === file.id ? null : file.id)} title="Edit CV details" style={iconBtnStyle}>✎</button>
+                <button onClick={() => { setDefaultCv(file.id); trackEvent(analyticsEvents.CV_DEFAULT_SET, { language: file.languageTag || file.label || 'unknown' }) }} title="Set as default CV" style={{ ...iconBtnStyle, color: file.isDefault ? '#4caf7d' : 'var(--text-secondary)' }}>★</button>
+                <button onClick={() => { setLimitMessage(''); removeCv(file.id); trackEvent(analyticsEvents.CV_DELETED, {}) }} title={t('clear_cv') || 'Remove'} style={{ ...iconBtnStyle, color: '#ff6b6b' }}>🗑</button>
               </div>
             </div>
           )
@@ -196,4 +250,34 @@ const noticeLinkStyle = {
   textDecoration: 'none',
   fontSize: 11,
   fontWeight: 800
+}
+
+const editPanelStyle = {
+  marginTop: 10,
+  padding: 10,
+  borderRadius: 12,
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-soft)'
+}
+
+const editLabelStyle = {
+  display: 'block',
+  marginBottom: 4,
+  color: 'var(--text-muted)',
+  fontSize: 9,
+  fontWeight: 900,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase'
+}
+
+const editInputStyle = {
+  width: '100%',
+  minHeight: 34,
+  padding: '7px 9px',
+  borderRadius: 9,
+  border: '1px solid var(--border)',
+  background: 'var(--bg-card)',
+  color: 'var(--text-primary)',
+  fontSize: 12,
+  fontFamily: 'inherit'
 }
