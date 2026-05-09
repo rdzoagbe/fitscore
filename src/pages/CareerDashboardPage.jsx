@@ -3,8 +3,11 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
+import { useUsageSummary } from '../hooks/useUsageSummary'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import { getLocalizedChallenge } from '../i18n/premiumTranslations'
+import UsageLimitCard from '../components/UsageLimitCard'
+import '../components/UsageLimitCard.css'
 import './CareerDashboardPage.css'
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -52,6 +55,7 @@ export default function CareerDashboardPage({ setPage }) {
   const daily = useDailyChallenge()
   const challenge = getLocalizedChallenge(daily.challenge, lang)
   const metrics = useProgressMetrics(daily.progress)
+  const usage = useUsageSummary()
   const [openChallenge, setOpenChallenge] = useState(true)
 
   const name = getUserDisplayName(user)
@@ -215,6 +219,8 @@ export default function CareerDashboardPage({ setPage }) {
           </div>
 
           <aside className="careerDash-side">
+            <UsageLimitCard usage={usage} />
+
             <article className="careerDash-card careerDash-sideCard">
               <p className="careerDash-kicker">{t('weekly_goal')}</p>
               <div className="careerDash-weeklyTop">
