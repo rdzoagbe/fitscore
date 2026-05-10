@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
+import { aiErrorPayload, runWithAiRetry } from './_aiReliability.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -19,7 +20,7 @@ async function getAuthenticatedUser(req, supabase) {
   return data.user
 }
 
-async function checkAndRecordUsage(supabase, user, endpoint) {
+async function getUsageGate(supabase, user, endpoint) {
   const plan = await getUserPlan(supabase, user)
   const monthStart = getMonthStartIso()
 
@@ -44,28 +45,22 @@ async function checkAndRecordUsage(supabase, user, endpoint) {
     }
   }
 
-  const { error: insertError } = await supabase
-    .from('api_usage')
-    .insert({ user_id: user.id, endpoint })
-  if (insertError) throw insertError
+  return { allowed: true, used, limit, plan }
+}
 
+async function recordUsage(supabase, user, endpoint, gate) {
+  const { error } = await supabase.from('api_usage').insert({ user_id: user.id, endpoint })
+  if (error) throw error
   return {
-    allowed: true,
-    used: used + 1,
-    limit,
-    plan,
-    usage: {
-      action: 'cover letter',
-      planId: plan.id,
-      planLabel: plan.label,
-      used: used + 1,
-      limit,
-      remaining: isUnlimited(plan) ? 9999 : Math.max(0, limit - used - 1)
-    }
+    action: 'cover letter',
+    planId: gate.plan.id,
+    planLabel: gate.plan.label,
+    used: gate.used + 1,
+    limit: gate.limit,
+    remaining: isUnlimited(gate.plan) ? 9999 : Math.max(0, gate.limit - gate.used - 1)
   }
 }
 
-// Locale-aware salutations and sign-offs
 const SALUTATIONS = {
   en: 'Dear Hiring Manager,',
   fr: 'Madame, Monsieur,',
@@ -78,7 +73,7 @@ const SALUTATIONS = {
 const SIGN_OFFS = {
   professional: { en: 'Best regards', fr: 'Cordialement', es: 'Atentamente', de: 'Mit freundlichen Grüßen', it: 'Cordiali saluti', pt: 'Com os melhores cumprimentos' },
   warm: { en: 'Looking forward to connecting', fr: 'Au plaisir de vous lire', es: 'Un cordial saludo', de: 'Herzliche Grüße', it: 'A presto', pt: 'Aguardo o vosso contacto' },
-  formal: { en: 'Yours sincerely', fr: 'Veuillez agréer mes salutations distinguées', es: 'Reciba un cordial saludo', de: 'Hochachtungsvoll', it: 'Distinti saluti', pt: 'Os meus cumprimentos' },
+  formal: { en: 'Yours sincerely', fr: 'Veuillez agréer mes salutations distinguées', es: 'Reciba un cordial saludo', de: 'Hochachtungsvoll', it: 'Distinti saluti', pt: 'Os meus cumpriments' },
   enthusiastic: { en: 'Looking forward to hearing from you', fr: 'Dans l\'attente de vous rencontrer', es: 'Quedo a la espera de su respuesta', de: 'Ich freue mich auf Ihre Rückmeldung', it: 'Resto in attesa di un Suo riscontro', pt: 'Fico ansioso pelo vosso contacto' }
 }
 
@@ -95,109 +90,114 @@ function pickSalutation(recipient, lang) {
   return SALUTATIONS[lang] || SALUTATIONS.en
 }
 
+function getLengthSpec(length) {
+  return {
+    short: {
+      instruction: 'VERY SHORT — 1 tight paragraph, 70-90 words total. Get straight to the point: who you are + top match + interest. No fluff.',
+      structure: 'exactly 1 paragraph (4-6 sentences max)',
+      wordCap: 90,
+      maxTokens: 400
+    },
+    standard: {
+      instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
+      structure: 'exactly 3 short paragraphs:\n  - Paragraph 1: express genuine interest in the role, mention your top relevant qualification\n  - Paragraph 2: 2-3 specific achievements matching the role requirements\n  - Paragraph 3: forward-looking close, express interest in next steps',
+      wordCap: 220,
+      maxTokens: 800
+    },
+    detailed: {
+      instruction: 'DETAILED — 4 paragraphs, 280-340 words total. More depth, more specific examples, more elaboration on motivation.',
+      structure: 'exactly 4 paragraphs:\n  - Paragraph 1: opening, interest in the role, why this company specifically if inferable\n  - Paragraph 2: 2 strongest achievements aligned with the role\n  - Paragraph 3: relevant skills and contribution\n  - Paragraph 4: forward-looking close',
+      wordCap: 340,
+      maxTokens: 1200
+    }
+  }[length] || {
+    instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
+    structure: 'exactly 3 short paragraphs',
+    wordCap: 220,
+    maxTokens: 800
+  }
+}
+
+function getLangInstruction(lang) {
+  return {
+    en: 'Write the letter body in English.',
+    fr: 'Rédige le corps de la lettre en français.',
+    es: 'Escribe el cuerpo de la carta en español.',
+    de: 'Schreibe den Brieftext auf Deutsch.',
+    it: 'Scrivi il corpo della lettera in italiano.',
+    pt: 'Escreve o corpo da carta em português.'
+  }[lang] || 'Write the letter body in English.'
+}
+
+function getToneInstruction(tone) {
+  return {
+    professional: 'Confident and professional but not stiff.',
+    warm: 'Warm and personable while still professional.',
+    formal: 'Highly formal and respectful (suitable for traditional industries).',
+    enthusiastic: 'Enthusiastic and energetic, conveying passion for the role.'
+  }[tone] || 'Confident and professional but not stiff.'
+}
+
+function cleanBody(text) {
+  return String(text || '')
+    .replace(/^```[a-z]*\s*/i, '')
+    .replace(/```$/i, '')
+    .replace(/^Dear\s+.*?,\s*/i, '')
+    .replace(/^(Madame, Monsieur,|Bonjour\s+.*?,)\s*/i, '')
+    .trim()
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   res.setHeader('Access-Control-Allow-Origin', '*')
 
+  let usageGate = null
+  let supabase = null
+  let user = null
+
   try {
-    const supabase = getSupabaseAdmin()
-    const user = await getAuthenticatedUser(req, supabase)
+    supabase = getSupabaseAdmin()
+    user = await getAuthenticatedUser(req, supabase)
     if (!user) return res.status(401).json({ error: 'Please sign in again before generating a cover letter.' })
 
-    const usage = await checkAndRecordUsage(supabase, user, 'cover-letter')
-    if (!usage.allowed) {
-      return res.status(429).json({ ...usage.payload, rate_limited: true, usage: usage.payload.usage })
+    usageGate = await getUsageGate(supabase, user, 'cover-letter')
+    if (!usageGate.allowed) {
+      return res.status(429).json({ ...usageGate.payload, rate_limited: true, usage: usageGate.payload.usage })
     }
 
     const { analysis, lang = 'en', tone = 'professional', length = 'standard', recipient = null, fullName = null } = req.body
     if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context' })
 
-    const lengthSpec = {
-      short: {
-        instruction: 'VERY SHORT — 1 tight paragraph, 70-90 words total. Get straight to the point: who you are + top match + interest. No fluff.',
-        structure: 'exactly 1 paragraph (4-6 sentences max)',
-        wordCap: 90,
-        maxTokens: 400
-      },
-      standard: {
-        instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
-        structure: 'exactly 3 short paragraphs:\n  - Paragraph 1: express genuine interest in the role, mention your top relevant qualification\n  - Paragraph 2: 2-3 specific achievements matching the role requirements (use real numbers if your_edges has them)\n  - Paragraph 3: forward-looking close, express interest in next steps',
-        wordCap: 220,
-        maxTokens: 800
-      },
-      detailed: {
-        instruction: 'DETAILED — 4 paragraphs, 280-340 words total. More depth, more specific examples, more elaboration on motivation.',
-        structure: 'exactly 4 paragraphs:\n  - Paragraph 1: opening, interest in the role, why this company specifically (1-2 sentences about company values/mission if inferable)\n  - Paragraph 2: 2 strongest achievements aligned with the role with concrete details/numbers\n  - Paragraph 3: relevant skills and how you would specifically contribute to the role\n  - Paragraph 4: forward-looking close, mention availability and interest in discussing further',
-        wordCap: 340,
-        maxTokens: 1200
-      }
-    }[length] || {
-      instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
-      structure: 'exactly 3 short paragraphs',
-      wordCap: 220,
-      maxTokens: 800
-    }
-
+    const lengthSpec = getLengthSpec(length)
     const r = analysis
-    const langInstruction = {
-      en: 'Write the letter body in English.',
-      fr: 'Rédige le corps de la lettre en français.',
-      es: 'Escribe el cuerpo de la carta en español.',
-      de: 'Schreibe den Brieftext auf Deutsch.',
-      it: 'Scrivi il corpo della lettera in italiano.',
-      pt: 'Escreve o corpo da carta em português.'
-    }[lang] || 'Write the letter body in English.'
+    const prompt = `Write the BODY ONLY of a cover letter for this job application. Do NOT include salutation, date, address, sign-off, or signature.\n\nJOB: ${r.job_context?.title || 'Position'} at ${r.job_context?.company || 'the company'}\nLOCATION: ${r.job_context?.location || 'Not specified'}\nCONTRACT: ${r.job_context?.contract_type || 'Not specified'}\n\nJOB SUMMARY: ${(r.job_summary || '').slice(0, 900)}\n\nCANDIDATE STRENGTHS:\n${(r.interview_prep?.your_edges || []).slice(0, 5).map(e => '- ' + String(e).slice(0, 220)).join('\n') || '- Strong relevant skills'}\n\nKEYWORDS TO NATURALLY INCLUDE:\n${(r.keyword_match?.found || []).slice(0, 8).join(', ') || 'relevant skills'}\n\nCRITICAL GAPS TO ADDRESS IF POSSIBLE:\n${(r.critical_gaps || []).slice(0, 4).map(g => '- ' + String(g).slice(0, 160)).join('\n') || '- None'}\n\nINSTRUCTIONS:\n- ${getLangInstruction(lang)}\n- Tone: ${getToneInstruction(tone)}\n- Length: ${lengthSpec.instruction}\n- Structure: ${lengthSpec.structure}\n- Maximum ${lengthSpec.wordCap} words for the body.\n- Return ONLY paragraphs separated by blank lines.`
 
-    const toneInstruction = {
-      professional: 'Confident and professional but not stiff.',
-      warm: 'Warm and personable while still professional.',
-      formal: 'Highly formal and respectful (suitable for traditional industries).',
-      enthusiastic: 'Enthusiastic and energetic, conveying passion for the role.'
-    }[tone] || 'Confident and professional but not stiff.'
-
-    const prompt = `Write the BODY ONLY of a cover letter for this job application. Do NOT include any salutation (no "Dear..."), date, address, or sign-off. Just the body content.
-
-JOB: ${r.job_context?.title || 'Position'} at ${r.job_context?.company || 'the company'}
-LOCATION: ${r.job_context?.location || 'Not specified'}
-CONTRACT: ${r.job_context?.contract_type || 'Not specified'}
-
-JOB SUMMARY: ${r.job_summary || ''}
-
-CANDIDATE STRENGTHS (from CV analysis):
-${(r.interview_prep?.your_edges || []).map(e => '- ' + e).join('\n') || '- Strong technical skills'}
-
-KEYWORDS TO NATURALLY INCLUDE:
-${(r.keyword_match?.found || []).slice(0, 8).join(', ') || 'relevant skills'}
-
-CRITICAL GAPS TO ADDRESS (if any):
-${(r.critical_gaps || []).map(g => '- ' + g).join('\n') || '- None'}
-
-INSTRUCTIONS:
-- ${langInstruction}
-- Tone: ${toneInstruction}
-- Length: ${lengthSpec.instruction}
-- Structure: ${lengthSpec.structure}
-- DO NOT include the salutation (no "Dear X,") or sign-off (no "Best regards" / "Sincerely") — those will be added separately
-- Be specific, not generic. Reference the actual job and skills.
-- Maximum ${lengthSpec.wordCap} words for the body.
-- Return ONLY the paragraphs separated by blank lines. No preamble, no headers, no signature.`
-
-    const message = await client.messages.create({
-      model: process.env.ANTHROPIC_COVER_LETTER_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
+    const model = process.env.ANTHROPIC_COVER_LETTER_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+    const message = await runWithAiRetry(() => client.messages.create({
+      model,
       max_tokens: lengthSpec.maxTokens,
-      temperature: 0.7,
+      temperature: 0.6,
       messages: [{ role: 'user', content: prompt }]
-    })
+    }), { attempts: 3, baseDelayMs: 800 })
 
-    const body = message.content.map(b => b.text || '').join('').trim()
+    const body = cleanBody(message.content.map(b => b.text || '').join('').trim())
+    if (!body || body.length < 40) return res.status(502).json({ error: 'The AI provider returned an empty cover letter. Please try again.', code: 'ai_empty_output', retryable: true })
+
+    const usage = await recordUsage(supabase, user, 'cover-letter', usageGate)
     const salutation = pickSalutation(recipient, lang)
     const signOff = (SIGN_OFFS[tone] || SIGN_OFFS.professional)[lang] || (SIGN_OFFS[tone] || SIGN_OFFS.professional).en
     const name = (fullName && fullName.trim()) ? fullName.trim() : ''
     const letter = `${salutation}\n\n${body}\n\n${signOff},\n${name}`.trim()
 
-    return res.status(200).json({ success: true, letter, salutation, signOff, body, usage: usage.usage })
+    return res.status(200).json({ success: true, letter, salutation, signOff, body, usage })
   } catch (e) {
-    console.error('Cover letter error:', e.message)
-    return res.status(500).json({ error: e.message || 'Failed to generate cover letter' })
+    console.error('Cover letter error:', {
+      message: e.message,
+      status: e.status,
+      type: e?.error?.type,
+      apiMessage: e?.error?.message
+    })
+    const payload = aiErrorPayload(e, 'cover_letter')
+    return res.status(payload.code?.startsWith('ai_') ? (e.status === 400 ? 400 : 503) : 500).json(payload)
   }
 }
