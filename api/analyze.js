@@ -3,8 +3,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
-import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
 import { aiErrorPayload, buildFallbackAnalysis, extractJsonFromAiText, runWithAiRetry } from './_aiReliability.js'
+import { buildUsageResponse, getUsageGate, recordUsageEvent, USAGE_ACTIONS } from './_usageEvents.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -60,14 +60,12 @@ async function requireAuthenticatedUser(req, supabase) {
     error.statusCode = 401
     throw error
   }
-
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data?.user?.id) {
     const authError = new Error('Invalid or expired session. Please sign in again.')
     authError.statusCode = 401
     throw authError
   }
-
   return data.user
 }
 
@@ -76,7 +74,6 @@ async function fetchJobText(url) {
   const isLinkedIn = lowerUrl.includes('linkedin.')
   const isIndeed = lowerUrl.includes('indeed.')
   const isGlassdoor = lowerUrl.includes('glassdoor.')
-
   let res
   try {
     res = await fetch(url, {
@@ -90,14 +87,12 @@ async function fetchJobText(url) {
   } catch {
     throw new Error('Could not reach this page. Please copy the job description text and paste it instead.')
   }
-
   if (!res.ok) {
     if (isLinkedIn) throw new Error('LinkedIn requires login to view this job. Please copy the job description text and paste it instead.')
     if (isIndeed) throw new Error('Indeed blocked this fetch. Please copy the job description text and paste it instead.')
     if (isGlassdoor) throw new Error('Glassdoor blocked this fetch. Please copy the job description text and paste it instead.')
     throw new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
   }
-
   const html = await res.text()
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -113,7 +108,6 @@ async function fetchJobText(url) {
     .replace(/&#39;/g, "'")
     .replace(/\s{2,}/g, ' ')
     .trim()
-
   if (text.length < 200) throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
   return text.slice(0, 6000)
 }
@@ -147,7 +141,6 @@ function safeNum(v) {
 
 function normalizeAnalysis(analysis, jobUrl, cvText) {
   if (!analysis || typeof analysis !== 'object') throw new Error('AI returned an unexpected response. Please try again.')
-
   analysis.job_context = analysis.job_context || {}
   analysis.job_context.title = analysis.job_context.title || 'Not specified'
   analysis.job_context.company = analysis.job_context.company || 'Not specified'
@@ -158,26 +151,21 @@ function normalizeAnalysis(analysis, jobUrl, cvText) {
   analysis.job_context.experience_required = analysis.job_context.experience_required || 'Not specified'
   analysis.job_context.posted_date = analysis.job_context.posted_date || 'Unknown'
   analysis.job_context.languages_required = normalizeArray(analysis.job_context.languages_required, 6)
-
   analysis.keyword_match = analysis.keyword_match || {}
   analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
   analysis.keyword_match.found = normalizeArray(analysis.keyword_match.found, 10)
   analysis.keyword_match.missing_required = normalizeArray(analysis.keyword_match.missing_required || analysis.keyword_match.missing, 6)
   analysis.keyword_match.missing_nice = normalizeArray(analysis.keyword_match.missing_nice, 4)
-
   analysis.requirements_check = analysis.requirements_check || {}
   analysis.requirements_check.score = safeScore(analysis.requirements_check.score, 0)
   analysis.requirements_check.met = normalizeArray(analysis.requirements_check.met, 5)
   analysis.requirements_check.unmet = normalizeArray(analysis.requirements_check.unmet, 4)
-
   analysis.format_warnings = normalizeArray(analysis.format_warnings, 3)
   analysis.critical_gaps = normalizeArray(analysis.critical_gaps, 3)
   analysis.quick_wins = normalizeArray(analysis.quick_wins, 4)
   analysis.red_flags = normalizeArray(analysis.red_flags, 3)
-
   analysis.seniority = analysis.seniority || { candidate_level: 'mid', job_level: 'mid', alignment: 'right_level', alignment_label: 'Right level', alignment_reason: 'The role appears broadly aligned.', candidate_years: 0, job_years_required: 0 }
   analysis.salary_assessment = analysis.salary_assessment || { specified: false, assessment: 'unknown', comment: 'Salary information was not clear in the posting.' }
-
   if (!analysis.salary_intelligence || typeof analysis.salary_intelligence !== 'object') analysis.salary_intelligence = null
   else {
     const si = analysis.salary_intelligence
@@ -193,13 +181,11 @@ function normalizeAnalysis(analysis, jobUrl, cvText) {
     si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
     if (!si.target_low || !si.target_high) analysis.salary_intelligence = null
   }
-
   analysis.interview_prep = analysis.interview_prep || {}
   analysis.interview_prep.likely_questions = normalizeArray(analysis.interview_prep.likely_questions, 5)
   analysis.interview_prep.your_edges = normalizeArray(analysis.interview_prep.your_edges, 3)
   analysis.interview_prep.weak_spots = normalizeArray(analysis.interview_prep.weak_spots, 3)
   analysis.interview_prep.show_prep = analysis.interview_prep.show_prep !== false
-
   analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
   analysis.match_probability = safeScore(analysis.match_probability, analysis.display_score)
   analysis.overall_verdict = ['likely_filtered', 'borderline', 'likely_passed'].includes(analysis.overall_verdict) ? analysis.overall_verdict : (analysis.display_score >= 70 ? 'likely_passed' : analysis.display_score >= 50 ? 'borderline' : 'likely_filtered')
@@ -232,29 +218,10 @@ async function callAnthropicWithFallback({ system, jobText, cvText }) {
       if (![400, 404].includes(error?.status)) throw error
     }
   }
-
   const error = new Error(lastError?.error?.message || lastError?.message || 'AI provider rejected the analysis request.')
   error.statusCode = lastError?.status || 502
   error.status = lastError?.status || 502
   throw error
-}
-
-async function checkRateLimit(supabase, user) {
-  const plan = await getUserPlan(supabase, user)
-  const monthStart = getMonthStartIso()
-  const { count, error } = await supabase
-    .from('analyses')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('created_at', monthStart)
-  if (error) throw error
-
-  const used = count ?? 0
-  const limit = plan.analysisLimit
-  if (!isUnlimited(plan) && used >= limit) {
-    return { allowed: false, used, limit, plan, payload: buildLimitPayload({ action: 'analysis', plan, used, limit }) }
-  }
-  return { allowed: true, used, limit, plan }
 }
 
 async function saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName }) {
@@ -267,21 +234,12 @@ async function saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analys
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-
-    const payload = {
-      job_url: jobUrl || 'manual_paste',
-      job_title: analysis.job_context?.title || null,
-      score: analysis.display_score,
-      result: analysis,
-      cv_file_name: cvFileName || null
-    }
-
+    const payload = { job_url: jobUrl || 'manual_paste', job_title: analysis.job_context?.title || null, score: analysis.display_score, result: analysis, cv_file_name: cvFileName || null }
     if (existing) {
       const { data, error } = await supabaseClient.from('analyses').update(payload).eq('id', existing.id).eq('user_id', authUser.id).select().single()
       if (error) throw error
       return data
     }
-
     const { data, error } = await supabaseClient.from('analyses').insert({ user_id: authUser.id, ...payload, cv_file_path: null, cache_key: cacheKey }).select().single()
     if (error) throw error
     return data
@@ -298,23 +256,19 @@ export default async function handler(req, res) {
   try {
     const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName } = req.body
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
-
     const url = process.env.SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) return res.status(500).json({ error: 'Supabase server configuration is missing.' })
-
     const supabaseClient = createClient(url, key, { auth: { persistSession: false } })
     const authUser = await requireAuthenticatedUser(req, supabaseClient)
-
-    const rl = await checkRateLimit(supabaseClient, authUser)
-    const rateLimitInfo = { planId: rl.plan.id, planLabel: rl.plan.label, analysisUsed: rl.used, analysisLimit: rl.limit, analysisRemaining: rl.limit >= 9999 ? Infinity : Math.max(0, rl.limit - rl.used) }
-    if (!rl.allowed) return res.status(429).json({ ...rl.payload, rateLimit: rateLimitInfo })
+    const usageGate = await getUsageGate(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS)
+    const rateLimitInfo = { planId: usageGate.plan.id, planLabel: usageGate.plan.label, analysisUsed: usageGate.used, analysisLimit: usageGate.limit, analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used), sources: usageGate.sources }
+    if (!usageGate.allowed) return res.status(429).json({ ...usageGate.payload, rateLimit: rateLimitInfo })
 
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
-
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
 
@@ -327,7 +281,6 @@ export default async function handler(req, res) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
-
     if (cacheError) console.warn('Cache lookup failed:', cacheError.message)
     if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true, rateLimit: rateLimitInfo })
 
@@ -351,7 +304,9 @@ export default async function handler(req, res) {
     }
 
     const savedRow = await saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName })
-    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo, fallback: fallbackUsed })
+    if (savedRow) await recordUsageEvent(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS, { source: providedJobText ? 'paste' : 'url', cached: false, fallback: fallbackUsed, analysis_id: savedRow.id })
+    const nextRateLimitInfo = { ...rateLimitInfo, analysisUsed: usageGate.used + (savedRow ? 1 : 0), analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used - (savedRow ? 1 : 0)) }
+    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: nextRateLimitInfo, fallback: fallbackUsed })
   } catch (e) {
     console.error('Handler error:', { message: e.message, statusCode: e.statusCode, status: e.status, type: e?.error?.type, apiMessage: e?.error?.message })
     return res.status(e.statusCode || 500).json({ error: e.message || 'Analysis failed' })
