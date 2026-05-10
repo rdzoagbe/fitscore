@@ -1,9 +1,10 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
 import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
+import { aiErrorPayload, buildFallbackAnalysis, extractJsonFromAiText, runWithAiRetry } from './_aiReliability.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -23,83 +24,27 @@ Score mechanically:
 
 Return this exact JSON shape:
 {
-  "job_context": {
-    "title": "string",
-    "company": "string or Not specified",
-    "location": "string or Not specified",
-    "work_mode": "remote|hybrid|onsite|unknown",
-    "contract_type": "CDI|CDD|freelance|internship|apprenticeship|temp|unknown",
-    "salary_range": "string or Not specified",
-    "experience_required": "string or Not specified",
-    "posted_date": "string or Unknown",
-    "languages_required": ["string"],
-    "apply_url": null,
-    "easy_apply": false,
-    "hiring_contact": null
-  },
+  "job_context": { "title": "string", "company": "string or Not specified", "location": "string or Not specified", "work_mode": "remote|hybrid|onsite|unknown", "contract_type": "CDI|CDD|freelance|internship|apprenticeship|temp|unknown", "salary_range": "string or Not specified", "experience_required": "string or Not specified", "posted_date": "string or Unknown", "languages_required": ["string"], "apply_url": null, "easy_apply": false, "hiring_contact": null },
   "job_summary": "2 sentences max",
   "match_probability": 0,
   "match_reasoning": "one sentence",
-  "seniority": {
-    "candidate_level": "intern|junior|mid|senior|lead|staff_principal|executive",
-    "job_level": "intern|junior|mid|senior|lead|staff_principal|executive",
-    "alignment": "right_level|stretch|reach|below_level|pivot",
-    "alignment_label": "short label",
-    "alignment_reason": "one sentence",
-    "candidate_years": 0,
-    "job_years_required": 0
-  },
+  "seniority": { "candidate_level": "intern|junior|mid|senior|lead|staff_principal|executive", "job_level": "intern|junior|mid|senior|lead|staff_principal|executive", "alignment": "right_level|stretch|reach|below_level|pivot", "alignment_label": "short label", "alignment_reason": "one sentence", "candidate_years": 0, "job_years_required": 0 },
   "red_flags": [],
-  "salary_assessment": {
-    "specified": false,
-    "assessment": "below_market|market|above_market|unknown|not_specified",
-    "comment": "brief"
-  },
-  "salary_intelligence": {
-    "currency": "EUR",
-    "scenario": "salary_mentioned|salary_hidden",
-    "posted_low": null,
-    "posted_high": null,
-    "estimated_market_low": 0,
-    "estimated_market_high": 0,
-    "target_low": 0,
-    "target_high": 0,
-    "leverage_points": [],
-    "negotiation_strategy": "2 sentences max",
-    "confidence": "high|medium|low"
-  },
+  "salary_assessment": { "specified": false, "assessment": "below_market|market|above_market|unknown|not_specified", "comment": "brief" },
+  "salary_intelligence": { "currency": "EUR", "scenario": "salary_mentioned|salary_hidden", "posted_low": null, "posted_high": null, "estimated_market_low": 0, "estimated_market_high": 0, "target_low": 0, "target_high": 0, "leverage_points": [], "negotiation_strategy": "2 sentences max", "confidence": "high|medium|low" },
   "verdict": "max 12 words",
-  "keyword_match": {
-    "score": 0,
-    "found": [],
-    "missing_required": [],
-    "missing_nice": []
-  },
-  "requirements_check": {
-    "score": 0,
-    "met": [],
-    "unmet": []
-  },
+  "keyword_match": { "score": 0, "found": [], "missing_required": [], "missing_nice": [] },
+  "requirements_check": { "score": 0, "met": [], "unmet": [] },
   "format_warnings": [],
   "critical_gaps": [],
-  "quick_wins": [
-    { "tip": "short action", "example": "copy-paste CV sentence" }
-  ],
+  "quick_wins": [{ "tip": "short action", "example": "copy-paste CV sentence" }],
   "overall_verdict": "likely_filtered|borderline|likely_passed",
   "overall_reason": "one sentence",
-  "interview_prep": {
-    "likely_questions": [],
-    "your_edges": [],
-    "weak_spots": [],
-    "salary_negotiation_hint": "one sentence",
-    "show_prep": true
-  }
+  "interview_prep": { "likely_questions": [], "your_edges": [], "weak_spots": [], "salary_negotiation_hint": "one sentence", "show_prep": true }
 }
 
 Rules:
 - Arrays should be concise: max 10 found keywords, max 6 missing_required, max 4 missing_nice, max 4 quick_wins, max 5 interview questions.
-- weak_spots may be strings or objects with area/prep_tip.
-- Use realistic salary guidance, but keep confidence low/medium if unsure.
 - If a value is unknown, use Not specified, Unknown, null, or an empty array as appropriate.`
 
 function getBearerToken(req) {
@@ -127,9 +72,10 @@ async function requireAuthenticatedUser(req, supabase) {
 }
 
 async function fetchJobText(url) {
-  const isLinkedIn = url.includes('linkedin.')
-  const isIndeed = url.includes('indeed.')
-  const isGlassdoor = url.includes('glassdoor.')
+  const lowerUrl = String(url || '').toLowerCase()
+  const isLinkedIn = lowerUrl.includes('linkedin.')
+  const isIndeed = lowerUrl.includes('indeed.')
+  const isGlassdoor = lowerUrl.includes('glassdoor.')
 
   let res
   try {
@@ -137,7 +83,7 @@ async function fetchJobText(url) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
       },
       redirect: 'follow'
     })
@@ -168,9 +114,7 @@ async function fetchJobText(url) {
     .replace(/\s{2,}/g, ' ')
     .trim()
 
-  if (text.length < 200) {
-    throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
-  }
+  if (text.length < 200) throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
   return text.slice(0, 6000)
 }
 
@@ -231,11 +175,9 @@ function normalizeAnalysis(analysis, jobUrl, cvText) {
   analysis.quick_wins = normalizeArray(analysis.quick_wins, 4)
   analysis.red_flags = normalizeArray(analysis.red_flags, 3)
 
-  analysis.seniority = analysis.seniority || {
-    candidate_level: 'mid', job_level: 'mid', alignment: 'right_level', alignment_label: 'Right level', alignment_reason: 'The role appears broadly aligned.', candidate_years: 0, job_years_required: 0
-  }
-
+  analysis.seniority = analysis.seniority || { candidate_level: 'mid', job_level: 'mid', alignment: 'right_level', alignment_label: 'Right level', alignment_reason: 'The role appears broadly aligned.', candidate_years: 0, job_years_required: 0 }
   analysis.salary_assessment = analysis.salary_assessment || { specified: false, assessment: 'unknown', comment: 'Salary information was not clear in the posting.' }
+
   if (!analysis.salary_intelligence || typeof analysis.salary_intelligence !== 'object') analysis.salary_intelligence = null
   else {
     const si = analysis.salary_intelligence
@@ -265,13 +207,11 @@ function normalizeAnalysis(analysis, jobUrl, cvText) {
   analysis.overall_reason = analysis.overall_reason || analysis.match_reasoning || 'Score is based on keyword and requirement alignment.'
   analysis.match_reasoning = analysis.match_reasoning || analysis.overall_reason
   analysis.job_summary = analysis.job_summary || 'Job summary unavailable.'
-
   analysis.job_url = jobUrl || null
   analysis.job_source = jobUrl ? 'url' : 'pasted'
   analysis.job_title = analysis.job_context?.title || null
   analysis.cv_preview = cvText.trim().slice(0, 800).replace(/\s+/g, ' ').trim()
   analysis.cv_preview_truncated = cvText.trim().length > 800
-
   return analysis
 }
 
@@ -279,44 +219,34 @@ async function callAnthropicWithFallback({ system, jobText, cvText }) {
   let lastError = null
   for (const model of ANALYZE_MODELS) {
     try {
-      return await client.messages.create({
+      return await runWithAiRetry(() => client.messages.create({
         model,
         max_tokens: 2200,
         temperature: 0,
         system,
         messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5200)}\n\n---\n\nCV:\n${cvText.slice(0, 5200)}` }]
-      })
+      }), { attempts: 2, baseDelayMs: 700 })
     } catch (error) {
       lastError = error
-      console.error('Anthropic analyze attempt failed:', {
-        model,
-        status: error?.status,
-        name: error?.name,
-        message: error?.message,
-        type: error?.error?.type,
-        apiMessage: error?.error?.message
-      })
+      console.error('Anthropic analyze attempt failed:', { model, status: error?.status, name: error?.name, message: error?.message, type: error?.error?.type, apiMessage: error?.error?.message })
       if (![400, 404].includes(error?.status)) throw error
     }
   }
 
   const error = new Error(lastError?.error?.message || lastError?.message || 'AI provider rejected the analysis request.')
-  error.statusCode = 502
+  error.statusCode = lastError?.status || 502
+  error.status = lastError?.status || 502
   throw error
 }
 
 async function checkRateLimit(supabase, user) {
-  if (!supabase || !user?.id) return { allowed: true, used: 0, limit: 5, plan: { label: 'Free', id: 'free' } }
-
   const plan = await getUserPlan(supabase, user)
   const monthStart = getMonthStartIso()
-
   const { count, error } = await supabase
     .from('analyses')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .gte('created_at', monthStart)
-
   if (error) throw error
 
   const used = count ?? 0
@@ -324,8 +254,41 @@ async function checkRateLimit(supabase, user) {
   if (!isUnlimited(plan) && used >= limit) {
     return { allowed: false, used, limit, plan, payload: buildLimitPayload({ action: 'analysis', plan, used, limit }) }
   }
-
   return { allowed: true, used, limit, plan }
+}
+
+async function saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName }) {
+  try {
+    const { data: existing } = await supabaseClient
+      .from('analyses')
+      .select('id, application_status, status_updated_at')
+      .eq('user_id', authUser.id)
+      .eq('cache_key', cacheKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const payload = {
+      job_url: jobUrl || 'manual_paste',
+      job_title: analysis.job_context?.title || null,
+      score: analysis.display_score,
+      result: analysis,
+      cv_file_name: cvFileName || null
+    }
+
+    if (existing) {
+      const { data, error } = await supabaseClient.from('analyses').update(payload).eq('id', existing.id).eq('user_id', authUser.id).select().single()
+      if (error) throw error
+      return data
+    }
+
+    const { data, error } = await supabaseClient.from('analyses').insert({ user_id: authUser.id, ...payload, cv_file_path: null, cache_key: cacheKey }).select().single()
+    if (error) throw error
+    return data
+  } catch (e) {
+    console.log('Save failed:', e.message)
+    return null
+  }
 }
 
 export default async function handler(req, res) {
@@ -344,13 +307,7 @@ export default async function handler(req, res) {
     const authUser = await requireAuthenticatedUser(req, supabaseClient)
 
     const rl = await checkRateLimit(supabaseClient, authUser)
-    const rateLimitInfo = {
-      planId: rl.plan.id,
-      planLabel: rl.plan.label,
-      analysisUsed: rl.used,
-      analysisLimit: rl.limit,
-      analysisRemaining: rl.limit >= 9999 ? Infinity : Math.max(0, rl.limit - rl.used)
-    }
+    const rateLimitInfo = { planId: rl.plan.id, planLabel: rl.plan.label, analysisUsed: rl.used, analysisLimit: rl.limit, analysisRemaining: rl.limit >= 9999 ? Infinity : Math.max(0, rl.limit - rl.used) }
     if (!rl.allowed) return res.status(429).json({ ...rl.payload, rateLimit: rateLimitInfo })
 
     const [jobText, cvText] = await Promise.all([
@@ -362,7 +319,6 @@ export default async function handler(req, res) {
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
 
     const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
-
     const { data: cached, error: cacheError } = await supabaseClient
       .from('analyses')
       .select('result, created_at')
@@ -375,77 +331,29 @@ export default async function handler(req, res) {
     if (cacheError) console.warn('Cache lookup failed:', cacheError.message)
     if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true, rateLimit: rateLimitInfo })
 
-    const message = await callAnthropicWithFallback({ system: SYSTEM, jobText, cvText })
-    const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
-
     let analysis
+    let fallbackUsed = false
     try {
-      analysis = JSON.parse(raw)
-    } catch {
-      console.error('JSON parse failed. Raw output first 800:', raw.slice(0, 800))
-      throw new Error('AI returned malformed JSON. Please try again, or paste a shorter job description.')
-    }
-
-    analysis = normalizeAnalysis(analysis, jobUrl, cvText)
-
-    let savedRow = null
-    try {
-      const { data: existing } = await supabaseClient
-        .from('analyses')
-        .select('id, application_status, status_updated_at')
-        .eq('user_id', authUser.id)
-        .eq('cache_key', cacheKey)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (existing) {
-        const { data: updated, error: updateError } = await supabaseClient
-          .from('analyses')
-          .update({
-            job_url: jobUrl || 'manual_paste',
-            job_title: analysis.job_context?.title || null,
-            score: analysis.display_score,
-            result: analysis,
-            cv_file_name: cvFileName || null
-          })
-          .eq('id', existing.id)
-          .eq('user_id', authUser.id)
-          .select()
-          .single()
-        if (updateError) throw updateError
-        savedRow = updated
-      } else {
-        const { data: inserted, error: insertError } = await supabaseClient
-          .from('analyses')
-          .insert({
-            user_id: authUser.id,
-            job_url: jobUrl || 'manual_paste',
-            job_title: analysis.job_context?.title || null,
-            score: analysis.display_score,
-            result: analysis,
-            cv_file_path: null,
-            cv_file_name: cvFileName || null,
-            cache_key: cacheKey
-          })
-          .select()
-          .single()
-        if (insertError) throw insertError
-        savedRow = inserted
-      }
+      const message = await callAnthropicWithFallback({ system: SYSTEM, jobText, cvText })
+      const raw = message.content.map(b => b.text || '').join('').trim()
+      analysis = extractJsonFromAiText(raw)
+      analysis = normalizeAnalysis(analysis, jobUrl, cvText)
     } catch (e) {
-      console.log('Save failed:', e.message)
+      const payload = aiErrorPayload(e, 'analysis')
+      if (payload.code === 'ai_input_too_long' || payload.code === 'ai_provider_error') {
+        console.warn('Using fallback analysis:', payload.code, e.message)
+        analysis = buildFallbackAnalysis({ jobText, cvText, jobUrl })
+        analysis = normalizeAnalysis(analysis, jobUrl, cvText)
+        fallbackUsed = true
+      } else {
+        return res.status(payload.statusCode || (e.status === 400 ? 400 : 503)).json(payload)
+      }
     }
 
-    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo })
+    const savedRow = await saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName })
+    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo, fallback: fallbackUsed })
   } catch (e) {
-    console.error('Handler error:', {
-      message: e.message,
-      statusCode: e.statusCode,
-      status: e.status,
-      type: e?.error?.type,
-      apiMessage: e?.error?.message
-    })
+    console.error('Handler error:', { message: e.message, statusCode: e.statusCode, status: e.status, type: e?.error?.type, apiMessage: e?.error?.message })
     return res.status(e.statusCode || 500).json({ error: e.message || 'Analysis failed' })
   }
 }
