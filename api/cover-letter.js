@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
-import { buildLimitPayload, getMonthStartIso, getUserPlan, isUnlimited } from './_planLimits.js'
 import { aiErrorPayload, runWithAiRetry } from './_aiReliability.js'
+import { buildUsageResponse, getUsageGate, recordUsageEvent, USAGE_ACTIONS } from './_usageEvents.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -20,47 +20,6 @@ async function getAuthenticatedUser(req, supabase) {
   return data.user
 }
 
-async function getUsageGate(supabase, user, endpoint) {
-  const plan = await getUserPlan(supabase, user)
-  const monthStart = getMonthStartIso()
-
-  const { count, error: countError } = await supabase
-    .from('api_usage')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('endpoint', endpoint)
-    .gte('created_at', monthStart)
-
-  if (countError) throw countError
-  const used = count || 0
-  const limit = plan.coverLetterLimit
-
-  if (!isUnlimited(plan) && used >= limit) {
-    return {
-      allowed: false,
-      used,
-      limit,
-      plan,
-      payload: buildLimitPayload({ action: 'cover letter', plan, used, limit })
-    }
-  }
-
-  return { allowed: true, used, limit, plan }
-}
-
-async function recordUsage(supabase, user, endpoint, gate) {
-  const { error } = await supabase.from('api_usage').insert({ user_id: user.id, endpoint })
-  if (error) throw error
-  return {
-    action: 'cover letter',
-    planId: gate.plan.id,
-    planLabel: gate.plan.label,
-    used: gate.used + 1,
-    limit: gate.limit,
-    remaining: isUnlimited(gate.plan) ? 9999 : Math.max(0, gate.limit - gate.used - 1)
-  }
-}
-
 const SALUTATIONS = {
   en: 'Dear Hiring Manager,',
   fr: 'Madame, Monsieur,',
@@ -73,7 +32,7 @@ const SALUTATIONS = {
 const SIGN_OFFS = {
   professional: { en: 'Best regards', fr: 'Cordialement', es: 'Atentamente', de: 'Mit freundlichen Grüßen', it: 'Cordiali saluti', pt: 'Com os melhores cumprimentos' },
   warm: { en: 'Looking forward to connecting', fr: 'Au plaisir de vous lire', es: 'Un cordial saludo', de: 'Herzliche Grüße', it: 'A presto', pt: 'Aguardo o vosso contacto' },
-  formal: { en: 'Yours sincerely', fr: 'Veuillez agréer mes salutations distinguées', es: 'Reciba un cordial saludo', de: 'Hochachtungsvoll', it: 'Distinti saluti', pt: 'Os meus cumpriments' },
+  formal: { en: 'Yours sincerely', fr: 'Veuillez agréer mes salutations distinguées', es: 'Reciba un cordial saludo', de: 'Hochachtungsvoll', it: 'Distinti saluti', pt: 'Os meus cumprimentos' },
   enthusiastic: { en: 'Looking forward to hearing from you', fr: 'Dans l\'attente de vous rencontrer', es: 'Quedo a la espera de su respuesta', de: 'Ich freue mich auf Ihre Rückmeldung', it: 'Resto in attesa di un Suo riscontro', pt: 'Fico ansioso pelo vosso contacto' }
 }
 
@@ -92,30 +51,10 @@ function pickSalutation(recipient, lang) {
 
 function getLengthSpec(length) {
   return {
-    short: {
-      instruction: 'VERY SHORT — 1 tight paragraph, 70-90 words total. Get straight to the point: who you are + top match + interest. No fluff.',
-      structure: 'exactly 1 paragraph (4-6 sentences max)',
-      wordCap: 90,
-      maxTokens: 400
-    },
-    standard: {
-      instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
-      structure: 'exactly 3 short paragraphs:\n  - Paragraph 1: express genuine interest in the role, mention your top relevant qualification\n  - Paragraph 2: 2-3 specific achievements matching the role requirements\n  - Paragraph 3: forward-looking close, express interest in next steps',
-      wordCap: 220,
-      maxTokens: 800
-    },
-    detailed: {
-      instruction: 'DETAILED — 4 paragraphs, 280-340 words total. More depth, more specific examples, more elaboration on motivation.',
-      structure: 'exactly 4 paragraphs:\n  - Paragraph 1: opening, interest in the role, why this company specifically if inferable\n  - Paragraph 2: 2 strongest achievements aligned with the role\n  - Paragraph 3: relevant skills and contribution\n  - Paragraph 4: forward-looking close',
-      wordCap: 340,
-      maxTokens: 1200
-    }
-  }[length] || {
-    instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.',
-    structure: 'exactly 3 short paragraphs',
-    wordCap: 220,
-    maxTokens: 800
-  }
+    short: { instruction: 'VERY SHORT — 1 tight paragraph, 70-90 words total. Get straight to the point: who you are + top match + interest. No fluff.', structure: 'exactly 1 paragraph (4-6 sentences max)', wordCap: 90, maxTokens: 400 },
+    standard: { instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.', structure: 'exactly 3 short paragraphs:\n  - Paragraph 1: express genuine interest in the role, mention your top relevant qualification\n  - Paragraph 2: 2-3 specific achievements matching the role requirements\n  - Paragraph 3: forward-looking close, express interest in next steps', wordCap: 220, maxTokens: 800 },
+    detailed: { instruction: 'DETAILED — 4 paragraphs, 280-340 words total. More depth, more specific examples, more elaboration on motivation.', structure: 'exactly 4 paragraphs:\n  - Paragraph 1: opening, interest in the role, why this company specifically if inferable\n  - Paragraph 2: 2 strongest achievements aligned with the role\n  - Paragraph 3: relevant skills and contribution\n  - Paragraph 4: forward-looking close', wordCap: 340, maxTokens: 1200 }
+  }[length] || { instruction: 'STANDARD length — 3 short paragraphs, 180-220 words total.', structure: 'exactly 3 short paragraphs', wordCap: 220, maxTokens: 800 }
 }
 
 function getLangInstruction(lang) {
@@ -124,7 +63,7 @@ function getLangInstruction(lang) {
     fr: 'Rédige le corps de la lettre en français.',
     es: 'Escribe el cuerpo de la carta en español.',
     de: 'Schreibe den Brieftext auf Deutsch.',
-    it: 'Scrivi il corpo della lettera in italiano.',
+    it: 'Scrivi il corpo della lettera en italiano.',
     pt: 'Escreve o corpo da carta em português.'
   }[lang] || 'Write the letter body in English.'
 }
@@ -151,16 +90,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   res.setHeader('Access-Control-Allow-Origin', '*')
 
-  let usageGate = null
-  let supabase = null
-  let user = null
-
   try {
-    supabase = getSupabaseAdmin()
-    user = await getAuthenticatedUser(req, supabase)
+    const supabase = getSupabaseAdmin()
+    const user = await getAuthenticatedUser(req, supabase)
     if (!user) return res.status(401).json({ error: 'Please sign in again before generating a cover letter.' })
 
-    usageGate = await getUsageGate(supabase, user, 'cover-letter')
+    const usageGate = await getUsageGate(supabase, user, USAGE_ACTIONS.COVER_LETTER)
     if (!usageGate.allowed) {
       return res.status(429).json({ ...usageGate.payload, rate_limited: true, usage: usageGate.payload.usage })
     }
@@ -183,7 +118,8 @@ export default async function handler(req, res) {
     const body = cleanBody(message.content.map(b => b.text || '').join('').trim())
     if (!body || body.length < 40) return res.status(502).json({ error: 'The AI provider returned an empty cover letter. Please try again.', code: 'ai_empty_output', retryable: true })
 
-    const usage = await recordUsage(supabase, user, 'cover-letter', usageGate)
+    await recordUsageEvent(supabase, user, USAGE_ACTIONS.COVER_LETTER, { source: 'cover_letter_api', language: lang, tone, length })
+    const usage = buildUsageResponse(usageGate, 1)
     const salutation = pickSalutation(recipient, lang)
     const signOff = (SIGN_OFFS[tone] || SIGN_OFFS.professional)[lang] || (SIGN_OFFS[tone] || SIGN_OFFS.professional).en
     const name = (fullName && fullName.trim()) ? fullName.trim() : ''
@@ -191,12 +127,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, letter, salutation, signOff, body, usage })
   } catch (e) {
-    console.error('Cover letter error:', {
-      message: e.message,
-      status: e.status,
-      type: e?.error?.type,
-      apiMessage: e?.error?.message
-    })
+    console.error('Cover letter error:', { message: e.message, status: e.status, type: e?.error?.type, apiMessage: e?.error?.message })
     const payload = aiErrorPayload(e, 'cover_letter')
     return res.status(payload.code?.startsWith('ai_') ? (e.status === 400 ? 400 : 503) : 500).json(payload)
   }
