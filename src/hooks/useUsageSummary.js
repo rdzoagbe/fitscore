@@ -8,6 +8,16 @@ function iso(date) {
   return date.toISOString()
 }
 
+async function safeCount(query) {
+  try {
+    const { count, error } = await query
+    if (error) return { count: 0, available: false, error }
+    return { count: count || 0, available: true, error: null }
+  } catch (error) {
+    return { count: 0, available: false, error }
+  }
+}
+
 export function useUsageSummary() {
   const { user } = useAuth()
   const { cvFiles } = useCvPersist()
@@ -15,6 +25,7 @@ export function useUsageSummary() {
   const [analysisUsed, setAnalysisUsed] = useState(0)
   const [coverLetterUsed, setCoverLetterUsed] = useState(0)
   const [profilePlanId, setProfilePlanId] = useState('free')
+  const [sources, setSources] = useState({})
 
   useEffect(() => {
     if (!user?.id) {
@@ -29,18 +40,40 @@ export function useUsageSummary() {
         const { start } = getMonthWindow()
         const startIso = iso(start)
 
-        const [analysisResult, coverResult, profileResult] = await Promise.all([
-          supabase
-            .from('analyses')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .gte('created_at', startIso),
-          supabase
-            .from('api_usage')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('endpoint', 'cover-letter')
-            .gte('created_at', startIso),
+        const [analysisEvents, analysisLegacy, coverEvents, coverLegacy, profileResult] = await Promise.all([
+          safeCount(
+            supabase
+              .from('usage_events')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('action', 'analysis')
+              .eq('status', 'success')
+              .gte('created_at', startIso)
+          ),
+          safeCount(
+            supabase
+              .from('analyses')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .gte('created_at', startIso)
+          ),
+          safeCount(
+            supabase
+              .from('usage_events')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('action', 'cover_letter')
+              .eq('status', 'success')
+              .gte('created_at', startIso)
+          ),
+          safeCount(
+            supabase
+              .from('api_usage')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('endpoint', 'cover-letter')
+              .gte('created_at', startIso)
+          ),
           supabase
             .from('user_profiles')
             .select('plan')
@@ -50,9 +83,13 @@ export function useUsageSummary() {
 
         if (cancelled) return
 
-        setAnalysisUsed(analysisResult.count || 0)
-        setCoverLetterUsed(coverResult.count || 0)
+        setAnalysisUsed(Math.max(analysisEvents.count, analysisLegacy.count))
+        setCoverLetterUsed(Math.max(coverEvents.count, coverLegacy.count))
         setProfilePlanId(profileResult.data?.plan || 'free')
+        setSources({
+          analysis: { usage_events: analysisEvents.count, legacy: analysisLegacy.count, usage_events_available: analysisEvents.available, legacy_available: analysisLegacy.available },
+          coverLetters: { usage_events: coverEvents.count, legacy: coverLegacy.count, usage_events_available: coverEvents.available, legacy_available: coverLegacy.available }
+        })
       } catch (error) {
         if (!cancelled) {
           console.warn('Usage summary failed:', error.message)
@@ -78,6 +115,7 @@ export function useUsageSummary() {
       isAdmin: limits.id === 'admin',
       resetLabel: getResetLabel(limits.id),
       unlimited,
+      sources,
       analysis: {
         used: analysisUsed,
         limit: limits.analysisLimit,
@@ -94,5 +132,5 @@ export function useUsageSummary() {
         remaining: unlimited ? Infinity : Math.max(0, limits.cvLimit - cvFiles.length)
       }
     }
-  }, [loading, user, profilePlanId, analysisUsed, coverLetterUsed, cvFiles.length])
+  }, [loading, user, profilePlanId, analysisUsed, coverLetterUsed, cvFiles.length, sources])
 }
