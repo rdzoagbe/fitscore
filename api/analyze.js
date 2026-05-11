@@ -3,8 +3,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
-import { aiErrorPayload, buildFallbackAnalysis, extractJsonFromAiText, runWithAiRetry } from './_aiReliability.js'
-import { buildUsageResponse, getUsageGate, recordUsageEvent, USAGE_ACTIONS } from './_usageEvents.js'
+import { aiErrorPayload, buildFallbackAnalysis, extractJsonFromAiText, runWithAiRetry } from '../server/_aiReliability.js'
+import { getUsageGate, recordUsageEvent, USAGE_ACTIONS } from '../server/_usageEvents.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -41,11 +41,7 @@ Return this exact JSON shape:
   "overall_verdict": "likely_filtered|borderline|likely_passed",
   "overall_reason": "one sentence",
   "interview_prep": { "likely_questions": [], "your_edges": [], "weak_spots": [], "salary_negotiation_hint": "one sentence", "show_prep": true }
-}
-
-Rules:
-- Arrays should be concise: max 10 found keywords, max 6 missing_required, max 4 missing_nice, max 4 quick_wins, max 5 interview questions.
-- If a value is unknown, use Not specified, Unknown, null, or an empty array as appropriate.`
+}`
 
 function getBearerToken(req) {
   const header = req.headers.authorization || req.headers.Authorization || ''
@@ -94,20 +90,7 @@ async function fetchJobText(url) {
     throw new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
   }
   const html = await res.text()
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, ' ')
-    .trim()
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<noscript[\s\S]*?<\/noscript>/gi, '').replace(/<svg[\s\S]*?<\/svg>/gi, '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s{2,}/g, ' ').trim()
   if (text.length < 200) throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
   return text.slice(0, 6000)
 }
@@ -134,23 +117,12 @@ function safeScore(val, fallback = 0) {
   return Math.round(n)
 }
 
-function safeNum(v) {
-  const n = typeof v === 'number' ? v : parseFloat(v)
-  return Number.isNaN(n) || n <= 0 ? null : Math.round(n)
-}
-
 function normalizeAnalysis(analysis, jobUrl, cvText) {
   if (!analysis || typeof analysis !== 'object') throw new Error('AI returned an unexpected response. Please try again.')
   analysis.job_context = analysis.job_context || {}
   analysis.job_context.title = analysis.job_context.title || 'Not specified'
   analysis.job_context.company = analysis.job_context.company || 'Not specified'
   analysis.job_context.location = analysis.job_context.location || 'Not specified'
-  analysis.job_context.work_mode = analysis.job_context.work_mode || 'unknown'
-  analysis.job_context.contract_type = analysis.job_context.contract_type || 'unknown'
-  analysis.job_context.salary_range = analysis.job_context.salary_range || 'Not specified'
-  analysis.job_context.experience_required = analysis.job_context.experience_required || 'Not specified'
-  analysis.job_context.posted_date = analysis.job_context.posted_date || 'Unknown'
-  analysis.job_context.languages_required = normalizeArray(analysis.job_context.languages_required, 6)
   analysis.keyword_match = analysis.keyword_match || {}
   analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
   analysis.keyword_match.found = normalizeArray(analysis.keyword_match.found, 10)
@@ -166,21 +138,7 @@ function normalizeAnalysis(analysis, jobUrl, cvText) {
   analysis.red_flags = normalizeArray(analysis.red_flags, 3)
   analysis.seniority = analysis.seniority || { candidate_level: 'mid', job_level: 'mid', alignment: 'right_level', alignment_label: 'Right level', alignment_reason: 'The role appears broadly aligned.', candidate_years: 0, job_years_required: 0 }
   analysis.salary_assessment = analysis.salary_assessment || { specified: false, assessment: 'unknown', comment: 'Salary information was not clear in the posting.' }
-  if (!analysis.salary_intelligence || typeof analysis.salary_intelligence !== 'object') analysis.salary_intelligence = null
-  else {
-    const si = analysis.salary_intelligence
-    si.posted_low = safeNum(si.posted_low)
-    si.posted_high = safeNum(si.posted_high)
-    si.estimated_market_low = safeNum(si.estimated_market_low)
-    si.estimated_market_high = safeNum(si.estimated_market_high)
-    si.target_low = safeNum(si.target_low)
-    si.target_high = safeNum(si.target_high)
-    si.leverage_points = normalizeArray(si.leverage_points, 3)
-    si.currency = (typeof si.currency === 'string' && si.currency.length === 3) ? si.currency.toUpperCase() : 'EUR'
-    si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
-    si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
-    if (!si.target_low || !si.target_high) analysis.salary_intelligence = null
-  }
+  analysis.salary_intelligence = null
   analysis.interview_prep = analysis.interview_prep || {}
   analysis.interview_prep.likely_questions = normalizeArray(analysis.interview_prep.likely_questions, 5)
   analysis.interview_prep.your_edges = normalizeArray(analysis.interview_prep.your_edges, 3)
@@ -214,7 +172,6 @@ async function callAnthropicWithFallback({ system, jobText, cvText }) {
       }), { attempts: 2, baseDelayMs: 700 })
     } catch (error) {
       lastError = error
-      console.error('Anthropic analyze attempt failed:', { model, status: error?.status, name: error?.name, message: error?.message, type: error?.error?.type, apiMessage: error?.error?.message })
       if (![400, 404].includes(error?.status)) throw error
     }
   }
@@ -226,14 +183,7 @@ async function callAnthropicWithFallback({ system, jobText, cvText }) {
 
 async function saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName }) {
   try {
-    const { data: existing } = await supabaseClient
-      .from('analyses')
-      .select('id, application_status, status_updated_at')
-      .eq('user_id', authUser.id)
-      .eq('cache_key', cacheKey)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const { data: existing } = await supabaseClient.from('analyses').select('id').eq('user_id', authUser.id).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).maybeSingle()
     const payload = { job_url: jobUrl || 'manual_paste', job_title: analysis.job_context?.title || null, score: analysis.display_score, result: analysis, cv_file_name: cvFileName || null }
     if (existing) {
       const { data, error } = await supabaseClient.from('analyses').update(payload).eq('id', existing.id).eq('user_id', authUser.id).select().single()
@@ -264,45 +214,25 @@ export default async function handler(req, res) {
     const usageGate = await getUsageGate(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS)
     const rateLimitInfo = { planId: usageGate.plan.id, planLabel: usageGate.plan.label, analysisUsed: usageGate.used, analysisLimit: usageGate.limit, analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used), sources: usageGate.sources }
     if (!usageGate.allowed) return res.status(429).json({ ...usageGate.payload, rateLimit: rateLimitInfo })
-
-    const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl),
-      extractCvText(cvBase64, cvMimeType)
-    ])
+    const [jobText, cvText] = await Promise.all([providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl), extractCvText(cvBase64, cvMimeType)])
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
-
     const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
-    const { data: cached, error: cacheError } = await supabaseClient
-      .from('analyses')
-      .select('result, created_at')
-      .eq('user_id', authUser.id)
-      .eq('cache_key', cacheKey)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (cacheError) console.warn('Cache lookup failed:', cacheError.message)
+    const { data: cached } = await supabaseClient.from('analyses').select('result, created_at').eq('user_id', authUser.id).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true, rateLimit: rateLimitInfo })
-
     let analysis
     let fallbackUsed = false
     try {
       const message = await callAnthropicWithFallback({ system: SYSTEM, jobText, cvText })
       const raw = message.content.map(b => b.text || '').join('').trim()
-      analysis = extractJsonFromAiText(raw)
-      analysis = normalizeAnalysis(analysis, jobUrl, cvText)
+      analysis = normalizeAnalysis(extractJsonFromAiText(raw), jobUrl, cvText)
     } catch (e) {
       const payload = aiErrorPayload(e, 'analysis')
       if (payload.code === 'ai_input_too_long' || payload.code === 'ai_provider_error') {
-        console.warn('Using fallback analysis:', payload.code, e.message)
-        analysis = buildFallbackAnalysis({ jobText, cvText, jobUrl })
-        analysis = normalizeAnalysis(analysis, jobUrl, cvText)
+        analysis = normalizeAnalysis(buildFallbackAnalysis({ jobText, cvText, jobUrl }), jobUrl, cvText)
         fallbackUsed = true
-      } else {
-        return res.status(payload.statusCode || (e.status === 400 ? 400 : 503)).json(payload)
-      }
+      } else return res.status(payload.statusCode || 503).json(payload)
     }
-
     const savedRow = await saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName })
     if (savedRow) await recordUsageEvent(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS, { source: providedJobText ? 'paste' : 'url', cached: false, fallback: fallbackUsed, analysis_id: savedRow.id })
     const nextRateLimitInfo = { ...rateLimitInfo, analysisUsed: usageGate.used + (savedRow ? 1 : 0), analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used - (savedRow ? 1 : 0)) }
