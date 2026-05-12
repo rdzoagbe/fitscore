@@ -3,12 +3,77 @@ import { useLang } from '../context/LangContext'
 import ThemeToggle from '../components/ThemeToggle'
 import LangSelector from '../components/LangSelector'
 
+const SUPPORT_EMAIL = 'support@joblytics-ai.com'
+
+const sections = [
+  {
+    title: '1. Service description',
+    body: 'Joblytics AI is a web application for job seekers. It helps users compare their own CV against job postings, identify ATS keyword gaps, improve CV wording, generate cover letters, prepare for interviews, estimate salary positioning, and track job applications.'
+  },
+  {
+    title: '2. Intended audience',
+    body: 'Joblytics is intended for individual job seekers using the product for their own job search. It is not intended for recruiters, staffing agencies, employers, or HR teams to evaluate third-party candidates unless a separate written agreement is made.'
+  },
+  {
+    title: '3. Prohibited uses',
+    body: 'You must not use Joblytics to process CVs or personal data belonging to third parties without a lawful basis and their permission. You must not bulk upload candidate profiles, scrape the service, bypass usage limits, reverse-engineer the application, upload malicious files, abuse APIs, or use Joblytics for illegal or discriminatory hiring workflows.'
+  },
+  {
+    title: '4. Account responsibility',
+    body: 'You are responsible for keeping your account secure and for all activity under your account. Use a valid email address and do not share access with unauthorized users.'
+  },
+  {
+    title: '5. AI-generated content',
+    body: 'Joblytics uses AI to generate analysis, suggestions, cover letters, interview preparation, and salary guidance. AI output may be incomplete, inaccurate, outdated, or unsuitable for your situation. You are responsible for reviewing and editing all output before using it in a job application or professional communication.'
+  },
+  {
+    title: '6. No guarantee of hiring outcome',
+    body: 'Joblytics does not guarantee interviews, job offers, salary increases, ATS success, or application outcomes. Scores and recommendations are decision-support tools only.'
+  },
+  {
+    title: '7. CV and job data',
+    body: 'You remain responsible for the content you upload or paste. You confirm that you have the right to process any CV, document, or job information you submit. Joblytics does not sell your CV and is not a recruiter marketplace.'
+  },
+  {
+    title: '8. Usage limits and fair use',
+    body: 'Free and paid plans may include usage limits, such as monthly ATS analyses, cover letters, stored CVs, or other feature quotas. Usage limits are designed to protect the AI budget and service reliability. We may block, throttle, or restrict abnormal or abusive usage.'
+  },
+  {
+    title: '9. Pricing and future payments',
+    body: 'Some features may later require payment, such as a Job Search Pass or Pro Monthly plan. Prices, limits, renewal rules, and refund terms will be shown before purchase. Until payments are activated, pricing information shown in the app is a product preview and not an active billing agreement.'
+  },
+  {
+    title: '10. Refunds and cancellations',
+    body: 'When paid plans are activated, refund and cancellation terms will depend on the plan type. A non-renewing pass may not renew automatically. A subscription plan may be cancellable through a customer portal. Final terms will be shown before checkout.'
+  },
+  {
+    title: '11. Privacy',
+    body: 'Personal data is handled according to the Privacy Policy. By using Joblytics, you agree that relevant CV/job content may be processed by technical providers, including AI providers, to deliver the service.'
+  },
+  {
+    title: '12. Service availability',
+    body: 'Joblytics is provided on a best-effort basis. Features may be unavailable due to maintenance, provider outages, AI provider billing/credit issues, hosting issues, or other technical problems. We may modify, suspend, or discontinue features at any time.'
+  },
+  {
+    title: '13. Limitation of liability',
+    body: 'To the maximum extent permitted by law, Joblytics is not liable for indirect, incidental, special, consequential, or economic losses, including missed opportunities, rejected applications, employment decisions, or reliance on AI-generated content.'
+  },
+  {
+    title: '14. Changes to these terms',
+    body: 'We may update these terms as the product evolves. Continued use of Joblytics after updates means you accept the updated terms.'
+  },
+  {
+    title: '15. Governing law and contact',
+    body: `These terms are governed by French law, subject to applicable consumer protection rules. For questions, contact ${SUPPORT_EMAIL}.`
+  }
+]
+
 export default function TermsPage({ onBack }) {
   const { t } = useLang()
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '24px 20px 60px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
           <button onClick={onBack || (() => window.history.back())} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, padding: 0 }}>
             ← {t('back') || 'Back'}
@@ -19,30 +84,26 @@ export default function TermsPage({ onBack }) {
           </div>
         </div>
 
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-          {t('footer_terms') || 'Terms of Service'}
+        <p style={{ margin: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 950, letterSpacing: '.13em', textTransform: 'uppercase' }}>Legal</p>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(34px,6vw,58px)', lineHeight: .95, letterSpacing: '-.075em', fontWeight: 800, color: 'var(--text-primary)', margin: '10px 0 8px' }}>
+          Terms of Service
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 36 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 28 }}>
           {t('last_updated') || 'Last updated'}: {new Date().toLocaleDateString()}
         </p>
 
-        {[
-          { title: '1. Service description', body: 'Joblytics is a free web service exclusively for job seekers. It helps individuals analyze their own CV against job postings using AI-powered ATS simulation. The service provides ATS scoring, seniority alignment analysis, interview preparation guidance, and cover letter assistance.' },
-          { title: '2. Intended audience and prohibited uses', body: 'Joblytics is intended SOLELY for personal use by individual job seekers analyzing their own CV against jobs they personally intend to apply for. The following uses are STRICTLY PROHIBITED: (a) recruiters, headhunters, talent acquisition professionals, or staffing agencies using the service to evaluate, screen, or score third-party candidates; (b) HR departments using the service to assess applicants; (c) any commercial sourcing, candidate evaluation, or hiring workflow; (d) bulk submission of CVs that are not your own; (e) any use that processes personal data of third parties without their explicit consent. Violation of this clause results in immediate account termination and may constitute a breach of GDPR/RGPD if it involves processing third-party personal data without lawful basis.' },
-          { title: '3. Account', body: 'To use Joblytics you need to create an account with a valid email address. You are responsible for maintaining the security of your account and for all activities under it.' },
-          { title: '4. Acceptable use', body: 'You agree not to: (a) abuse rate limits or attempt to circumvent them, (b) upload malicious content or files, (c) attempt to reverse-engineer the service, (d) use the service for any illegal purpose, (e) impersonate another person.' },
-          { title: '5. Service availability', body: 'Joblytics is provided "as is" without warranty. We do our best to maintain uptime but cannot guarantee uninterrupted service. We reserve the right to modify or discontinue features at any time.' },
-          { title: '6. AI-generated content disclaimer', body: 'Analyses are generated by AI and are intended as guidance only. They do not guarantee job application success. Final judgment about applying to any job remains with you.' },
-          { title: '7. Data and privacy', body: 'Your personal data is handled per our Privacy Policy. We comply with RGPD/GDPR. You can delete your account and all associated data at any time.' },
-          { title: '8. Liability limitation', body: 'To the fullest extent permitted by law, Joblytics is not liable for any indirect, incidental, or consequential damages arising from use of the service, including missed job opportunities or rejected applications.' },
-          { title: '9. Changes to terms', body: 'We may update these terms from time to time. Significant changes will be notified to users via email. Continued use after changes constitutes acceptance.' },
-          { title: '10. Governing law', body: 'These terms are governed by French law. Any disputes will be resolved in French courts, subject to applicable EU consumer protection laws.' },
-          { title: '11. Contact', body: 'For questions about these terms, contact us at hello@fitscore.app.' }
-        ].map(({ title, body }) => (
-          <div key={title} style={{ marginBottom: 28 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 600, color: 'var(--accent)', marginBottom: 10 }}>{title}</h2>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{body}</p>
-          </div>
+        <div style={{ padding: 18, borderRadius: 22, border: '1px solid var(--border-soft)', background: 'var(--bg-card)', marginBottom: 32 }}>
+          <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Plain-English summary</strong>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.7, fontSize: 14 }}>
+            Joblytics is a job-search tool for individuals. AI guidance is not a hiring guarantee. Do not use the service to screen other people’s CVs without permission.
+          </p>
+        </div>
+
+        {sections.map(({ title, body }) => (
+          <section key={title} style={{ marginBottom: 28 }}>
+            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>{title}</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.78 }}>{body}</p>
+          </section>
         ))}
       </div>
     </div>
