@@ -1,39 +1,94 @@
 import React from 'react'
 import ThemeToggle from '../components/ThemeToggle'
 
+const SUPPORT_EMAIL = 'support@joblytics-ai.com'
+
+const sections = [
+  {
+    title: '1. Data controller',
+    content: `Joblytics AI is a career-support web application for job seekers. For privacy questions or GDPR requests, contact us at ${SUPPORT_EMAIL}. This policy explains how Joblytics handles personal data when you use the service.`
+  },
+  {
+    title: '2. Data we process',
+    content: `We process only the data needed to provide the product:\n\n• Account data: email address, authentication identifiers, and basic profile information.\n• CV data: CV files and metadata you upload or store in your browser/device.\n• Job data: job URLs, pasted job descriptions, job titles, companies, and analysis context.\n• Analysis data: ATS scores, keyword gaps, CV suggestions, cover letters, interview preparation, salary guidance, and application tracker notes.\n• Usage data: plan, limits, feature usage, product events, diagnostics, and error logs.\n• Support data: contact messages and diagnostic details you choose to include.`
+  },
+  {
+    title: '3. Purpose of processing',
+    content: `Your data is used to:\n\n• Provide ATS analysis and CV/job matching.\n• Generate CV improvement suggestions, cover letters, and interview preparation.\n• Save your history, CV library, usage limits, and application tracker.\n• Maintain security, prevent abuse, and enforce fair-use limits.\n• Provide support and diagnose product issues.\n• Improve service reliability and product quality.\n\nJoblytics does not sell your CV. Joblytics is not a recruiter marketplace and does not use your CV to resell your profile to recruiters.`
+  },
+  {
+    title: '4. Legal basis under GDPR',
+    content: `Depending on the feature, we rely on:\n\n• Contract performance: to provide the service you requested.\n• Consent: when you choose to upload files, submit diagnostics, or use AI features.\n• Legitimate interest: to secure the service, prevent abuse, measure reliability, and improve the product.\n• Legal obligation: if specific records must be retained by law.`
+  },
+  {
+    title: '5. AI processing',
+    content: `When you run an ATS analysis, generate a cover letter, or use AI coaching features, relevant CV/job content may be sent to an AI provider for processing. AI output is guidance only and may be inaccurate or incomplete. You should review and edit all AI-generated content before using it in a job application.`
+  },
+  {
+    title: '6. Storage and retention',
+    content: `Retention depends on the data type:\n\n• Account data: kept while your account is active.\n• CV files and local CV metadata: kept until you delete them or clear browser/device storage.\n• Saved analyses and tracker data: kept until you delete them or close your account.\n• Product analytics and diagnostics: kept only as long as needed for product reliability and improvement.\n• Support messages: kept as long as needed to handle your request and maintain a support record.\n\nIf you request account deletion, we aim to delete or anonymize personal data within 30 days, unless retention is legally required.`
+  },
+  {
+    title: '7. Processors and hosting',
+    content: `Joblytics may use trusted providers for hosting, authentication, database storage, AI processing, analytics, email, and infrastructure. These providers process data only to help deliver the service. Current technical providers may include Supabase, Vercel, Anthropic, and optional email/analytics providers configured for the service.`
+  },
+  {
+    title: '8. Security',
+    content: `We use reasonable technical and organizational measures, including HTTPS/TLS, authentication, access controls, row-level security where applicable, and limited backend service-role access. No internet service can guarantee absolute security, but Joblytics is designed to minimize unnecessary exposure of personal data.`
+  },
+  {
+    title: '9. Your rights',
+    content: `Under GDPR, you may have the right to:\n\n• Access your data.\n• Correct inaccurate data.\n• Delete your data.\n• Object to certain processing.\n• Restrict processing.\n• Receive a portable copy of your data.\n• Withdraw consent where processing is based on consent.\n\nTo exercise these rights, contact ${SUPPORT_EMAIL}. You may also have the right to complain to the CNIL or your local data protection authority.`
+  },
+  {
+    title: '10. Cookies and local storage',
+    content: `Joblytics uses necessary cookies/local storage for authentication, app preferences, CV storage, PWA behavior, and analytics. We do not use advertising cookies. Some CV data may be stored locally in your browser/device for privacy and performance.`
+  },
+  {
+    title: '11. International transfers',
+    content: `Some providers may process data outside France or the European Economic Area. Where required, appropriate safeguards such as contractual protections or provider compliance mechanisms are used.`
+  },
+  {
+    title: '12. Changes to this policy',
+    content: `We may update this policy as the product evolves. Material changes will be reflected on this page and, where appropriate, communicated to users.`
+  }
+]
+
 export default function PrivacyPage({ onBack }) {
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '24px 20px 60px', transition: 'background 0.3s' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div style={{ maxWidth: 780, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            ← Retour
+          <button onClick={onBack || (() => window.history.back())} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ← Back
           </button>
           <ThemeToggle />
         </div>
 
-        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-          Politique de confidentialité & RGPD
+        <p style={{ margin: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 950, letterSpacing: '.13em', textTransform: 'uppercase' }}>Privacy & GDPR</p>
+        <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(34px,6vw,58px)', lineHeight: .95, letterSpacing: '-.075em', fontWeight: 800, color: 'var(--text-primary)', margin: '10px 0 8px' }}>
+          Privacy Policy
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 36 }}>Dernière mise à jour : {new Date().toLocaleDateString('fr-FR')}</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 28 }}>Last updated: {new Date().toLocaleDateString()}</p>
 
-        {[
-          { title: '1. Responsable du traitement', content: `Joblytics est édité en tant que service personnel. En utilisant Joblytics, vous acceptez la collecte et l'utilisation de vos données telles que décrites dans cette politique.` },
-          { title: '2. Données collectées', content: `Nous collectons uniquement les données nécessaires :\n\n• Adresse email (création de compte)\n• Fichiers CV uploadés (PDF ou Word) — stockés de façon sécurisée\n• URLs des offres d'emploi analysées\n• Résultats des analyses ATS\n• Données de connexion (date, heure)` },
-          { title: '3. Finalité du traitement', content: `Vos données sont utilisées exclusivement pour :\n\n• Vous fournir le service d'analyse ATS\n• Stocker votre historique d'analyses\n• Améliorer le service\n\nVos données ne sont jamais vendues, partagées ou utilisées à des fins publicitaires.` },
-          { title: '4. Base légale (RGPD Art. 6)', content: `Le traitement est fondé sur :\n\n• L'exécution du contrat (fourniture du service)\n• Votre consentement explicite lors de l'inscription` },
-          { title: '5. Durée de conservation', content: `• Données de compte : jusqu'à suppression du compte\n• Fichiers CV : jusqu'à suppression manuelle ou du compte\n• Historique d'analyses : jusqu'à suppression manuelle ou du compte\n\nEn cas de suppression, toutes les données sont supprimées sous 30 jours.` },
-          { title: '6. Sous-traitants', content: `Tous conformes au RGPD :\n\n• Supabase (stockage) — serveurs en Europe\n• Anthropic (analyse IA) — traitement à la volée, aucune donnée conservée\n• Vercel (hébergement) — infrastructure sécurisée` },
-          { title: '7. Vos droits (RGPD)', content: `• Droit d'accès\n• Droit de rectification\n• Droit à l'effacement (droit à l'oubli)\n• Droit à la portabilité\n• Droit d'opposition\n\nPour exercer ces droits, supprimez votre compte ou contactez-nous.` },
-          { title: '8. Sécurité', content: `• Chiffrement en transit (HTTPS/TLS)\n• Chiffrement au repos (Supabase)\n• Authentification sécurisée\n• Accès strictement limité à votre compte` },
-          { title: '9. Cookies', content: `Joblytics utilise uniquement des cookies techniques nécessaires (session d'authentification). Aucun cookie publicitaire ou de tracking.` },
-          { title: '10. Contact & réclamations', content: `Pour toute question relative à vos données, contactez-nous via l'application.\n\nVous avez le droit d'introduire une réclamation auprès de la CNIL (www.cnil.fr).` },
-        ].map(({ title, content }) => (
-          <div key={title} style={{ marginBottom: 28 }}>
-            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 15, fontWeight: 600, color: 'var(--accent)', marginBottom: 10 }}>{title}</h2>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, whiteSpace: 'pre-line' }}>{content}</p>
-          </div>
+        <div style={{ padding: 18, borderRadius: 22, border: '1px solid var(--border-soft)', background: 'var(--bg-card)', marginBottom: 32 }}>
+          <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>Plain-English summary</strong>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.7, fontSize: 14 }}>
+            Joblytics helps you improve your own job applications. We do not sell your CV, we do not operate as a recruiter database, and AI outputs should always be reviewed by you before use.
+          </p>
+        </div>
+
+        {sections.map(({ title, content }) => (
+          <section key={title} style={{ marginBottom: 28 }}>
+            <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--accent)', marginBottom: 10 }}>{title}</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.78, whiteSpace: 'pre-line' }}>{content}</p>
+          </section>
         ))}
+
+        <div style={{ marginTop: 36, padding: 18, borderRadius: 22, background: 'var(--accent-soft)', border: '1px solid var(--border-focus)' }}>
+          <strong style={{ color: 'var(--text-primary)' }}>Contact for privacy requests</strong>
+          <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)' }}>{SUPPORT_EMAIL}</p>
+        </div>
       </div>
     </div>
   )
