@@ -1,0 +1,7 @@
+Suggested Google Search Console review note:
+
+We reviewed the site after a browser warning. We removed the LinkedIn URL analysis flow, removed user-facing LinkedIn OAuth/import options, and removed the old LinkedIn OAuth/DMA backend endpoints from the deployed codebase.
+
+The LinkedIn Optimizer is now paste/upload only. Joblytics does not ask users for LinkedIn credentials, does not log into LinkedIn, does not scrape private LinkedIn pages, and does not bypass LinkedIn access controls. The privacy policy has also been updated with a clear LinkedIn safety commitment and a security contact file was added at /.well-known/security.txt.
+
+Please review the updated site.

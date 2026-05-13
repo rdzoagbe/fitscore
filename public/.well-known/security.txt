@@ -1,0 +1,5 @@
+Contact: mailto:support@joblytics-ai.com
+Preferred-Languages: en, fr
+Canonical: https://joblytics-ai.com/.well-known/security.txt
+Policy: https://joblytics-ai.com/privacy
+Expires: 2027-05-13T00:00:00Z
