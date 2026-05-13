@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { generateCoverLetter } from '@/lib/cover-letter/generate'
 import { renderCoverLetter, type CoverLetterResult } from '@/lib/cover-letter/schema'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { createClient } from '@/lib/supabase/server'
 
 export type CoverLetterState = {
@@ -20,6 +21,9 @@ function getString(formData: FormData, key: string): string {
 
 export async function generateCoverLetterAction(_prevState: CoverLetterState, formData: FormData): Promise<CoverLetterState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'coverLetter')
+  if (!usage.allowed) return { error: usage.message }
+
   const cvVersionId = getString(formData, 'cvVersionId')
   const companyName = getString(formData, 'companyName')
   const jobTitle = getString(formData, 'jobTitle')
