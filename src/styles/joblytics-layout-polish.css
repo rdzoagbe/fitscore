@@ -1,35 +1,20 @@
-/* P8B — Joblytics final layout simplification and premium spacing pass
-   Purpose: reduce visual clutter, standardize page dimensions, improve hierarchy,
-   and make the app feel calmer before soft-launch feedback.
-*/
+/* Joblytics compact premium layout system
+   Inspired by clean enterprise SaaS pages: calm spacing, smaller type,
+   light cards, and clear hierarchy instead of oversized dashboard blocks. */
 
-/* ---------- Design tokens ---------- */
 :root {
-  --jl-page-max: 1200px;
-  --jl-page-wide: 1320px;
-  --jl-page-narrow: 920px;
-
-  --jl-space-1: 6px;
-  --jl-space-2: 10px;
-  --jl-space-3: 14px;
-  --jl-space-4: 18px;
-  --jl-space-5: 24px;
-  --jl-space-6: 32px;
-  --jl-space-7: 44px;
-  --jl-space-8: 64px;
-  --jl-space-9: 88px;
-
-  --jl-radius-sm: 14px;
-  --jl-radius-md: 20px;
-  --jl-radius-lg: 28px;
-  --jl-radius-xl: 36px;
-
-  --jl-shadow-card: 0 18px 52px rgba(15, 23, 42, 0.07);
-  --jl-shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.06);
-  --jl-border-soft: rgba(148, 163, 184, 0.22);
+  --jl-page-max: 1180px;
+  --jl-page-wide: 1240px;
+  --jl-page-narrow: 880px;
+  --jl-radius-sm: 10px;
+  --jl-radius-md: 14px;
+  --jl-radius-lg: 18px;
+  --jl-radius-xl: 24px;
+  --jl-shadow-card: 0 10px 28px rgba(15, 23, 42, 0.055);
+  --jl-shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.045);
+  --jl-border-soft: rgba(148, 163, 184, 0.18);
 }
 
-/* ---------- Global rhythm ---------- */
 html {
   scroll-behavior: smooth;
 }
@@ -50,77 +35,52 @@ main {
   overflow-x: clip;
 }
 
-/* Keep content inside a calm, consistent width */
-[class*="shell"],
-[class*="container"],
-[class*="page-inner"],
-[class*="pageShell"],
-[class*="dashboard-shell"],
-[class*="pricing-shell"],
-[class*="resource-shell"],
-[class*="role-shell"] {
+[class*='shell'],
+[class*='container'],
+[class*='page-inner'],
+[class*='pageShell'],
+[class*='dashboard-shell'],
+[class*='pricing-shell'],
+[class*='resource-shell'],
+[class*='role-shell'] {
   max-width: var(--jl-page-max);
   margin-left: auto;
   margin-right: auto;
 }
 
-/* Generic page padding refinement */
-[class*="page"],
-[class*="Page"] {
-  box-sizing: border-box;
-}
-
-/* ---------- Typography hierarchy ---------- */
 h1,
 .hero-title,
 .dashboard-title,
 .career-title,
 .page-title {
-  max-width: 980px;
+  max-width: 920px;
   text-wrap: balance;
-  letter-spacing: -0.055em !important;
+  letter-spacing: -0.045em !important;
+  line-height: 1.02 !important;
 }
 
 h2,
 .section-title {
   text-wrap: balance;
-  letter-spacing: -0.04em !important;
+  letter-spacing: -0.032em !important;
+  line-height: 1.09 !important;
+}
+
+h3 {
+  line-height: 1.14 !important;
 }
 
 p {
   text-wrap: pretty;
 }
 
-/* Keep giant headings readable after font switch */
-h1 {
-  line-height: .98 !important;
-}
-
-h2 {
-  line-height: 1.05 !important;
-}
-
-h3 {
-  line-height: 1.12 !important;
-}
-
-/* Avoid overly wide paragraphs */
 p,
 li {
-  max-width: 78ch;
-}
-
-/* ---------- Navigation simplification ---------- */
-header,
-nav,
-.app-nav,
-[class*="AppNav"],
-[class*="nav"] {
-  box-sizing: border-box;
+  max-width: 72ch;
 }
 
 .app-nav,
-[class*="appNav"],
+[class*='appNav'],
 nav[aria-label],
 header nav {
   backdrop-filter: blur(18px);
@@ -130,46 +90,43 @@ header nav {
 .app-nav button,
 nav a,
 nav button,
-[class*="nav"] a,
-[class*="nav"] button {
-  min-height: 40px;
+[class*='nav'] a,
+[class*='nav'] button {
+  min-height: 36px;
   border-radius: 999px !important;
   white-space: nowrap;
 }
 
-/* Give nav links breathing space while preventing wrap chaos */
 nav ul,
-nav [role="list"],
-[class*="nav"] ul,
-[class*="navItems"],
-[class*="nav-links"],
-[class*="navLinks"] {
-  gap: 8px !important;
+nav [role='list'],
+[class*='nav'] ul,
+[class*='navItems'],
+[class*='nav-links'],
+[class*='navLinks'] {
+  gap: 6px !important;
 }
 
-/* Desktop: less crowded navigation */
 @media (min-width: 960px) {
   .app-nav,
-  [class*="appNav"],
+  [class*='appNav'],
   header {
-    padding-top: 10px;
-    padding-bottom: 10px;
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   nav a,
   nav button,
-  [class*="nav"] a,
-  [class*="nav"] button {
-    padding-inline: 13px !important;
-    font-size: 13px !important;
+  [class*='nav'] a,
+  [class*='nav'] button {
+    padding-inline: 11px !important;
+    font-size: 12px !important;
   }
 }
 
-/* Mobile/tablet: horizontal scroll is cleaner than wrapping */
 @media (max-width: 1120px) {
   nav,
   .app-nav,
-  [class*="appNav"] {
+  [class*='appNav'] {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
@@ -177,132 +134,122 @@ nav [role="list"],
 
   nav::-webkit-scrollbar,
   .app-nav::-webkit-scrollbar,
-  [class*="appNav"]::-webkit-scrollbar {
+  [class*='appNav']::-webkit-scrollbar {
     display: none;
   }
 }
 
-/* ---------- Cards: consistent calm surface ---------- */
-[class*="card"],
-[class*="Card"],
-[class*="panel"],
-[class*="Panel"],
-[class*="tile"],
-[class*="Tile"] {
+[class*='card'],
+[class*='Card'],
+[class*='panel'],
+[class*='Panel'],
+[class*='tile'],
+[class*='Tile'] {
   box-sizing: border-box;
 }
 
-:is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]) {
+:is([class*='card'], [class*='Card'], [class*='panel'], [class*='Panel']) {
   border-radius: var(--jl-radius-lg);
 }
 
-:is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel) {
+:is([class*='card'], [class*='Card'], [class*='panel'], [class*='Panel']):not(.feedback-panel):not(.feedback-row) {
   box-shadow: var(--jl-shadow-soft);
 }
 
-/* Avoid tiny cramped card padding */
 @media (min-width: 760px) {
-  :is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel):not(.feedback-row) {
-    padding-block: max(var(--jl-space-5), min(3vw, var(--jl-space-6)));
+  :is([class*='card'], [class*='Card'], [class*='panel'], [class*='Panel']):not(.feedback-panel):not(.feedback-row) {
+    padding-block: clamp(16px, 2vw, 24px);
   }
 }
 
-/* ---------- Dashboard simplification ---------- */
 .career-dashboard,
 .dashboard-page,
-[class*="CareerDashboard"],
-[class*="DashboardPage"] {
+[class*='CareerDashboard'],
+[class*='DashboardPage'] {
   max-width: var(--jl-page-wide);
   margin-left: auto;
   margin-right: auto;
-  padding-inline: clamp(18px, 3vw, 40px);
+  padding-inline: clamp(16px, 2.4vw, 32px);
 }
 
-/* Top dashboard area: more breathing room */
 .career-dashboard > *,
 .dashboard-page > *,
-[class*="CareerDashboard"] > * {
-  margin-bottom: clamp(22px, 3vw, 34px);
+[class*='CareerDashboard'] > * {
+  margin-bottom: clamp(16px, 2.2vw, 26px);
 }
 
-/* The greeting should not overpower the page */
 .career-dashboard h1,
 .dashboard-page h1,
-[class*="CareerDashboard"] h1 {
-  font-size: clamp(2.35rem, 5.8vw, 5.1rem) !important;
-  line-height: .95 !important;
-  letter-spacing: -0.06em !important;
-  margin-bottom: 14px !important;
+[class*='CareerDashboard'] h1 {
+  font-size: clamp(2rem, 4.7vw, 4.2rem) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.048em !important;
+  margin-bottom: 10px !important;
 }
 
-/* Reduce noisy KPI dominance */
-[class*="stat"],
-[class*="Stat"],
-[class*="metric"],
-[class*="Metric"] {
+[class*='stat'],
+[class*='Stat'],
+[class*='metric'],
+[class*='Metric'] {
   min-width: 0;
 }
 
-[class*="stat"] strong,
-[class*="Stat"] strong,
-[class*="metric"] strong,
-[class*="Metric"] strong,
-[class*="score"] strong,
-[class*="Score"] strong {
-  font-size: clamp(1.6rem, 3.5vw, 2.6rem) !important;
+[class*='stat'] strong,
+[class*='Stat'] strong,
+[class*='metric'] strong,
+[class*='Metric'] strong,
+[class*='score'] strong,
+[class*='Score'] strong {
+  font-size: clamp(1.35rem, 2.6vw, 2.1rem) !important;
   line-height: 1 !important;
   white-space: nowrap;
 }
 
-/* Dashboard grids should not squeeze content */
-[class*="grid"],
-[class*="Grid"] {
+[class*='grid'],
+[class*='Grid'] {
   min-width: 0;
 }
 
-/* Next action card: make it feel like primary recommendation */
 .career-next-action,
 .next-action-card,
-[class*="NextAction"] {
+[class*='NextAction'] {
   border-radius: var(--jl-radius-xl) !important;
-  padding: clamp(22px, 3vw, 34px) !important;
+  padding: clamp(18px, 2.4vw, 26px) !important;
 }
 
 .career-next-action h2,
 .next-action-card h2,
-[class*="NextAction"] h2 {
-  font-size: clamp(1.65rem, 3vw, 2.4rem) !important;
-  margin-bottom: 10px !important;
+[class*='NextAction'] h2 {
+  font-size: clamp(1.35rem, 2.5vw, 2rem) !important;
+  margin-bottom: 8px !important;
 }
 
-/* Career progress: prevent too many equal-weight blocks feeling chaotic */
 .career-progress-flow,
-[class*="CareerProgress"],
-[class*="progress-flow"] {
+[class*='CareerProgress'],
+[class*='progress-flow'] {
   border-radius: var(--jl-radius-xl) !important;
 }
 
 .career-progress-flow h2,
-[class*="CareerProgress"] h2 {
-  font-size: clamp(1.75rem, 3vw, 2.5rem) !important;
+[class*='CareerProgress'] h2 {
+  font-size: clamp(1.45rem, 2.6vw, 2.1rem) !important;
 }
 
-/* ---------- Analyzer / forms ---------- */
 .analyzePro-shell,
-[class*="analyze"],
-[class*="Analyzer"] {
+[class*='analyze'],
+[class*='Analyzer'] {
   max-width: var(--jl-page-wide);
 }
 
 input,
 textarea,
 select {
-  border-radius: 16px !important;
-  min-height: 44px;
+  border-radius: 12px !important;
+  min-height: 40px;
 }
 
 textarea {
-  line-height: 1.55 !important;
+  line-height: 1.5 !important;
 }
 
 label {
@@ -312,126 +259,116 @@ label {
 button,
 .button,
 .btn,
-a[role="button"] {
-  min-height: 42px;
+a[role='button'] {
+  min-height: 38px;
   border-radius: 999px !important;
 }
 
-/* One primary action should stand out; secondary actions should breathe */
 button + button,
 .button + .button,
 .btn + .btn {
-  margin-left: 6px;
+  margin-left: 4px;
 }
 
-/* ---------- Public landing / SEO pages ---------- */
 .landing-page,
 .resource-page,
 .role-page,
 .sample-report-page,
 .early-access-page,
 .pricing-page,
-[class*="Landing"],
-[class*="Resource"],
-[class*="Role"],
-[class*="Sample"],
-[class*="Pricing"] {
+[class*='Landing'],
+[class*='Resource'],
+[class*='Role'],
+[class*='Sample'],
+[class*='Pricing'] {
   overflow-x: clip;
 }
 
-/* Public sections should feel editorial and spaced */
 .landing-page section,
 .resource-page section,
 .role-page section,
 .sample-report-page section,
 .early-access-page section,
 .pricing-page section {
-  margin-block: clamp(38px, 7vw, 86px);
+  margin-block: clamp(28px, 5vw, 64px);
 }
 
-/* Hero sections: one focused message */
 .hero,
-[class*="hero"],
-[class*="Hero"] {
+[class*='hero'],
+[class*='Hero'] {
   max-width: var(--jl-page-wide);
   margin-left: auto;
   margin-right: auto;
 }
 
 .hero h1,
-[class*="Hero"] h1,
-[class*="hero"] h1 {
-  font-size: clamp(2.6rem, 7vw, 6rem) !important;
-  max-width: 980px;
+[class*='Hero'] h1,
+[class*='hero'] h1 {
+  font-size: clamp(2.2rem, 5.7vw, 4.9rem) !important;
+  max-width: 920px;
 }
 
-/* SEO/article pages should not feel like dashboards */
 .resource-article,
 .article-body,
-[class*="Article"] {
-  max-width: 880px;
+[class*='Article'] {
+  max-width: 820px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .resource-article p,
 .article-body p,
-[class*="Article"] p {
-  max-width: 74ch;
+[class*='Article'] p {
+  max-width: 70ch;
 }
 
-/* ---------- Pricing cleanup ---------- */
 .pricing-page,
-[class*="PricingPage"] {
+[class*='PricingPage'] {
   max-width: var(--jl-page-wide);
   margin-left: auto;
   margin-right: auto;
-  padding-inline: clamp(18px, 3vw, 40px);
+  padding-inline: clamp(16px, 2.4vw, 32px);
 }
 
 .pricing-page h1,
-[class*="PricingPage"] h1 {
-  font-size: clamp(2.4rem, 6vw, 5.4rem) !important;
+[class*='PricingPage'] h1 {
+  font-size: clamp(2.1rem, 5vw, 4.4rem) !important;
 }
 
-[class*="pricing"] [class*="card"],
-[class*="Pricing"] [class*="Card"] {
+[class*='pricing'] [class*='card'],
+[class*='Pricing'] [class*='Card'] {
   align-self: stretch;
 }
 
-/* ---------- Pipeline and admin readability ---------- */
-[class*="pipeline"],
-[class*="Pipeline"],
-[class*="kanban"],
-[class*="Kanban"] {
+[class*='pipeline'],
+[class*='Pipeline'],
+[class*='kanban'],
+[class*='Kanban'] {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-bottom: 8px;
 }
 
 .admin-feedback-page,
-[class*="Admin"] {
+[class*='Admin'] {
   max-width: var(--jl-page-wide);
 }
 
-/* ---------- Visual decluttering ---------- */
-[class*="badge"],
-[class*="Badge"],
-[class*="chip"],
-[class*="Chip"] {
+[class*='badge'],
+[class*='Badge'],
+[class*='chip'],
+[class*='Chip'] {
   border-radius: 999px !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   line-height: 1 !important;
-  padding: 7px 10px !important;
+  padding: 6px 9px !important;
 }
 
-/* Avoid too many loud gradients competing */
-[class*="gradient"],
-[class*="Gradient"] {
-  background-size: 160% 160%;
+[class*='gradient'],
+[class*='Gradient'] {
+  background-size: 150% 150%;
 }
 
-/* ---------- Language / text overflow protection ---------- */
 h1,
 h2,
 h3,
@@ -448,15 +385,7 @@ a {
   overflow-wrap: normal;
 }
 
-/* ---------- Mobile final pass ---------- */
 @media (max-width: 760px) {
-  :root {
-    --jl-space-5: 20px;
-    --jl-space-6: 24px;
-    --jl-space-7: 32px;
-    --jl-space-8: 44px;
-  }
-
   body {
     overflow-x: hidden;
   }
@@ -465,72 +394,68 @@ a {
   .career-dashboard,
   .dashboard-page,
   .pricing-page,
-  [class*="page"],
-  [class*="Page"] {
-    padding-left: max(14px, env(safe-area-inset-left)) !important;
-    padding-right: max(14px, env(safe-area-inset-right)) !important;
+  [class*='page'],
+  [class*='Page'] {
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
   }
 
   h1,
   .hero h1,
-  [class*="Hero"] h1,
+  [class*='Hero'] h1,
   .career-dashboard h1,
   .dashboard-page h1 {
-    font-size: clamp(2.1rem, 11vw, 3.35rem) !important;
-    line-height: .96 !important;
+    font-size: clamp(1.9rem, 9.5vw, 3rem) !important;
+    line-height: 1.02 !important;
   }
 
   h2 {
-    font-size: clamp(1.55rem, 7vw, 2.25rem) !important;
+    font-size: clamp(1.35rem, 6vw, 1.95rem) !important;
   }
 
   p,
   li {
-    font-size: 0.98rem;
-    line-height: 1.62;
+    font-size: 0.94rem;
+    line-height: 1.56;
   }
 
-  :is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel):not(.feedback-row) {
-    border-radius: 22px !important;
-    padding: 18px !important;
+  :is([class*='card'], [class*='Card'], [class*='panel'], [class*='Panel']):not(.feedback-panel):not(.feedback-row) {
+    border-radius: 18px !important;
+    padding: 16px !important;
   }
 
   button,
   .button,
   .btn,
-  a[role="button"] {
+  a[role='button'] {
     width: auto;
-    min-height: 44px;
+    min-height: 42px;
   }
 
-  /* CTA groups stack cleanly */
-  [class*="cta"],
-  [class*="CTA"],
-  [class*="actions"],
-  [class*="Actions"] {
-    gap: 10px !important;
+  [class*='cta'],
+  [class*='CTA'],
+  [class*='actions'],
+  [class*='Actions'] {
+    gap: 8px !important;
   }
 
-  /* Stats should form simple grids rather than crammed rows */
-  [class*="stat-grid"],
-  [class*="StatGrid"],
-  [class*="metric-grid"],
-  [class*="MetricGrid"] {
+  [class*='stat-grid'],
+  [class*='StatGrid'],
+  [class*='metric-grid'],
+  [class*='MetricGrid'] {
     grid-template-columns: 1fr 1fr !important;
   }
 
-  /* On very narrow phones, stack stats */
   @media (max-width: 420px) {
-    [class*="stat-grid"],
-    [class*="StatGrid"],
-    [class*="metric-grid"],
-    [class*="MetricGrid"] {
+    [class*='stat-grid'],
+    [class*='StatGrid'],
+    [class*='metric-grid'],
+    [class*='MetricGrid'] {
       grid-template-columns: 1fr !important;
     }
   }
 }
 
-/* ---------- Print / screenshot friendliness ---------- */
 @media print {
   .feedback-widget,
   nav,
