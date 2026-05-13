@@ -1,0 +1,47 @@
+{
+  "name": "Joblytics AI SEO QA",
+  "version": "P6F",
+  "checks": [
+    {
+      "type": "crawl",
+      "path": "/",
+      "expected": "200"
+    },
+    {
+      "type": "crawl",
+      "path": "/resources",
+      "expected": "200"
+    },
+    {
+      "type": "crawl",
+      "path": "/roles",
+      "expected": "200"
+    },
+    {
+      "type": "crawl",
+      "path": "/sample-reports",
+      "expected": "200"
+    },
+    {
+      "type": "crawl",
+      "path": "/sitemap.xml",
+      "expected": "200 xml"
+    },
+    {
+      "type": "crawl",
+      "path": "/robots.txt",
+      "expected": "200 text"
+    },
+    {
+      "type": "security",
+      "path": "/admin",
+      "expected": "not indexed"
+    },
+    {
+      "type": "security",
+      "path": "/api",
+      "expected": "blocked in robots"
+    }
+  ],
+  "notes": "Public SEO routes should be crawlable. Private admin/API routes should not be indexed."
+}
