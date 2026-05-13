@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useUsageSummary } from '../hooks/useUsageSummary'
 import './PricingPage.css'
 
+const billingReady = false
+
 const plans = [
   {
     id: 'free',
@@ -14,6 +16,7 @@ const plans = [
     cta: 'Open app',
     href: '/',
     highlighted: false,
+    billingState: 'Available now',
     limits: ['5 ATS analyses / month', '3 cover letters / month', '2 saved CV versions'],
     features: [
       'ATS match score',
@@ -31,9 +34,10 @@ const plans = [
     period: '14 days · no auto-renewal',
     badge: 'Best launch offer',
     description: 'For a focused two-week application sprint without subscription anxiety.',
-    cta: 'Request early access',
+    cta: billingReady ? 'Buy 14-day pass' : 'Request launch access',
     href: '/contact',
     highlighted: true,
+    billingState: billingReady ? 'Stripe checkout active' : 'Checkout coming soon',
     limits: ['100 ATS analyses / 14 days', '30 cover letters / 14 days', '10 saved CV versions'],
     features: [
       'Everything in Free',
@@ -52,9 +56,10 @@ const plans = [
     period: 'per month',
     badge: 'For active searches',
     description: 'For users applying continuously and managing several opportunities at once.',
-    cta: 'Join Pro waitlist',
+    cta: billingReady ? 'Start Pro Monthly' : 'Join Pro waitlist',
     href: '/contact',
     highlighted: false,
+    billingState: billingReady ? 'Stripe checkout active' : 'Checkout coming soon',
     limits: ['150 ATS analyses / month', '60 cover letters / month', '20 saved CV versions'],
     features: [
       'Everything in Job Search Pass',
@@ -78,6 +83,21 @@ const featureRows = [
   ['Best for', 'Trying the app', 'Two-week sprint', 'Ongoing search']
 ]
 
+const billingSteps = [
+  {
+    title: 'Choose plan',
+    detail: 'The pricing page is visually ready for Free, Job Search Pass, and Pro Monthly.'
+  },
+  {
+    title: 'Secure checkout',
+    detail: 'Stripe buttons are visually prepared but intentionally routed to launch access until products are created.'
+  },
+  {
+    title: 'Plan activation',
+    detail: 'After Stripe webhooks are connected, user_profiles.plan will update automatically.'
+  }
+]
+
 function limitPercent(used, limit) {
   if (!limit || limit >= 9999) return 0
   return Math.min(100, Math.round((used / limit) * 100))
@@ -85,6 +105,8 @@ function limitPercent(used, limit) {
 
 function PlanCard({ plan, currentPlanId }) {
   const isCurrent = currentPlanId === plan.id
+  const disabledCheckout = plan.id !== 'free' && !billingReady
+
   return (
     <article className={`pricingPro-plan ${plan.highlighted ? 'is-highlighted' : ''} ${isCurrent ? 'is-current' : ''}`}>
       <div className="pricingPro-planTop">
@@ -97,6 +119,11 @@ function PlanCard({ plan, currentPlanId }) {
 
       <p className="pricingPro-period">{plan.period}</p>
       <p className="pricingPro-desc">{plan.description}</p>
+
+      <div className={`pricingPro-billingState ${disabledCheckout ? 'is-coming' : 'is-live'}`}>
+        <b>{plan.billingState}</b>
+        <small>{disabledCheckout ? 'No payment will be taken yet.' : 'Ready to use.'}</small>
+      </div>
 
       <a className={plan.highlighted ? 'pricingPro-primary' : 'pricingPro-secondary'} href={plan.href}>
         {isCurrent ? 'Manage current plan' : plan.cta}
@@ -168,6 +195,48 @@ function UpgradeRecommendation({ usage }) {
   )
 }
 
+function BillingPreview() {
+  return (
+    <section className="pricingPro-billingPreview">
+      <div className="pricingPro-billingCopy">
+        <p className="pricingPro-kicker">Billing preview</p>
+        <h2>Checkout visuals are ready. Stripe is intentionally not connected yet.</h2>
+        <p>
+          This section gives users a professional billing experience without sending them to a broken payment flow.
+          When your Stripe products and price IDs are ready, the same layout can be connected to real Checkout sessions.
+        </p>
+        <div className="pricingPro-billingBadges">
+          <span>No live payment yet</span>
+          <span>No card collection yet</span>
+          <span>Stripe-ready layout</span>
+        </div>
+      </div>
+
+      <div className="pricingPro-checkoutMock" aria-label="Stripe checkout preview">
+        <div className="pricingPro-checkoutHeader">
+          <span>Preview</span>
+          <strong>Joblytics Checkout</strong>
+        </div>
+        <div className="pricingPro-checkoutLine"><span>Plan</span><b>Job Search Pass</b></div>
+        <div className="pricingPro-checkoutLine"><span>Duration</span><b>14 days</b></div>
+        <div className="pricingPro-checkoutLine"><span>Total</span><b>€9.99</b></div>
+        <button type="button" disabled>Secure checkout coming soon</button>
+        <small>Stripe product IDs will be linked later.</small>
+      </div>
+
+      <div className="pricingPro-billingSteps">
+        {billingSteps.map((step, index) => (
+          <article key={step.title}>
+            <span>{index + 1}</span>
+            <strong>{step.title}</strong>
+            <p>{step.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function PricingPage({ onBack }) {
   const { user } = useAuth()
   const usage = useUsageSummary()
@@ -194,6 +263,8 @@ export default function PricingPage({ onBack }) {
 
           <UpgradeRecommendation usage={usage} />
         </section>
+
+        <BillingPreview />
 
         <section className="pricingPro-plans pricingPro-plans--three">
           {plans.map(plan => (
@@ -247,7 +318,7 @@ export default function PricingPage({ onBack }) {
           <div>
             <details open>
               <summary>Is billing active today?</summary>
-              <p>No. This page is now ready for billing, but paid CTAs currently route to contact/early access until Stripe products are connected.</p>
+              <p>No. This page is visually prepared for billing, but paid CTAs currently route to contact/early access until Stripe products are connected.</p>
             </details>
             <details>
               <summary>Why offer a 14-day pass?</summary>
@@ -258,8 +329,8 @@ export default function PricingPage({ onBack }) {
               <p>The app should explain the current limit, show remaining usage, and offer the next plan without blocking unrelated free features.</p>
             </details>
             <details>
-              <summary>Can users delete their data?</summary>
-              <p>Yes. The product should continue to expose delete actions for saved CV versions, LinkedIn outputs, cover letters, and analyses where available.</p>
+              <summary>What needs to be connected later?</summary>
+              <p>Stripe products, price IDs, Checkout sessions, webhook signature verification, customer mapping, and automatic plan updates in Supabase.</p>
             </details>
           </div>
         </section>
