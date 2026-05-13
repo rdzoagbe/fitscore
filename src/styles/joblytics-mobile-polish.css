@@ -1,0 +1,330 @@
+/* Joblytics P7D — Mobile UX polish
+   Scope: responsive layout/readability refinements only. No feature logic. */
+
+:root {
+  --mobile-shell-padding: clamp(14px, 4vw, 22px);
+  --mobile-card-radius: 18px;
+  --mobile-sticky-offset: max(12px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  main,
+  .page,
+  .page-shell,
+  .dashboard-shell,
+  .career-dashboard,
+  .career-shell,
+  .pricing-page,
+  .pricing-shell,
+  .resource-page,
+  .role-page,
+  .sample-report-page,
+  .early-access-page,
+  .linkedin-page,
+  .cv-coach-page,
+  .admin-page,
+  .analyzePro-shell {
+    width: min(100%, 100vw) !important;
+    max-width: 100vw !important;
+    padding-left: var(--mobile-shell-padding) !important;
+    padding-right: var(--mobile-shell-padding) !important;
+    box-sizing: border-box;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 9vw, 3.1rem) !important;
+    line-height: 0.98 !important;
+    letter-spacing: -0.055em !important;
+  }
+
+  h2 {
+    font-size: clamp(1.45rem, 6vw, 2.15rem) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  h3 {
+    font-size: clamp(1.05rem, 4.5vw, 1.35rem) !important;
+    line-height: 1.15 !important;
+  }
+
+  p,
+  li,
+  label,
+  input,
+  textarea,
+  select,
+  button {
+    font-size: max(0.95rem, 14px);
+  }
+
+  p,
+  li {
+    line-height: 1.62;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 46px;
+    border-radius: 14px !important;
+    font-size: 16px !important; /* prevents iOS zoom */
+  }
+
+  textarea {
+    min-height: 150px;
+    line-height: 1.55;
+    resize: vertical;
+  }
+
+  button,
+  .button,
+  .btn,
+  .cta,
+  .primary-cta,
+  .secondary-cta,
+  [role='button'] {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .card,
+  .panel,
+  .pricing-card,
+  .dashboard-card,
+  .resource-card,
+  .role-card,
+  .sample-report-card,
+  .career-step,
+  .career-next-action,
+  .seo-conversion-panel,
+  .analyzePro-card {
+    border-radius: var(--mobile-card-radius) !important;
+  }
+
+  .grid,
+  .cards-grid,
+  .feature-grid,
+  .pricing-grid,
+  .resource-grid,
+  .role-grid,
+  .sample-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hero,
+  .landing-hero,
+  .pricing-hero,
+  .resource-hero,
+  .role-hero,
+  .sample-hero {
+    min-height: auto !important;
+    padding-top: 36px !important;
+    padding-bottom: 28px !important;
+    text-align: left !important;
+  }
+
+  .hero-preview-card,
+  .product-preview,
+  .preview-card {
+    margin-top: 24px !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* Analyzer: turn the page into a linear step flow on small screens. */
+  .analyzePro-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .analyzePro-card {
+    padding: 18px !important;
+  }
+
+  .analyzePro-formHero p:first-child,
+  .eyebrow,
+  .badge,
+  .pill {
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em;
+  }
+
+  .analyzePro-formHero h1 {
+    margin-bottom: 10px !important;
+  }
+
+  /* Results: make dense sections easier to scan. */
+  .results-shell,
+  .results-layout,
+  .analysis-results,
+  .result-grid,
+  .score-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .score-card,
+  .result-card {
+    padding: 16px !important;
+  }
+
+  /* Career flow and dashboard cards should not overflow. */
+  .career-progress-flow,
+  .career-flow-grid,
+  .career-steps,
+  .next-action-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .career-progress-flow,
+  .career-next-action {
+    overflow: hidden;
+  }
+
+  /* Application pipeline: keep kanban usable on mobile with snap columns. */
+  .application-pipeline,
+  .pipeline-board,
+  .kanban-board,
+  .applications-board {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 14px !important;
+    padding-bottom: 10px !important;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pipeline-column,
+  .kanban-column,
+  .application-column {
+    flex: 0 0 min(86vw, 360px) !important;
+    scroll-snap-align: start;
+  }
+
+  /* Pricing: keep CTA visible and comparison readable. */
+  .pricing-table,
+  .comparison-table,
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pricing-card,
+  .billing-preview,
+  .checkout-preview {
+    padding: 18px !important;
+  }
+
+  /* Forms: improve long-input comfort. */
+  .form-grid,
+  .lead-form-grid,
+  .onboarding-grid,
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal,
+  .dialog,
+  .onboarding-modal {
+    width: calc(100vw - 28px) !important;
+    max-height: calc(100dvh - 28px) !important;
+    overflow-y: auto !important;
+    border-radius: 22px !important;
+  }
+
+  /* Admin pages: prioritize readability over dense dashboards. */
+  .admin-grid,
+  .metrics-grid,
+  .analytics-grid,
+  .reliability-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-card,
+  .metric-card {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --mobile-shell-padding: 14px;
+  }
+
+  .hide-on-mobile,
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-stack,
+  .button-row,
+  .cta-row,
+  .actions-row,
+  .form-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .button-row > *,
+  .cta-row > *,
+  .actions-row > *,
+  .form-actions > * {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .sticky-mobile-action,
+  .mobile-sticky-cta {
+    position: sticky !important;
+    bottom: var(--mobile-sticky-offset);
+    z-index: 30;
+    padding: 10px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-card, #111827) 88%, transparent);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--border, rgba(255,255,255,0.12));
+    box-shadow: 0 18px 50px rgba(0,0,0,0.24);
+  }
+
+  .public-nav,
+  .app-nav,
+  nav {
+    max-width: 100vw;
+  }
+
+  .footer,
+  footer {
+    text-align: left;
+  }
+}
+
+@media (max-width: 420px) {
+  h1 {
+    font-size: clamp(1.85rem, 11vw, 2.6rem) !important;
+  }
+
+  .card,
+  .panel,
+  .analyzePro-card,
+  .pricing-card {
+    padding: 15px !important;
+  }
+
+  .score-value,
+  .metric-value,
+  .stat-value {
+    font-size: clamp(1.8rem, 12vw, 3rem) !important;
+  }
+}
