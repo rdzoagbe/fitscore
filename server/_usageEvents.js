@@ -1,4 +1,4 @@
-import { getServerPlanLimits, getUserPlan, isUnlimited, buildLimitPayload, getMonthStartIso } from './_planLimits.js'
+import { getUserPlan, isUnlimited, buildLimitPayload, getMonthStartIso } from './_planLimits.js'
 
 export const USAGE_ACTIONS = {
   ANALYSIS: 'analysis',
@@ -16,9 +16,15 @@ function getLimitForAction(plan, action) {
 async function safeCount(query) {
   try {
     const { count, error } = await query
-    if (error) return { count: 0, available: false, error }
+
+    if (error) {
+      console.warn('Usage count failed:', error.message)
+      return { count: 0, available: false, error }
+    }
+
     return { count: count || 0, available: true, error: null }
   } catch (error) {
+    console.warn('Usage count crashed:', error.message)
     return { count: 0, available: false, error }
   }
 }
@@ -33,7 +39,11 @@ export async function getUsageGate(supabase, user, action) {
       plan,
       used: 0,
       limit,
-      sources: { usage_events: 0, legacy: 0 }
+      sources: {
+        usage_events: 0,
+        legacy: 0
+      },
+      payload: null
     }
   }
 
@@ -103,12 +113,12 @@ export async function recordUsageEvent(supabase, user, action, metadata = {}) {
 
     if (error) {
       console.warn('Usage event insert failed:', error.message)
-      return null
+      return false
     }
 
     return true
   } catch (error) {
     console.warn('Usage event insert crashed:', error.message)
-    return null
+    return false
   }
 }
