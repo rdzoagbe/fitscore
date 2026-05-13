@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { parseCvFile, isAllowedCvFile } from '@/lib/cv/parse'
 import { createClient } from '@/lib/supabase/server'
 
@@ -24,6 +25,9 @@ function getString(formData: FormData, key: string): string {
 
 export async function uploadCvAction(_prevState: CvUploadState, formData: FormData): Promise<CvUploadState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'cvUpload')
+  if (!usage.allowed) return { error: usage.message }
+
   const file = getFile(formData)
   const label = getString(formData, 'label') || 'Base CV'
   const targetRole = getString(formData, 'targetRole') || null
