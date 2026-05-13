@@ -22,6 +22,7 @@ import EmailVerifyGate from './components/EmailVerifyGate'
 import AppNav from './components/AppNav'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
+import ActiveCvVersionSelector from './components/ActiveCvVersionSelector'
 import TipCard from './components/TipCard'
 import LimitReachedCard from './components/LimitReachedCard'
 import './pages/AnalyzerPage.css'
@@ -58,6 +59,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const resultRef = useRef(null)
   const { status, data, error, errorDetails, savedRow, rateLimit, analyze, reset } = useAnalyze()
   const { cvFile } = useCvPersist()
+  const [activeCvVersion, setActiveCvVersion] = useState(null)
+  const [useActiveCvVersion, setUseActiveCvVersion] = useState(false)
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -75,13 +78,20 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const riskyDomain = detectRiskyDomain(jobUrl)
 
   const handleAnalyze = async () => {
-    if (!cvFile) return
+    const cvVersionPayload = useActiveCvVersion && activeCvVersion?.cv_text ? {
+      cvText: activeCvVersion.cv_text,
+      cvFileName: activeCvVersion.label || activeCvVersion.target_role || 'Active CV version',
+      cvVersionId: activeCvVersion.id,
+      cvVersionLabel: activeCvVersion.label || ''
+    } : null
+
+    if (!cvFile && !cvVersionPayload) return
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i+1) % LOADING_MSGS.length), 1800)
     if (showTextPaste && jobText.trim().length > 100) {
-      await analyze(null, cvFile, jobText.trim())
+      await analyze(null, cvVersionPayload ? null : cvFile, jobText.trim(), cvVersionPayload)
     } else if (isValidUrl(jobUrl)) {
-      await analyze(jobUrl.trim(), cvFile)
+      await analyze(jobUrl.trim(), cvVersionPayload ? null : cvFile, null, cvVersionPayload)
     }
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
@@ -124,7 +134,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     setUserToggledMode(false); setShowTextPaste(false)
   }
 
-  const canAnalyze = cvFile !== null && (
+  const hasCvSource = cvFile !== null || Boolean(useActiveCvVersion && activeCvVersion?.cv_text && activeCvVersion.cv_text.trim().length > 50)
+  const canAnalyze = hasCvSource && (
     (showTextPaste && jobText.trim().length > 100) ||
     (!showTextPaste && isValidUrl(jobUrl))
   )
@@ -235,6 +246,13 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>{t('your_cv')}</label>
+              <ActiveCvVersionSelector
+                disabled={status === 'loading'}
+                onVersionChange={(version, enabled) => {
+                  setActiveCvVersion(version)
+                  setUseActiveCvVersion(enabled)
+                }}
+              />
               <CvPanel key={uploadTrigger} />
             </div>
 

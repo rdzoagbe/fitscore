@@ -204,8 +204,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName } = req.body
-    if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName, cvTextDirect, cvVersionLabel } = req.body
+    if ((!jobUrl && !providedJobText) || ((!cvBase64 || !cvMimeType) && !cvTextDirect)) return res.status(400).json({ error: 'Missing required fields' })
     const url = process.env.SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) return res.status(500).json({ error: 'Supabase server configuration is missing.' })
@@ -214,7 +214,7 @@ export default async function handler(req, res) {
     const usageGate = await getUsageGate(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS)
     const rateLimitInfo = { planId: usageGate.plan.id, planLabel: usageGate.plan.label, analysisUsed: usageGate.used, analysisLimit: usageGate.limit, analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used), sources: usageGate.sources }
     if (!usageGate.allowed) return res.status(429).json({ ...usageGate.payload, rateLimit: rateLimitInfo })
-    const [jobText, cvText] = await Promise.all([providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl), extractCvText(cvBase64, cvMimeType)])
+    const [jobText, cvText] = await Promise.all([providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl), cvTextDirect ? Promise.resolve(String(cvTextDirect).slice(0, 9000)) : extractCvText(cvBase64, cvMimeType)])
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
     const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
@@ -233,7 +233,7 @@ export default async function handler(req, res) {
         fallbackUsed = true
       } else return res.status(payload.statusCode || 503).json(payload)
     }
-    const savedRow = await saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName })
+    const savedRow = await saveAnalysis(supabaseClient, authUser, { cacheKey, jobUrl, analysis, cvFileName: cvFileName || cvVersionLabel || null })
     if (savedRow) await recordUsageEvent(supabaseClient, authUser, USAGE_ACTIONS.ANALYSIS, { source: providedJobText ? 'paste' : 'url', cached: false, fallback: fallbackUsed, analysis_id: savedRow.id })
     const nextRateLimitInfo = { ...rateLimitInfo, analysisUsed: usageGate.used + (savedRow ? 1 : 0), analysisRemaining: usageGate.limit >= 9999 ? Infinity : Math.max(0, usageGate.limit - usageGate.used - (savedRow ? 1 : 0)) }
     return res.status(200).json({ success: true, analysis, savedRow, rateLimit: nextRateLimitInfo, fallback: fallbackUsed })

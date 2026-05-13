@@ -34,10 +34,12 @@ export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null, errorDetails: null, savedRow: null, rateLimit: null })
   const { user } = useAuth()
 
-  // jobUrl OR jobText — one must be provided
-  const analyze = async (jobUrl, cvFile, jobText = null) => {
+  // jobUrl OR jobText — one must be provided. cvFile OR cvVersion must be provided.
+  const analyze = async (jobUrl, cvFile, jobText = null, cvVersion = null) => {
     setState({ status: 'loading', data: null, error: null, errorDetails: null, savedRow: null, rateLimit: null })
-    trackEvent('analysis_started', { source: jobText ? 'paste' : 'url', has_cv: !!cvFile })
+    const cvTextDirect = cvVersion?.cvText || cvVersion?.cv_text || null
+    const usingCvVersion = Boolean(cvTextDirect && String(cvTextDirect).trim().length > 50)
+    trackEvent('analysis_started', { source: jobText ? 'paste' : 'url', has_cv: !!cvFile || usingCvVersion, cv_source: usingCvVersion ? 'vault' : 'upload' })
 
     // Client-side timeout matches Vercel hobby cap (60s)
     const controller = new AbortController()
@@ -51,25 +53,37 @@ export function useAnalyze() {
         throw new Error('Please sign in again before running an analysis.')
       }
 
-      const cvBase64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result.split(',')[1])
-        reader.onerror = () => reject(new Error('Failed to read file'))
-        reader.readAsDataURL(cvFile)
-      })
+      let cvBase64 = null
+      let cvMimeType = null
+      let cvFileName = cvVersion?.cvFileName || cvVersion?.cvVersionLabel || null
+
+      if (!usingCvVersion) {
+        if (!cvFile) throw new Error('Please upload a CV or select an active CV version before running the analysis.')
+        cvBase64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result.split(',')[1])
+          reader.onerror = () => reject(new Error('Failed to read file'))
+          reader.readAsDataURL(cvFile)
+        })
+        cvMimeType = cvFile.type
+        cvFileName = cvFile.name
+      }
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
+          Authorization: 'Bearer ' + accessToken
         },
         body: JSON.stringify({
           jobUrl: jobUrl || null,
           jobText: jobText || null,
           cvBase64,
-          cvMimeType: cvFile.type,
-          cvFileName: cvFile.name,
+          cvMimeType,
+          cvFileName,
+          cvTextDirect: usingCvVersion ? String(cvTextDirect).slice(0, 9000) : null,
+          cvVersionId: usingCvVersion ? (cvVersion?.cvVersionId || cvVersion?.id || null) : null,
+          cvVersionLabel: usingCvVersion ? (cvVersion?.cvVersionLabel || cvVersion?.label || cvFileName || 'Active CV version') : null,
           userId: user.id
         }),
         signal: controller.signal
@@ -94,7 +108,7 @@ export function useAnalyze() {
           err.details = limitError.details
           throw err
         }
-        throw new Error(data?.error || `Server error (${res.status}). Please try again in a moment.`)
+        throw new Error(data?.error || ('Server error (' + res.status + '). Please try again in a moment.'))
       }
 
       if (!data || !data.analysis) {
@@ -105,6 +119,7 @@ export function useAnalyze() {
         score: data.analysis.display_score ?? null,
         verdict: data.analysis.overall_verdict || null,
         source: jobText ? 'paste' : 'url',
+        cv_source: usingCvVersion ? 'vault' : 'upload',
         cached: !!data.cached
       })
 

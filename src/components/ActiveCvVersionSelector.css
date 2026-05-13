@@ -1,0 +1,125 @@
+.activeCvBox {
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 18px;
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-primary, #111827);
+}
+
+.activeCvBox--selected {
+  border-color: rgba(76, 175, 125, 0.38);
+  background: linear-gradient(135deg, rgba(76, 175, 125, 0.10), rgba(37, 99, 235, 0.06));
+}
+
+.activeCvBox--muted,
+.activeCvBox--warning {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+}
+
+.activeCvBox--warning {
+  border-color: rgba(245, 166, 35, 0.34);
+  background: rgba(245, 166, 35, 0.08);
+  color: #b45309;
+}
+
+.activeCvBox-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activeCvBox-kicker {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--accent, #2563eb);
+}
+
+.activeCvBox h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.activeCvBox p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, #64748b);
+}
+
+.activeCvSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  user-select: none;
+}
+
+.activeCvSwitch input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent, #2563eb);
+}
+
+.activeCvControls {
+  margin-top: 12px;
+}
+
+.activeCvControls select {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--bg-input, #fff);
+  color: var(--text-primary, #111827);
+  font: inherit;
+  font-weight: 700;
+  outline: none;
+}
+
+.activeCvMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.activeCvMeta span {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--text-secondary, #64748b);
+  background: rgba(255,255,255,0.38);
+}
+
+.activeCvMeta .activeCvMeta-good {
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.28);
+  background: rgba(5, 150, 105, 0.08);
+}
+
+.activeCvSnippet {
+  margin-top: 10px !important;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.20);
+  font-size: 11px !important;
+  color: var(--text-muted, #64748b) !important;
+}
+
+@media (max-width: 680px) {
+  .activeCvBox-head { flex-direction: column; }
+  .activeCvSwitch { width: 100%; justify-content: space-between; }
+}
