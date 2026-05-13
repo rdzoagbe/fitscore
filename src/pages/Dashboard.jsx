@@ -6,6 +6,7 @@ import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import StatusPill from '../components/StatusPill'
 import DeleteAllModal from '../components/DeleteAllModal'
 import ApplicationTrackerModal from '../components/ApplicationTrackerModal'
+import InterviewPrepWorkspace from '../components/InterviewPrepWorkspace'
 import ApplicationPipelineBoard from '../components/ApplicationPipelineBoard'
 import { trackEvent, analyticsEvents } from '../utils/analytics'
 import './HistoryPage.css'
@@ -232,6 +233,10 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
               </div>
             </article>
           </section>
+        )}
+
+        {!loading && analyses.length > 0 && (
+          <InterviewPrepWorkspace analyses={analyses} onSelectAnalysis={onSelectAnalysis} />
         )}
 
         <section className="historyWide-card historyWide-resultsCard">
