@@ -1,18 +1,24 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useActionState, useState } from 'react'
+import { useState } from 'react'
+import { useFormState, useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/Button'
 import { signInAction, signUpAction, type AuthActionState } from './actions'
 
 const initialState: AuthActionState = {}
+
+function SubmitButton({ mode }: { readonly mode: 'signin' | 'signup' }): JSX.Element {
+  const { pending } = useFormStatus()
+  return <Button variant="primary" type="submit" disabled={pending}>{pending ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}</Button>
+}
 
 export function LoginForm(): JSX.Element {
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/dashboard'
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const action = mode === 'signin' ? signInAction : signUpAction
-  const [state, formAction, pending] = useActionState(action, initialState)
+  const [state, formAction] = useFormState(action, initialState)
 
   return (
     <form action={formAction} className="grid gap-3">
@@ -33,7 +39,7 @@ export function LoginForm(): JSX.Element {
       </label>
       {state.error ? <p className="rounded-md border border-danger/20 bg-danger/10 p-3 text-xs text-danger">{state.error}</p> : null}
       {state.message ? <p className="rounded-md border border-emerald/20 bg-emerald/10 p-3 text-xs text-emerald">{state.message}</p> : null}
-      <Button variant="primary" type="submit" disabled={pending}>{pending ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}</Button>
+      <SubmitButton mode={mode} />
       <button type="button" className="text-left text-xs text-accent" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
         {mode === 'signin' ? 'Need an account? Create one' : 'Already have an account? Sign in'}
       </button>
