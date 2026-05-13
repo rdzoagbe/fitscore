@@ -7,7 +7,9 @@ import { useUsageSummary } from '../hooks/useUsageSummary'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import { getLocalizedChallenge } from '../i18n/premiumTranslations'
 import UsageLimitCard from '../components/UsageLimitCard'
+import CareerProgressFlow from '../components/CareerProgressFlow'
 import '../components/UsageLimitCard.css'
+import '../components/CareerProgressFlow.css'
 import './CareerDashboardPage.css'
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -111,6 +113,8 @@ export default function CareerDashboardPage({ setPage }) {
           <ScoreCard label={t('best_score')} value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper={t('highest_match')} tone="accent" />
           <ScoreCard label={t('current_streak')} value={`${metrics.currentStreak || 0}d`} helper={t('career_actions')} tone="warm" />
         </section>
+
+        <CareerProgressFlow metrics={metrics} usage={usage} setPage={setPage} />
 
         <section className="careerDash-grid">
           <div className="careerDash-main">
