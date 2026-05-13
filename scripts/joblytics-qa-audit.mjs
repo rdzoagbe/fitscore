@@ -73,7 +73,8 @@ const files = walk('src').concat(walk('api')).concat(walk('server')).concat(walk
 for (const rel of files) {
   const text = read(rel)
   if (/console\.log\((?!.*PWA|.*debug)/.test(text) && rel.startsWith('src/')) warn(`Frontend console.log found in ${rel}; remove noisy logs before launch`)
-  if (/TODO|FIXME|HACK/i.test(text) && !rel.startsWith('docs/')) warn(`TODO/FIXME/HACK marker found in ${rel}`)
+  const devMarkerPattern = new RegExp('(^|\\n)\\s*(//|/\\*|#)\\s*(TODO|FIXME|HACK)\\b', 'i')
+  if (devMarkerPattern.test(text) && !rel.startsWith('docs/')) warn(`TODO/FIXME/HACK marker found in ${rel}`)
 }
 
 const linkedInRiskPatterns = [
