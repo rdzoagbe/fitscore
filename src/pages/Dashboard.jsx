@@ -6,8 +6,10 @@ import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import StatusPill from '../components/StatusPill'
 import DeleteAllModal from '../components/DeleteAllModal'
 import ApplicationTrackerModal from '../components/ApplicationTrackerModal'
+import ApplicationPipelineBoard from '../components/ApplicationPipelineBoard'
 import { trackEvent, analyticsEvents } from '../utils/analytics'
 import './HistoryPage.css'
+import '../components/ApplicationPipelineBoard.css'
 
 function scoreValue(analysis) {
   const score = Number(analysis?.score)
@@ -201,6 +203,15 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
             <StatCard label={t('likely_passed')} value={`${stats.passedCount}/${analyses.length}`} helper={t('strong_applications')} />
             <StatCard label={t('visible_results')} value={filtered.length} helper={t('current_filtered_view')} />
           </section>
+        )}
+
+        {!loading && analyses.length > 0 && (
+          <ApplicationPipelineBoard
+            analyses={analyses}
+            onSelectAnalysis={onSelectAnalysis}
+            onOpenTracker={openTracker}
+            onStatusUpdated={updated => setAnalyses(prev => prev.map(item => item.id === updated.id ? updated : item))}
+          />
         )}
 
         {!loading && analyses.length >= 2 && (
