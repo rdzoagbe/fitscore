@@ -86,6 +86,23 @@ export async function getApplications(userId: string, limit = 100): Promise<Appl
   return ((data ?? []) as ApplicationRow[]).map(toItem)
 }
 
+export async function getApplicationById(userId: string, applicationId: string): Promise<ApplicationItem | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id,company_name,job_title,job_url,job_description,status,platform,ats_score,applied_at,interview_at,created_at')
+    .eq('id', applicationId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) console.error('Failed to load application detail', error.message)
+    return null
+  }
+
+  return toItem(data as ApplicationRow)
+}
+
 export function groupApplicationsByStatus(items: ApplicationItem[]): Record<ApplicationStatus, ApplicationItem[]> {
   const grouped: Record<ApplicationStatus, ApplicationItem[]> = {
     wishlist: [],
