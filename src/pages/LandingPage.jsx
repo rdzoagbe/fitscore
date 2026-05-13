@@ -1,54 +1,162 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useLang } from '../context/LangContext'
 import LangSelector from '../components/LangSelector'
 import ThemeToggle from '../components/ThemeToggle'
 import AuthModal from '../components/AuthModal'
+import './LandingPage.css'
 
-function Card({ children, style }) {
-  return <div style={{ background: 'linear-gradient(180deg,var(--pro-card-strong),var(--pro-card-soft)),var(--bg-card)', border: '1px solid var(--pro-border)', borderRadius: 28, boxShadow: 'var(--shadow-sm)', ...style }}>{children}</div>
-}
-
-function Feature({ icon, title, text }) {
+function ConversionNav({ openAuth, t }) {
   return (
-    <Card style={{ padding: 22 }}>
-      <div style={{ width: 48, height: 48, display: 'grid', placeItems: 'center', borderRadius: 18, background: 'var(--accent-soft)', fontSize: 24, marginBottom: 16 }}>{icon}</div>
-      <h3 style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 19, letterSpacing: '-0.045em' }}>{title}</h3>
-      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.65 }}>{text}</p>
-    </Card>
+    <header className="landing-nav-shell">
+      <div className="landing-nav">
+        <a href="/" className="landing-brand" aria-label="Joblytics AI home">
+          <span className="landing-brand-mark">J</span>
+          <span>
+            <strong>Joblytics AI</strong>
+            <small>Career workspace</small>
+          </span>
+        </a>
+
+        <nav className="landing-nav-links" aria-label="Primary navigation">
+          <a href="#how-it-works">How it works</a>
+          <a href="#features">Features</a>
+          <a href="#trust">Privacy</a>
+          <a href="/pricing">Pricing</a>
+          <LangSelector />
+          <ThemeToggle />
+          <button className="landing-btn landing-btn-ghost" onClick={() => openAuth('signin')}>{t('sign_in') || 'Sign in'}</button>
+          <button className="landing-btn landing-btn-primary" onClick={() => openAuth('signup')}>{t('get_started') || 'Get started'}</button>
+        </nav>
+      </div>
+    </header>
   )
 }
 
-function Step({ n, title, text }) {
+function HeroPreview() {
+  const improvements = ['Add 2 quantified leadership bullets', 'Mirror 5 missing ATS keywords', 'Prepare answers for vendor-management gaps']
   return (
-    <div style={{ padding: 18, borderRadius: 22, background: 'var(--bg-input)', border: '1px solid var(--border-soft)' }}>
-      <span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 950, letterSpacing: '0.12em' }}>{n}</span>
-      <h3 style={{ margin: '10px 0 6px', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 18, letterSpacing: '-0.04em' }}>{title}</h3>
-      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.6 }}>{text}</p>
+    <div className="hero-preview-card" aria-label="Product preview">
+      <div className="preview-topline">
+        <span className="preview-dot" />
+        <span>Live application readiness</span>
+      </div>
+
+      <div className="score-row">
+        <div className="score-ring">
+          <strong>84%</strong>
+          <span>ATS fit</span>
+        </div>
+        <div>
+          <p className="micro-label">Recommendation</p>
+          <h3>Apply after quick CV tuning</h3>
+          <p>Strong match, but your CV should surface the exact service-delivery keywords in the job post.</p>
+        </div>
+      </div>
+
+      <div className="preview-meters">
+        <div><span>Leadership keywords</span><strong>92%</strong><i style={{ width: '92%' }} /></div>
+        <div><span>Technical fit</span><strong>81%</strong><i style={{ width: '81%' }} /></div>
+        <div><span>Role evidence</span><strong>68%</strong><i style={{ width: '68%' }} /></div>
+      </div>
+
+      <div className="preview-checklist">
+        {improvements.map(item => <span key={item}>✓ {item}</span>)}
+      </div>
     </div>
   )
 }
 
-function MiniResult() {
+function StatStrip() {
   return (
-    <Card style={{ padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-        <div style={{ width: 82, height: 82, borderRadius: 28, background: 'rgba(76,175,125,.12)', border: '1px solid rgba(76,175,125,.3)', display: 'grid', placeItems: 'center' }}>
-          <strong style={{ color: '#4caf7d', fontFamily: 'Syne, sans-serif', fontSize: 24 }}>84%</strong>
+    <section className="landing-stat-strip" aria-label="Product outcomes">
+      <div><strong>1</strong><span>connected career workspace</span></div>
+      <div><strong>7</strong><span>workflow steps from CV to interview</span></div>
+      <div><strong>EN / FR</strong><span>built for international job search</span></div>
+      <div><strong>0</strong><span>LinkedIn login or scraping required</span></div>
+    </section>
+  )
+}
+
+function WorkflowStep({ number, title, text, cta, href }) {
+  return (
+    <article className="workflow-step">
+      <span>{number}</span>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      {href && <a href={href}>{cta} →</a>}
+    </article>
+  )
+}
+
+function FeatureCard({ icon, title, text }) {
+  return (
+    <article className="feature-card">
+      <div className="feature-icon">{icon}</div>
+      <h3>{title}</h3>
+      <p>{text}</p>
+    </article>
+  )
+}
+
+function BeforeAfter() {
+  return (
+    <section className="landing-section landing-split-section">
+      <div>
+        <p className="landing-kicker">Before / after</p>
+        <h2>Turn generic applications into role-specific submissions.</h2>
+        <p className="section-lead">Joblytics does not just score your CV. It shows what to change next, then connects that improvement to the cover letter, LinkedIn profile, tracker, and interview prep.</p>
+      </div>
+      <div className="before-after-grid">
+        <div className="before-card">
+          <span>Before</span>
+          <p>“Managed IT support and worked with vendors.”</p>
+          <small>Too generic. Hard for an ATS or recruiter to understand scope.</small>
         </div>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ margin: '0 0 5px', color: 'var(--text-muted)', fontSize: 10, fontWeight: 900, letterSpacing: '.1em', textTransform: 'uppercase' }}>Example result</p>
-          <h3 style={{ margin: 0, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 21, letterSpacing: '-.055em' }}>Strong ATS match</h3>
-          <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 13 }}>Missing: ITIL, Power BI, vendor management</p>
+        <div className="after-card">
+          <span>After</span>
+          <p>“Led multi-site IT support operations, improved SLA follow-up, coordinated vendors, and reduced unresolved ticket backlog through weekly service reviews.”</p>
+          <small>More concrete, keyword-aligned, and interview-ready.</small>
         </div>
       </div>
-      <div style={{ display: 'grid', gap: 10 }}>
-        {['Add one quantified service delivery achievement', 'Mirror 3 missing keywords naturally', 'Prepare for 5 interview questions'].map(item => (
-          <div key={item} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 16, background: 'var(--bg-input)', border: '1px solid var(--border-soft)', color: 'var(--text-secondary)', fontSize: 13 }}>
-            <span style={{ color: 'var(--success)', fontWeight: 900 }}>✓</span>{item}
+    </section>
+  )
+}
+
+function WhyNotChatGPT() {
+  const rows = [
+    ['Structured ATS scoring', 'Generic prompt-dependent answers', 'Consistent score, gaps, and next actions'],
+    ['Saved career history', 'Usually one-off sessions', 'Analyses, cover letters, LinkedIn results, CV versions'],
+    ['Application pipeline', 'Manual spreadsheet required', 'Status board with follow-ups and interview prep'],
+    ['Privacy-first LinkedIn flow', 'Risky scraping prompts can appear', 'Paste-only profile optimization, no login']
+  ]
+
+  return (
+    <section className="landing-section" id="comparison">
+      <div className="landing-section-head centered">
+        <p className="landing-kicker">Positioning</p>
+        <h2>Why not just use a generic AI chat?</h2>
+        <p>Because active job search needs a workflow, not just a reply. Joblytics keeps the context, tracks progress, and turns outputs into the next action.</p>
+      </div>
+      <div className="comparison-table" role="table" aria-label="Joblytics compared with generic AI chat">
+        <div className="comparison-row comparison-head" role="row">
+          <span>Need</span><span>Generic AI</span><span>Joblytics AI</span>
+        </div>
+        {rows.map(([need, generic, joblytics]) => (
+          <div className="comparison-row" role="row" key={need}>
+            <span>{need}</span><span>{generic}</span><span>{joblytics}</span>
           </div>
         ))}
       </div>
-    </Card>
+    </section>
+  )
+}
+
+function FaqItem({ q, a }) {
+  return (
+    <details className="faq-item">
+      <summary>{q}</summary>
+      <p>{a}</p>
+    </details>
   )
 }
 
@@ -58,116 +166,122 @@ export default function LandingPage() {
   const [authMode, setAuthMode] = useState('signup')
   const openAuth = mode => { setAuthMode(mode); setAuthOpen(true) }
 
+  const workflow = useMemo(() => ([
+    ['01', 'Upload or select a CV version', 'Use your uploaded CV or the active version from your CV vault.', 'Start with CV', '/app'],
+    ['02', 'Analyze the job match', 'Paste a job description and see score, keyword gaps, risks, and next steps.', 'Run ATS check', '/app'],
+    ['03', 'Improve the application package', 'Generate better CV bullets, a cover letter, LinkedIn improvements, and interview prep.', 'Open workspace', '/app']
+  ]), [])
+
   return (
-    <div style={{ minHeight: '100dvh', color: 'var(--text-primary)', background: 'radial-gradient(circle at 18% 7%,rgba(96,165,250,.18),transparent 32%),radial-gradient(circle at 88% 13%,rgba(37,99,235,.12),transparent 30%),linear-gradient(180deg,var(--pro-bg-top) 0%,var(--pro-bg-mid) 48%,var(--pro-bg-bottom) 100%)' }}>
-      <header style={{ position: 'sticky', top: 0, zIndex: 50, borderBottom: '1px solid var(--border-soft)', background: 'var(--pro-nav)', backdropFilter: 'blur(18px)' }}>
-        <div style={{ width: 'min(1180px, calc(100% - 32px))', height: 72, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 11, color: 'var(--text-primary)', textDecoration: 'none' }}>
-            <span style={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 15, background: 'var(--accent)', color: 'var(--text-inverse)', fontFamily: 'Syne, sans-serif', fontWeight: 950, boxShadow: '0 10px 24px var(--accent-ring)' }}>J</span>
-            <span><strong style={{ display: 'block', fontFamily: 'Syne, sans-serif', letterSpacing: '-.04em' }}>Joblytics</strong><small style={{ color: 'var(--text-muted)' }}>Career workspace</small></span>
-          </a>
-          <nav style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <a href="/pricing" style={topLink}>Pricing</a>
-            <a href="/limits" style={topLink}>Limits</a>
-            <LangSelector />
-            <ThemeToggle />
-            <button onClick={() => openAuth('signin')} style={ghostBtn}>{t('sign_in') || 'Sign in'}</button>
-            <button onClick={() => openAuth('signup')} style={primaryBtn}>{t('get_started') || 'Get started'}</button>
-          </nav>
-        </div>
-      </header>
+    <div className="landing-page-v2">
+      <ConversionNav openAuth={openAuth} t={t} />
 
       <main>
-        <section style={{ width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', padding: 'clamp(48px,8vw,98px) 0 52px', display: 'grid', gridTemplateColumns: 'minmax(0,1.08fr) minmax(320px,.92fr)', gap: 24, alignItems: 'center' }}>
+        <section className="landing-hero-v2">
+          <div className="hero-copy">
+            <p className="landing-kicker">ATS checker · CV coach · job tracker · interview prep</p>
+            <h1>Stop applying blind. Build every application with evidence.</h1>
+            <p className="hero-lead">Joblytics AI turns your CV, job description, LinkedIn profile text, and application history into one guided job-search workspace.</p>
+            <div className="hero-actions">
+              <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Run a free ATS check →</button>
+              <a className="landing-btn landing-btn-ghost landing-btn-large" href="#how-it-works">See how it works</a>
+            </div>
+            <div className="hero-proof-row">
+              <span>✓ Start free</span>
+              <span>✓ No LinkedIn login</span>
+              <span>✓ CV versioning</span>
+              <span>✓ Saved history</span>
+            </div>
+          </div>
+          <HeroPreview />
+        </section>
+
+        <StatStrip />
+
+        <section className="landing-section" id="how-it-works">
+          <div className="landing-section-head centered">
+            <p className="landing-kicker">Guided workflow</p>
+            <h2>From job post to interview kit in one workspace.</h2>
+            <p>Each tool feeds the next step, so users always know whether to improve, apply, follow up, or prepare.</p>
+          </div>
+          <div className="workflow-grid">
+            {workflow.map(([number, title, text, cta, href]) => <WorkflowStep key={number} number={number} title={title} text={text} cta={cta} href={href} />)}
+          </div>
+        </section>
+
+        <section className="landing-section" id="features">
+          <div className="landing-section-head">
+            <p className="landing-kicker">Core features</p>
+            <h2>Everything connected around your next application.</h2>
+          </div>
+          <div className="feature-grid-v2">
+            <FeatureCard icon="🎯" title="ATS match analysis" text="Score your CV against the role and identify hard requirements, missing keywords, and application risk." />
+            <FeatureCard icon="🧾" title="CV version vault" text="Keep role-specific CV versions and use your active CV directly inside the analyzer." />
+            <FeatureCard icon="✉️" title="Cover letter history" text="Generate, save, reopen, and reuse tailored letters connected to your job analyses." />
+            <FeatureCard icon="💼" title="Application pipeline" text="Track not applied, applied, interview, follow-up, offer, and rejected opportunities." />
+            <FeatureCard icon="🔗" title="LinkedIn optimizer" text="Paste profile sections or upload PDF/TXT. No LinkedIn password, login, or scraping required." />
+            <FeatureCard icon="🎙️" title="Interview readiness" text="Turn saved analyses into likely questions, proof points, weak spots, and keyword reminders." />
+          </div>
+        </section>
+
+        <BeforeAfter />
+        <WhyNotChatGPT />
+
+        <section className="landing-section trust-section" id="trust">
           <div>
-            <p style={kicker}>AI ATS checker · CV coach · job tracker</p>
-            <h1 style={{ margin: '14px 0 0', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(54px,8vw,104px)', lineHeight: .88, letterSpacing: '-.09em' }}>Stop applying blind.</h1>
-            <p style={{ maxWidth: 680, margin: '24px 0 0', color: 'var(--text-secondary)', fontSize: 'clamp(16px,2.2vw,19px)', lineHeight: 1.75 }}>
-              Upload your CV, paste a job offer, and get a clear ATS match score with keyword gaps, quick CV fixes, cover letter help, salary intelligence, and interview preparation.
-            </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 30 }}>
-              <button onClick={() => openAuth('signup')} style={{ ...primaryBtn, minHeight: 52, padding: '0 22px' }}>Run a free ATS check →</button>
-              <a href="/pricing" style={{ ...ghostBtn, minHeight: 52, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>View pricing</a>
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
-              {['Free start', 'EN / FR workflow', 'No CV resale', 'Paste mode for LinkedIn'].map(item => <span key={item} style={pill}>✓ {item}</span>)}
-            </div>
+            <p className="landing-kicker">Trust & privacy</p>
+            <h2>Your career data should stay yours.</h2>
+            <p className="section-lead">Joblytics is designed as a private workspace for applicants, not a recruiter marketplace. The LinkedIn feature is paste-only and does not ask users to log in to LinkedIn.</p>
           </div>
-          <MiniResult />
-        </section>
-
-        <section style={sectionStyle}>
-          <div style={sectionHeader}>
-            <p style={kicker}>How it works</p>
-            <h2 style={sectionTitle}>From job offer to better application in minutes.</h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 14 }}>
-            <Step n="01" title="Upload your CV" text="Store multiple CV versions for different roles, languages, and seniority levels." />
-            <Step n="02" title="Paste the job" text="Use a URL or paste the description directly when job boards block automated reading." />
-            <Step n="03" title="Improve before applying" text="Fix missing keywords, strengthen achievements, generate a letter, and prepare interviews." />
+          <div className="trust-grid">
+            <span>🛡️ No CV resale</span>
+            <span>🔐 No LinkedIn credentials</span>
+            <span>🧹 Delete saved results</span>
+            <span>📄 Clear privacy page</span>
           </div>
         </section>
 
-        <section style={sectionStyle}>
-          <div style={sectionHeader}>
-            <p style={kicker}>Product</p>
-            <h2 style={sectionTitle}>Everything a focused job search needs.</h2>
+        <section className="landing-section pricing-preview-section">
+          <div>
+            <p className="landing-kicker">Pricing</p>
+            <h2>Start free. Upgrade when the job search becomes active.</h2>
+            <p className="section-lead">The pricing page is already prepared for Free, Job Search Pass, and Pro Monthly. Checkout links can be connected later when Stripe is ready.</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 14 }}>
-            <Feature icon="🎯" title="ATS match score" text="See how your CV aligns with the role, including keyword and hard-requirement gaps." />
-            <Feature icon="🧠" title="CV Coach" text="Turn vague CV bullets into quantified, recruiter-friendly achievements." />
-            <Feature icon="✉️" title="Cover letters" text="Generate role-specific cover letters using the analysis and your strongest edges." />
-            <Feature icon="💶" title="Salary intelligence" text="Understand ranges, leverage points, and negotiation angles before interview." />
-            <Feature icon="📊" title="Application tracker" text="Save every analysis, track statuses, and compare roles over time." />
-            <Feature icon="🛡️" title="Privacy-first" text="Built for job seekers. No recruiter marketplace. No CV resale." />
+          <a className="pricing-preview-cta" href="/pricing">View pricing plans →</a>
+        </section>
+
+        <section className="landing-section faq-section">
+          <div className="landing-section-head centered">
+            <p className="landing-kicker">FAQ</p>
+            <h2>Questions before you start?</h2>
+          </div>
+          <div className="faq-grid">
+            <FaqItem q="Can I use Joblytics without a LinkedIn login?" a="Yes. The LinkedIn Optimizer is paste-only or upload-based. It does not request your LinkedIn password or perform private LinkedIn scraping." />
+            <FaqItem q="Can I keep multiple CVs?" a="Yes. The CV vault is designed for role-specific versions such as IT Manager, Service Delivery Manager, Cloud, Support Director, French, or English CVs." />
+            <FaqItem q="Will the tool apply to jobs automatically?" a="No. Joblytics helps you prepare stronger applications and track your pipeline. You remain in control of what gets submitted." />
+            <FaqItem q="Is payment active?" a="Not yet. Pricing visuals are prepared, but paid checkout can be connected after Stripe products and price IDs are created." />
           </div>
         </section>
 
-        <section style={sectionStyle}>
-          <Card style={{ padding: 'clamp(24px,5vw,44px)', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'center' }}>
-            <div>
-              <p style={kicker}>Pricing preview</p>
-              <h2 style={sectionTitle}>Start free. Upgrade only when your search gets serious.</h2>
-              <p style={{ margin: '14px 0 0', color: 'var(--text-secondary)', lineHeight: 1.7 }}>Free includes a useful monthly allowance. The future Job Search Pass is designed as a short, non-renewing sprint for active applications.</p>
-            </div>
-            <div style={{ display: 'grid', gap: 10 }}>
-              <a href="/pricing" style={wideLink}>Pricing plans →</a>
-              <a href="/limits" style={wideLink}>Usage limits →</a>
-            </div>
-          </Card>
-        </section>
-
-        <section style={{ ...sectionStyle, textAlign: 'center', paddingBottom: 100 }}>
-          <p style={kicker}>Ready</p>
-          <h2 style={{ ...sectionTitle, margin: '10px auto 0', maxWidth: 760 }}>Make every application sharper before you send it.</h2>
-          <p style={{ margin: '16px auto 26px', maxWidth: 650, color: 'var(--text-secondary)', lineHeight: 1.7 }}>Create your account, upload your CV, and run your first ATS check in less than one minute.</p>
-          <button onClick={() => openAuth('signup')} style={{ ...primaryBtn, minHeight: 52, padding: '0 24px' }}>Get started free</button>
+        <section className="landing-final-cta">
+          <p className="landing-kicker">Ready</p>
+          <h2>Make your next application sharper before you send it.</h2>
+          <p>Upload your CV, paste a job description, and get your first application readiness plan.</p>
+          <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Get started free →</button>
         </section>
       </main>
 
-      <footer style={{ borderTop: '1px solid var(--border-soft)', padding: '32px 0 44px' }}>
-        <div style={{ width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: 18, flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: 12 }}>
-          <span>© {new Date().getFullYear()} Joblytics AI</span>
-          <span style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-            <a href="/privacy" style={footerLink}>Privacy</a>
-            <a href="/terms" style={footerLink}>Terms</a>
-            <a href="/contact" style={footerLink}>Contact</a>
-          </span>
-        </div>
+      <footer className="landing-footer-v2">
+        <span>© {new Date().getFullYear()} Joblytics AI</span>
+        <span>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/contact">Contact</a>
+          <a href="/.well-known/security.txt">Security</a>
+        </span>
       </footer>
 
       {authOpen && <AuthModal initialMode={authMode} onClose={() => setAuthOpen(false)} />}
     </div>
   )
 }
-
-const kicker = { margin: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 950, letterSpacing: '.13em', textTransform: 'uppercase' }
-const primaryBtn = { border: 0, borderRadius: 999, background: 'var(--accent)', color: 'var(--text-inverse)', padding: '0 18px', minHeight: 42, fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 900, cursor: 'pointer', boxShadow: '0 16px 34px var(--accent-ring)' }
-const ghostBtn = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--bg-card)', color: 'var(--text-primary)', padding: '0 15px', minHeight: 42, fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 850, cursor: 'pointer' }
-const topLink = { color: 'var(--text-secondary)', textDecoration: 'none', fontSize: 13, fontWeight: 800, padding: '10px 8px' }
-const pill = { display: 'inline-flex', minHeight: 30, alignItems: 'center', padding: '0 11px', borderRadius: 999, background: 'var(--bg-card)', border: '1px solid var(--border-soft)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 800 }
-const sectionStyle = { width: 'min(1180px, calc(100% - 32px))', margin: '0 auto', padding: '44px 0' }
-const sectionHeader = { marginBottom: 22 }
-const sectionTitle = { margin: '10px 0 0', color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', fontSize: 'clamp(32px,5vw,56px)', lineHeight: .98, letterSpacing: '-.075em' }
-const wideLink = { minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderRadius: 18, background: 'var(--bg-input)', border: '1px solid var(--border-soft)', color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 900 }
-const footerLink = { color: 'var(--text-muted)', textDecoration: 'none' }
