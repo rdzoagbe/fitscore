@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { generateCvEnhancement } from '@/lib/cv-enhancer/generate'
 import type { CvEnhancerResult } from '@/lib/cv-enhancer/schema'
 import { createClient } from '@/lib/supabase/server'
@@ -19,6 +20,9 @@ function getString(formData: FormData, key: string): string {
 
 export async function enhanceCvAction(_prevState: CvEnhanceState, formData: FormData): Promise<CvEnhanceState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'cvUpload')
+  if (!usage.allowed) return { error: usage.message }
+
   const cvVersionId = getString(formData, 'cvVersionId')
   const targetRole = getString(formData, 'targetRole') || 'Target role'
   const jobDescription = getString(formData, 'jobDescription')
