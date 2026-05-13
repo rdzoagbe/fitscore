@@ -39,6 +39,7 @@ import './styles/joblytics-layout-polish.css'
 import './styles/joblytics-nav-polish.css'
 import './styles/joblytics-typography-polish.css'
 import './styles/joblytics-mobile-polish.css'
+import './styles/joblytics-cockpit-final.css'
 import SampleReportsPage from './pages/SampleReportsPage.jsx'
 
 
