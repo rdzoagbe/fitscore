@@ -18,6 +18,7 @@ import ResourceArticlePage from './pages/ResourceArticlePage'
 import RoleLandingPage from './pages/RoleLandingPage'
 import AdminReliabilityPage from './pages/AdminReliabilityPage'
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
+import AdminFeedbackPage from './pages/AdminFeedbackPage'
 import CvCoachPage from './pages/CvCoachPage'
 import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
@@ -27,6 +28,7 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import EmailVerifyGate from './components/EmailVerifyGate'
 import AppNav from './components/AppNav'
 import Footer from './components/Footer'
+import FeedbackWidget from './components/FeedbackWidget'
 import CvPanel from './components/CvPanel'
 import ActiveCvVersionSelector from './components/ActiveCvVersionSelector'
 import TipCard from './components/TipCard'
@@ -326,6 +328,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
         )}
       </main>
       <PWAInstallPrompt />
+      <FeedbackWidget />
     </div>
   )
 }

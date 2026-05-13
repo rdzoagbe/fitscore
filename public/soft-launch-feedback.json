@@ -1,0 +1,14 @@
+{
+  "name": "Joblytics P8A Soft Launch Feedback System",
+  "status": "ready_after_supabase_sql",
+  "features": [
+    "floating_feedback_widget",
+    "feedback_items_table",
+    "admin_feedback_inbox",
+    "beta_tester_message"
+  ],
+  "admin_url": "/admin/feedback",
+  "public_collection": "feedback widget appears in the app shell",
+  "privacy_note": "Feedback does not request CV, cover-letter, LinkedIn profile, or payment content.",
+  "last_updated": "2026-05-13T10:05:28Z"
+}
