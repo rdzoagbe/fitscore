@@ -1,268 +1,100 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useLang } from '../context/LangContext'
-import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { useUsageSummary } from '../hooks/useUsageSummary'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
-import { getLocalizedChallenge } from '../i18n/premiumTranslations'
-import UsageLimitCard from '../components/UsageLimitCard'
-import CareerNextAction from '../components/CareerNextAction'
-import CareerProgressFlow from '../components/CareerProgressFlow'
-import '../components/UsageLimitCard.css'
-import '../components/CareerNextAction.css'
-import '../components/CareerProgressFlow.css'
 import './CareerDashboardPage.css'
 
-function ScoreCard({ label, value, helper, tone = 'default' }) {
-  return (
-    <article className={`careerDash-stat careerDash-stat--${tone}`}>
-      <p>{label}</p>
-      <strong>{value}</strong>
-      <span>{helper}</span>
-    </article>
-  )
+function Kpi({ tone, label, value, delta }) {
+  return <article className={`cockpit-kpi ${tone}`}><p>{label}</p><strong>{value}</strong><span>{delta}</span></article>
 }
 
-function ProgressLine({ value }) {
-  return (
-    <div className="careerDash-progress">
-      <span style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
-    </div>
-  )
+function Stage({ color, name, count, width }) {
+  return <div className="cockpit-stage"><i style={{ background: color }} /><span>{name}</span><b><em style={{ width: `${width}%`, background: color }} /></b><strong>{count}</strong></div>
 }
 
-function PathCard({ icon, title, text, progress, onClick }) {
-  return (
-    <button type="button" className="careerDash-path" onClick={onClick}>
-      <div className="careerDash-pathTop">
-        <span className="careerDash-pathIcon">{icon}</span>
-        <span className="careerDash-pathPercent">{progress}%</span>
-      </div>
-      <h3>{title}</h3>
-      <p>{text}</p>
-      <ProgressLine value={progress} />
-    </button>
-  )
+function ScoreRow({ label, value, color }) {
+  return <div className="cockpit-scoreRow"><span>{label}</span><b><i style={{ width: `${value}%`, background: color }} /></b><em style={{ color }}>{value}%</em></div>
 }
 
-function getGreeting(t) {
-  const hour = new Date().getHours()
-  if (hour < 12) return t('good_morning')
-  if (hour < 18) return t('good_afternoon')
-  return t('good_evening')
+function SkillRow({ name, value, status, tone }) {
+  const color = tone === 'strong' ? '#34d399' : tone === 'gap' ? '#f87171' : tone === 'warn' ? '#fb923c' : '#38bdf8'
+  return <div className="cockpit-skillRow"><span>{name}</span><b><i style={{ width: `${value}%`, background: color }} /></b><em>{value}%</em><small className={tone}>{status}</small></div>
+}
+
+function Activity({ title, subtitle, status, tone }) {
+  return <article className="cockpit-feedItem"><i className={tone} /><span><strong>{title}</strong><small>{subtitle}</small><em>recent</em></span><b className={tone}>{status}</b></article>
+}
+
+function JobCard({ logo, title, company, score, tags, tone = 'good' }) {
+  return <article className="cockpit-jobCard"><span className={`cockpit-jobLogo ${tone}`}>{logo}</span><span className="cockpit-jobInfo"><strong>{title}</strong><small>{company}</small><span>{tags.map(tag => <em key={tag}>{tag}</em>)}</span></span><b className={`cockpit-jobScore ${tone}`}>{score}%<small>ATS match</small></b></article>
 }
 
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
-  const { t, lang } = useLang()
-  const daily = useDailyChallenge()
-  const challenge = getLocalizedChallenge(daily.challenge, lang)
-  const metrics = useProgressMetrics(daily.progress)
+  const metrics = useProgressMetrics({})
   const usage = useUsageSummary()
-  const [openChallenge, setOpenChallenge] = useState(true)
-
   const name = getUserDisplayName(user)
-  const weeklyPercent = Math.round(((metrics.weeklyCompleted || 0) / (metrics.weeklyTarget || 5)) * 100)
-  const recent = metrics.analyses.slice(0, 4)
+  const recent = metrics.analyses?.slice(0, 4) || []
+  const bestScore = metrics.bestScore || 74
+  const avgScore = metrics.averageScore || 74
+  const applications = Math.max(metrics.analysesCount || 0, recent.length || 47)
 
   return (
-    <div className="careerDash-page">
-      <div className="careerDash-bg careerDash-bgOne" />
-      <div className="careerDash-bg careerDash-bgTwo" />
+    <div className="cockpit-page">
+      <aside className="cockpit-sidebar">
+        <button className="cockpit-logo" type="button" onClick={() => setPage?.('dashboard')}><span>J</span><strong>Job<i>lytics</i></strong></button>
+        <nav className="cockpit-nav">
+          <p>Workspace</p>
+          <button className="active" onClick={() => setPage?.('dashboard')}>Dashboard</button>
+          <button onClick={() => setPage?.('history')}>Job Tracker</button>
+          <button onClick={() => setPage?.('analyzer')}>ATS Scanner</button>
+          <button onClick={() => setPage?.('history')}>Cover Letters</button>
+          <p>Prepare</p>
+          <button onClick={() => setPage?.('coach')}>Interview Prep</button>
+          <button onClick={() => setPage?.('coach')}>CV Enhancer</button>
+          <button onClick={() => setPage?.('linkedin')}>LinkedIn</button>
+          <p>Reports</p>
+          <button onClick={() => setPage?.('admin')}>Analytics</button>
+        </nav>
+        <div className="cockpit-user"><span>{name?.split(' ').map(part => part[0]).join('').slice(0, 2) || 'JD'}</span><div><strong>{name}</strong><small>Active workspace</small></div></div>
+      </aside>
 
-      <main className="careerDash-shell">
-        <section className="careerDash-hero">
-          <div className="careerDash-heroText">
-            <div className="careerDash-pill">
-              <span /> {t('career_growth_dashboard')}
-            </div>
+      <header className="cockpit-topbar">
+        <h1>Dashboard <span>Week 22</span></h1>
+        <div className="cockpit-search">Search jobs, companies…</div>
+        <button onClick={() => setPage?.('analyzer')}>Upload CV</button>
+        <button className="primary" onClick={() => setPage?.('analyzer')}>Add Application</button>
+        <span className="cockpit-bell">•</span>
+      </header>
 
-            <h1>
-              {getGreeting(t)}, <br />
-              <em>{name}</em>
-            </h1>
-
-            <p>{t('career_dash_intro')}</p>
-
-            <div className="careerDash-actions">
-              <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>
-                {t('run_ats_check')}
-              </button>
-              <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('coach')}>
-                {t('open_cv_coach')}
-              </button>
-            </div>
-          </div>
-
-          <aside className="careerDash-heroPanel">
-            <div className="careerDash-scoreCircle">
-              <span>{metrics.bestScore || 0}</span>
-              <small>{t('best_score_label')}</small>
-            </div>
-
-            <div>
-              <p className="careerDash-panelLabel">{t('next_recommended_action')}</p>
-              <h2>{t('complete_todays_challenge')}</h2>
-              <p>{t('daily_improvements_compound')}</p>
-            </div>
-          </aside>
+      <main className="cockpit-main">
+        <section className="cockpit-kpiRow">
+          <Kpi tone="blue" label="Applications" value={applications} delta="+8 this week" />
+          <Kpi tone="purple" label="Interviews" value="6" delta="+2 scheduled" />
+          <Kpi tone="green" label="Avg ATS Score" value={`${avgScore}%`} delta="+6pts vs last week" />
+          <Kpi tone="orange" label="Response Rate" value="19%" delta="-2pts vs avg" />
         </section>
 
-        <CareerNextAction metrics={metrics} setPage={setPage} />
+        <section className="cockpit-midGrid">
+          <article className="cockpit-panel">
+            <div className="cockpit-panelHead"><h2>Application pipeline</h2><button onClick={() => setPage?.('history')}>View all →</button></div>
+            <div className="cockpit-stages"><Stage color="#38bdf8" name="Applied" count="32" width={85}/><Stage color="#67e8f9" name="Screening" count="6" width={32}/><Stage color="#818cf8" name="Interview" count="5" width={26}/><Stage color="#fb923c" name="Assessment" count="2" width={11}/><Stage color="#34d399" name="Offer" count="1" width={5}/><Stage color="#f87171" name="Closed" count="1" width={6}/></div>
+            <div className="cockpit-sparkTitle">Applications / week</div><svg className="cockpit-spark" viewBox="0 0 260 60" preserveAspectRatio="none"><path d="M0,52 L32,44 L64,38 L96,30 L128,22 L160,18 L192,10 L224,8 L260,4 L260,60 L0,60Z"/><polyline points="0,52 32,44 64,38 96,30 128,22 160,18 192,10 224,8 260,4"/></svg>
+          </article>
 
-        <section className="careerDash-stats">
-          <ScoreCard label={t('ats_checks')} value={metrics.analysesCount || 0} helper={t('total_analyses')} />
-          <ScoreCard label={t('average_score')} value={metrics.averageScore ? `${metrics.averageScore}%` : '—'} helper={t('across_checks')} />
-          <ScoreCard label={t('best_score')} value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper={t('highest_match')} tone="accent" />
-          <ScoreCard label={t('current_streak')} value={`${metrics.currentStreak || 0}d`} helper={t('career_actions')} tone="warm" />
+          <article className="cockpit-panel cockpit-scorePanel">
+            <div className="cockpit-panelHead"><h2>Latest ATS score</h2><button onClick={() => setPage?.('analyzer')}>New scan →</button></div>
+            <div className="cockpit-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"/><circle className="progress" cx="60" cy="60" r="50"/></svg><div><strong>{bestScore}</strong><span>ATS Match</span></div></div>
+            <p>Latest CV and role match analysis</p><ScoreRow label="Keywords" value={88} color="#34d399"/><ScoreRow label="Experience" value={80} color="#38bdf8"/><ScoreRow label="Skills" value={72} color="#818cf8"/><ScoreRow label="Format" value={58} color="#fb923c"/><ScoreRow label="Education" value={65} color="#94a3b8"/><button className="cockpit-wideBtn" onClick={() => setPage?.('coach')}>Improve score</button>
+          </article>
+
+          <article className="cockpit-panel"><div className="cockpit-panelHead"><h2>Recent activity</h2><button onClick={() => setPage?.('history')}>All →</button></div><div className="cockpit-feed">{recent.length ? recent.map((item, index) => <Activity key={index} title={item?.result?.job_context?.company || item?.company || `Analysis ${index + 1}`} subtitle={item?.result?.job_context?.title || item?.jobTitle || `Score ${extractScore(item) || '—'}%`} status="Scored" tone="blue" />) : <><Activity title="Latest analysis" subtitle="ATS match completed" status="Scored" tone="blue"/><Activity title="CV workspace" subtitle="Profile improvement pending" status="Open" tone="purple"/><Activity title="Pipeline" subtitle="Application tracking active" status="Live" tone="green"/></>}</div></article>
         </section>
 
-        <CareerProgressFlow metrics={metrics} usage={usage} setPage={setPage} />
-
-        <section className="careerDash-grid">
-          <div className="careerDash-main">
-            <article className="careerDash-card careerDash-challenge">
-              <div className="careerDash-cardHeader">
-                <div>
-                  <p className="careerDash-kicker">{t('todays_challenge')} · {challenge.estimatedMinutes} min</p>
-                  <h2>{challenge.title}</h2>
-                  <p>{challenge.description}</p>
-                </div>
-                <span className="careerDash-tag">{challenge.category}</span>
-              </div>
-
-              <div className="careerDash-why">
-                <strong>{t('why_it_matters')}</strong>
-                <span>{challenge.why}</span>
-              </div>
-
-              {openChallenge && (
-                <div className="careerDash-challengeBody">
-                  <p>{challenge.task}</p>
-
-                  <div className="careerDash-examples">
-                    <div>
-                      <span>{t('before')}</span>
-                      <p>{challenge.exampleBefore}</p>
-                    </div>
-                    <div>
-                      <span>{t('after')}</span>
-                      <p>{challenge.exampleAfter}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="careerDash-cardActions">
-                <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setOpenChallenge(value => !value)}>
-                  {openChallenge ? t('hide_example') : t('show_example')}
-                </button>
-
-                <button
-                  type="button"
-                  className="careerDash-btn careerDash-btnPrimary"
-                  onClick={daily.completeChallenge}
-                  disabled={daily.completedToday}
-                >
-                  {daily.completedToday ? t('completed_today') : t('mark_complete')}
-                </button>
-              </div>
-            </article>
-
-            <article className="careerDash-card">
-              <div className="careerDash-cardHeader">
-                <div>
-                  <p className="careerDash-kicker">{t('guided_career_paths')}</p>
-                  <h2>{t('choose_next_move')}</h2>
-                </div>
-              </div>
-
-              <div className="careerDash-pathGrid">
-                <PathCard icon="CV" title={t('improve_my_cv')} text={t('improve_my_cv_text')} progress={42} onClick={() => setPage?.('coach')} />
-                <PathCard icon="INT" title={t('prepare_interviews')} text={t('prepare_interviews_text')} progress={18} onClick={() => setPage?.('coach')} />
-                <PathCard icon="JOB" title={t('apply_smarter')} text={t('apply_smarter_text')} progress={56} onClick={() => setPage?.('analyzer')} />
-                <PathCard icon="in" title="Optimize LinkedIn" text="Turn your profile into a recruiter-ready page aligned with your target role." progress={24} onClick={() => setPage?.('linkedin')} />
-              </div>
-            </article>
-
-            <article className="careerDash-card">
-              <div className="careerDash-cardHeader">
-                <div>
-                  <p className="careerDash-kicker">{t('recent_activity')}</p>
-                  <h2>{t('your_latest_analyses')}</h2>
-                </div>
-                <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('history')}>
-                  {t('view_history')}
-                </button>
-              </div>
-
-              {recent.length ? (
-                <div className="careerDash-recentList">
-                  {recent.map((item, index) => {
-                    const score = extractScore(item)
-                    const title = item?.jobTitle || item?.title || item?.role || item?.result?.job_context?.title || `${t('analyze')} ${index + 1}`
-                    const company = item?.company || item?.result?.job_context?.company || t('recent_jobs')
-
-                    return (
-                      <button key={`${title}-${index}`} type="button" className="careerDash-recentRow" onClick={() => setPage?.('history')}>
-                        <div>
-                          <strong>{title}</strong>
-                          <span>{company}</span>
-                        </div>
-                        <em>{score ? `${score}%` : '—'}</em>
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="careerDash-empty">
-                  <h3>{t('no_analyses')}</h3>
-                  <p>{t('no_analyses_desc')}</p>
-                  <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>
-                    {t('run_first_check')}
-                  </button>
-                </div>
-              )}
-            </article>
-          </div>
-
-          <aside className="careerDash-side">
-            <UsageLimitCard usage={usage} />
-
-            <article className="careerDash-card careerDash-sideCard">
-              <p className="careerDash-kicker">{t('weekly_goal')}</p>
-              <div className="careerDash-weeklyTop">
-                <strong>{metrics.weeklyCompleted || 0}/{metrics.weeklyTarget || 5}</strong>
-                <span>{weeklyPercent}%</span>
-              </div>
-              <ProgressLine value={weeklyPercent} />
-              <p>{t('complete_five_actions')}</p>
-            </article>
-
-            <article className="careerDash-card careerDash-sideCard">
-              <p className="careerDash-kicker">{t('momentum')}</p>
-              <div className="careerDash-momentum">
-                <div>
-                  <strong>{metrics.currentStreak || 0}</strong>
-                  <span>{t('current_streak')}</span>
-                </div>
-                <div>
-                  <strong>{metrics.bestStreak || 0}</strong>
-                  <span>{t('best_streak')}</span>
-                </div>
-              </div>
-            </article>
-
-            <article className="careerDash-card careerDash-sideCard careerDash-coachCard">
-              <p className="careerDash-kicker">{t('coach_insight')}</p>
-              <h3>{t('measurable_achievements_title')}</h3>
-              <p>{t('measurable_achievements_text')}</p>
-              <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('coach')}>
-                {t('improve_my_cv')}
-              </button>
-            </article>
-          </aside>
+        <section className="cockpit-bottomGrid">
+          <article className="cockpit-panel"><div className="cockpit-panelHead"><h2>Top ATS matches</h2><button onClick={() => setPage?.('analyzer')}>Browse all →</button></div><div className="cockpit-tabs"><button className="active">Recommended</button><button>Saved</button><button>New today</button></div><div className="cockpit-jobList"><JobCard logo="IT" title="IT Infrastructure Manager" company="Target role · High match" score="91" tags={['Azure','M365','Intune']}/><JobCard logo="SD" title="Service Delivery Manager" company="Target role · Strong fit" score="78" tags={['ITIL','PowerShell']} tone="mid"/><JobCard logo="PM" title="Chef de Projet SI Senior" company="Target role · Review gaps" score="69" tags={['Cybersec','Entra ID']} tone="low"/></div></article>
+          <article className="cockpit-panel"><div className="cockpit-panelHead"><h2>Skills gap analysis</h2><button onClick={() => setPage?.('coach')}>Full report →</button></div><p className="cockpit-muted">Based on {applications} job descriptions scanned</p><div className="cockpit-skills"><SkillRow name="Azure / Entra ID" value={92} status="✓ Strong" tone="strong"/><SkillRow name="Microsoft 365" value={88} status="✓ Strong" tone="strong"/><SkillRow name="Cybersecurity" value={80} status="Good" tone="good"/><SkillRow name="ITIL / ITSM" value={74} status="Good" tone="good"/><SkillRow name="Power BI" value={45} status="Gap" tone="warn"/><SkillRow name="SAP / ERP" value={28} status="Gap" tone="gap"/><SkillRow name="PMP / Prince2" value={35} status="Gap" tone="gap"/></div><button className="cockpit-outlineWide" onClick={() => setPage?.('coach')}>Build learning plan</button></article>
         </section>
       </main>
     </div>
