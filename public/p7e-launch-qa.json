@@ -1,6 +1,8 @@
 {
   "name": "Joblytics P7E Launch QA",
-  "status": "manual_review_required",
+  "status": "ready_for_soft_launch",
+  "updated_at": "2026-05-13",
+  "launch_scope": "soft_launch",
   "checks": [
     "public_pages",
     "auth_onboarding",
@@ -17,13 +19,20 @@
     "technical_seo",
     "mobile_ux"
   ],
-  "blockers": [
-    "safe_browsing_warning",
+  "blockers": [],
+  "notes": [
+    "Soft launch means the product can be shared with a small trusted audience for validation.",
+    "Stripe checkout is prepared but should remain inactive until real Stripe products, prices, webhook secret, and environment variables are configured.",
+    "Continue monitoring browser console, Supabase errors, Vercel logs, and the reliability dashboard during testing.",
+    "Do not run paid acquisition until Google Safe Browsing/Search Console status is confirmed clean."
+  ],
+  "required_monitoring": [
     "api_analyze_500",
     "supabase_400_or_404_in_core_flow",
     "auth_loop",
     "history_not_persisting",
     "major_mobile_overflow",
-    "misleading_payment_state"
+    "misleading_payment_state",
+    "safe_browsing_warning"
   ]
 }
