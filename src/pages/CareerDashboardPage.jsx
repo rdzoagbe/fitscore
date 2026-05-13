@@ -174,6 +174,7 @@ export default function CareerDashboardPage({ setPage }) {
                 <PathCard icon="CV" title={t('improve_my_cv')} text={t('improve_my_cv_text')} progress={42} onClick={() => setPage?.('coach')} />
                 <PathCard icon="INT" title={t('prepare_interviews')} text={t('prepare_interviews_text')} progress={18} onClick={() => setPage?.('coach')} />
                 <PathCard icon="JOB" title={t('apply_smarter')} text={t('apply_smarter_text')} progress={56} onClick={() => setPage?.('analyzer')} />
+                <PathCard icon="in" title="Optimize LinkedIn" text="Turn your profile into a recruiter-ready page aligned with your target role." progress={24} onClick={() => setPage?.('linkedin')} />
               </div>
             </article>
 

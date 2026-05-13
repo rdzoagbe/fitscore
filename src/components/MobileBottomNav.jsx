@@ -15,6 +15,7 @@ export default function MobileBottomNav({ page, setPage, onLogoClick }) {
     { id: 'analyzer', icon: '🔍', label: t('analyze') || 'Analyze', active: page === 'analyzer', onClick: () => { onLogoClick ? onLogoClick() : setPage('analyzer') } },
     { id: 'history', icon: '📊', label: t('history') || 'History', active: page === 'history', onClick: () => setPage('history') },
     { id: 'coach', icon: '🎤', label: t('nav_coach') || 'Coach', active: page === 'coach', onClick: () => setPage('coach') },
+    { id: 'linkedin', icon: 'in', label: 'LinkedIn', active: page === 'linkedin', onClick: () => setPage('linkedin') },
     { id: 'more', icon: '⋯', label: t('more') || 'More', active: moreOpen, onClick: () => setMoreOpen(o => !o) }
   ]
 

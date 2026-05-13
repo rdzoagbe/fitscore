@@ -7,7 +7,8 @@ const navItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: '🔍', labelKey: 'analyze', fallback: 'Analyze' },
   { id: 'history', icon: '📊', labelKey: 'history', fallback: 'History' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' }
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'linkedin', icon: 'in', labelKey: null, fallback: 'LinkedIn' }
 ]
 
 function PlanDropdown() {
@@ -134,7 +135,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               onClick={() => goTo(item.id)}
             >
               <span>{item.icon}</span>
-              {t(item.labelKey) || item.fallback}
+              {item.labelKey ? t(item.labelKey) : item.fallback}
             </button>
           ))}
           <PlanDropdown />
@@ -161,7 +162,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             onClick={() => goTo(item.id)}
           >
             <span>{item.icon}</span>
-            <em>{t(item.labelKey) || item.fallback}</em>
+            <em>{item.labelKey ? t(item.labelKey) : item.fallback}</em>
           </button>
         ))}
         <button className={`jobNav-mobileItem ${planActive ? 'is-active' : ''}`} type="button" onClick={() => setMobilePlanOpen(true)}>

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useLang } from './context/LangContext'
 import { useAnalyze } from './hooks/useAnalyze'
@@ -13,6 +13,7 @@ import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
 import LimitsPage from './pages/LimitsPage'
 import CvCoachPage from './pages/CvCoachPage'
+import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -301,7 +302,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
 export default function App() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState(() => window.location.pathname === '/linkedin' ? 'linkedin' : 'dashboard')
   const [selectedAnalysis, setSelectedAnalysis] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -317,6 +318,9 @@ export default function App() {
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/pricing') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/limits') return <PageWithFooter><LimitsPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/linkedin') {
+    if (!user) return <LandingPage />
+  }
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
 
@@ -326,6 +330,7 @@ export default function App() {
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach': return <CvCoachPage />
+      case 'linkedin': return <LinkedInOptimizerPage />
       default: return <CareerDashboardPage setPage={setPage} />
     }
   }
