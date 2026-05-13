@@ -12,6 +12,7 @@ import TermsPage from './pages/TermsPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
 import LimitsPage from './pages/LimitsPage'
+import AdminReliabilityPage from './pages/AdminReliabilityPage'
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
 import CvCoachPage from './pages/CvCoachPage'
 import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
@@ -26,6 +27,7 @@ import CvPanel from './components/CvPanel'
 import ActiveCvVersionSelector from './components/ActiveCvVersionSelector'
 import TipCard from './components/TipCard'
 import LimitReachedCard from './components/LimitReachedCard'
+import { installReliabilityListeners } from './utils/reliabilityClient'
 import './pages/AnalyzerPage.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
@@ -329,6 +331,10 @@ export default function App() {
     if (user && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
   }, [user])
 
+  useEffect(() => {
+    return installReliabilityListeners()
+  }, [])
+
   if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
 
   const path = window.location.pathname
@@ -337,6 +343,7 @@ export default function App() {
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/pricing') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/limits') return <PageWithFooter><LimitsPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/admin/reliability') return <><AppNav page="admin-reliability" setPage={setPage} onLogoClick={() => setPage('dashboard')} /><AdminReliabilityPage setPage={setPage} /><GlobalFooter /></>
   if (path === '/admin') {
     if (!user) return <LandingPage />
     if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
@@ -359,6 +366,7 @@ export default function App() {
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach': return <CvCoachPage />
+      case 'admin-reliability': return <AdminReliabilityPage setPage={setPage} />
       case 'admin': return <AdminAnalyticsPage setPage={setPage} />
       case 'linkedin': return <LinkedInOptimizerPage />
       default: return <CareerDashboardPage setPage={setPage} />

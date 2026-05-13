@@ -1,0 +1,20 @@
+P5E reliability test checklist
+
+1. Run the SQL in Supabase:
+   supabase/p5e_reliability.sql
+
+2. Deploy the patch and sign in as rolanddzoagbe@gmail.com.
+
+3. Open:
+   https://joblytics-ai.com/admin/reliability
+
+4. Confirm the dashboard loads.
+
+5. Trigger a test frontend event from DevTools Console:
+   window.dispatchEvent(new ErrorEvent('error', { message: 'P5E test frontend error' }))
+
+6. Refresh /admin/reliability and confirm the event appears.
+
+7. Change period 7/30/90 days.
+
+8. Confirm no CV text, cover-letter text, LinkedIn profile text, or private notes are shown.
