@@ -47,12 +47,7 @@ function AdminNavButton({ page, goTo, mobile = false }) {
   }
 
   return (
-    <button
-      type="button"
-      className={`jobNav-link ${page === 'admin' ? 'is-active' : ''}`}
-      onClick={() => goTo('admin')}
-      title="Admin analytics"
-    >
+    <button type="button" className={`jobNav-link ${page === 'admin' ? 'is-active' : ''}`} onClick={() => goTo('admin')} title="Admin analytics">
       Admin
     </button>
   )
@@ -77,13 +72,7 @@ function PlanDropdown() {
 
   return (
     <div className="jobNav-billing" ref={ref}>
-      <button
-        type="button"
-        className={`jobNav-link jobNav-link--plan ${active || open ? 'is-active' : ''}`}
-        onClick={() => setOpen(v => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
+      <button type="button" className={`jobNav-link jobNav-link--plan ${active || open ? 'is-active' : ''}`} onClick={() => setOpen(v => !v)} aria-haspopup="menu" aria-expanded={open}>
         {planLabel}
         <small>{open ? 'Up' : 'Down'}</small>
       </button>
@@ -120,18 +109,12 @@ function MobilePlanSheet({ onClose }) {
         <h3>Plan and usage</h3>
         <a href="/pricing" className={path === '/pricing' ? 'is-active' : ''}>
           <span>01</span>
-          <div>
-            <strong>{t('pricing') || 'Pricing'}</strong>
-            <small>Plans, prices, and future paid options</small>
-          </div>
+          <div><strong>{t('pricing') || 'Pricing'}</strong><small>Plans, prices, and future paid options</small></div>
           <em>View</em>
         </a>
         <a href="/limits" className={path === '/limits' ? 'is-active' : ''}>
           <span>02</span>
-          <div>
-            <strong>{usageLimitsLabel}</strong>
-            <small>ATS checks, cover letters, and CV quotas</small>
-          </div>
+          <div><strong>{usageLimitsLabel}</strong><small>ATS checks, cover letters, and CV quotas</small></div>
           <em>View</em>
         </a>
         <button type="button" onClick={onClose}>Close</button>
@@ -152,34 +135,23 @@ export default function AppNav({ page, setPage, onLogoClick }) {
       setPage('dashboard')
       return
     }
-
     setPage(id)
   }
+
+  // The cockpit dashboard owns its own sidebar and topbar. Do not duplicate navigation there.
+  if (page === 'dashboard') return null
 
   return (
     <>
       <header className="jobNav">
-        <button
-          type="button"
-          className="jobNav-brand"
-          onClick={() => goTo('dashboard')}
-          aria-label={t('go_to_dashboard') || 'Go to dashboard'}
-        >
+        <button type="button" className="jobNav-brand" onClick={() => goTo('dashboard')} aria-label={t('go_to_dashboard') || 'Go to dashboard'}>
           <span className="jobNav-brandMark">J</span>
-          <span className="jobNav-brandText">
-            <strong>Joblytics</strong>
-            <small>Application workspace</small>
-          </span>
+          <span className="jobNav-brandText"><strong>Joblytics</strong><small>Application workspace</small></span>
         </button>
 
         <nav className="jobNav-links" aria-label={t('primary_navigation') || 'Primary navigation'}>
           {navItems.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              className={`jobNav-link ${page === item.id ? 'is-active' : ''}`}
-              onClick={() => goTo(item.id)}
-            >
+            <button key={item.id} type="button" className={`jobNav-link ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
               {getLabel(t, item)}
             </button>
           ))}
@@ -188,33 +160,20 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         </nav>
 
         <div className="jobNav-right">
-          <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>
-            New analysis
-          </button>
-
-          <div className="jobNav-menuWrap">
-            <span>Account</span>
-            <UserMenu onViewDashboard={() => goTo('history')} />
-          </div>
+          <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>New analysis</button>
+          <div className="jobNav-menuWrap"><span>Account</span><UserMenu onViewDashboard={() => goTo('history')} /></div>
         </div>
       </header>
 
       <nav className="jobNav-mobile" aria-label={t('mobile_navigation') || 'Mobile navigation'}>
         {navItems.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`}
-            onClick={() => goTo(item.id)}
-          >
-            <span>{item.short}</span>
-            <em>{getLabel(t, item)}</em>
+          <button key={item.id} type="button" className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
+            <span>{item.short}</span><em>{getLabel(t, item)}</em>
           </button>
         ))}
         <AdminNavButton page={page} goTo={goTo} mobile />
         <button className={`jobNav-mobileItem ${planActive ? 'is-active' : ''}`} type="button" onClick={() => setMobilePlanOpen(true)}>
-          <span>Plan</span>
-          <em>{planLabel}</em>
+          <span>Plan</span><em>{planLabel}</em>
         </button>
       </nav>
 
