@@ -1,0 +1,30 @@
+{
+  "name": "Joblytics P8B Layout Simplification + Premium Spacing",
+  "status": "ready_after_deploy",
+  "purpose": "Finalize visual hierarchy, reduce clutter, standardize spacing, and improve dashboard/navigation readability before soft launch.",
+  "applies_to": [
+    "global layout",
+    "dashboard",
+    "navigation",
+    "analyzer",
+    "pricing",
+    "public SEO pages",
+    "sample reports",
+    "mobile UI",
+    "admin pages"
+  ],
+  "manual_review_required": [
+    "/",
+    "/dashboard",
+    "/pricing",
+    "/linkedin",
+    "/resources",
+    "/roles",
+    "/sample-reports",
+    "/early-access",
+    "/admin",
+    "/admin/reliability",
+    "/admin/feedback"
+  ],
+  "last_updated": "2026-05-13T10:27:22Z"
+}

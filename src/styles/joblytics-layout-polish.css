@@ -1,0 +1,545 @@
+/* P8B — Joblytics final layout simplification and premium spacing pass
+   Purpose: reduce visual clutter, standardize page dimensions, improve hierarchy,
+   and make the app feel calmer before soft-launch feedback.
+*/
+
+/* ---------- Design tokens ---------- */
+:root {
+  --jl-page-max: 1200px;
+  --jl-page-wide: 1320px;
+  --jl-page-narrow: 920px;
+
+  --jl-space-1: 6px;
+  --jl-space-2: 10px;
+  --jl-space-3: 14px;
+  --jl-space-4: 18px;
+  --jl-space-5: 24px;
+  --jl-space-6: 32px;
+  --jl-space-7: 44px;
+  --jl-space-8: 64px;
+  --jl-space-9: 88px;
+
+  --jl-radius-sm: 14px;
+  --jl-radius-md: 20px;
+  --jl-radius-lg: 28px;
+  --jl-radius-xl: 36px;
+
+  --jl-shadow-card: 0 18px 52px rgba(15, 23, 42, 0.07);
+  --jl-shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.06);
+  --jl-border-soft: rgba(148, 163, 184, 0.22);
+}
+
+/* ---------- Global rhythm ---------- */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+main,
+section,
+article,
+aside {
+  box-sizing: border-box;
+}
+
+main {
+  overflow-x: clip;
+}
+
+/* Keep content inside a calm, consistent width */
+[class*="shell"],
+[class*="container"],
+[class*="page-inner"],
+[class*="pageShell"],
+[class*="dashboard-shell"],
+[class*="pricing-shell"],
+[class*="resource-shell"],
+[class*="role-shell"] {
+  max-width: var(--jl-page-max);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Generic page padding refinement */
+[class*="page"],
+[class*="Page"] {
+  box-sizing: border-box;
+}
+
+/* ---------- Typography hierarchy ---------- */
+h1,
+.hero-title,
+.dashboard-title,
+.career-title,
+.page-title {
+  max-width: 980px;
+  text-wrap: balance;
+  letter-spacing: -0.055em !important;
+}
+
+h2,
+.section-title {
+  text-wrap: balance;
+  letter-spacing: -0.04em !important;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Keep giant headings readable after font switch */
+h1 {
+  line-height: .98 !important;
+}
+
+h2 {
+  line-height: 1.05 !important;
+}
+
+h3 {
+  line-height: 1.12 !important;
+}
+
+/* Avoid overly wide paragraphs */
+p,
+li {
+  max-width: 78ch;
+}
+
+/* ---------- Navigation simplification ---------- */
+header,
+nav,
+.app-nav,
+[class*="AppNav"],
+[class*="nav"] {
+  box-sizing: border-box;
+}
+
+.app-nav,
+[class*="appNav"],
+nav[aria-label],
+header nav {
+  backdrop-filter: blur(18px);
+}
+
+.app-nav a,
+.app-nav button,
+nav a,
+nav button,
+[class*="nav"] a,
+[class*="nav"] button {
+  min-height: 40px;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+
+/* Give nav links breathing space while preventing wrap chaos */
+nav ul,
+nav [role="list"],
+[class*="nav"] ul,
+[class*="navItems"],
+[class*="nav-links"],
+[class*="navLinks"] {
+  gap: 8px !important;
+}
+
+/* Desktop: less crowded navigation */
+@media (min-width: 960px) {
+  .app-nav,
+  [class*="appNav"],
+  header {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  nav a,
+  nav button,
+  [class*="nav"] a,
+  [class*="nav"] button {
+    padding-inline: 13px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Mobile/tablet: horizontal scroll is cleaner than wrapping */
+@media (max-width: 1120px) {
+  nav,
+  .app-nav,
+  [class*="appNav"] {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  nav::-webkit-scrollbar,
+  .app-nav::-webkit-scrollbar,
+  [class*="appNav"]::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------- Cards: consistent calm surface ---------- */
+[class*="card"],
+[class*="Card"],
+[class*="panel"],
+[class*="Panel"],
+[class*="tile"],
+[class*="Tile"] {
+  box-sizing: border-box;
+}
+
+:is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]) {
+  border-radius: var(--jl-radius-lg);
+}
+
+:is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel) {
+  box-shadow: var(--jl-shadow-soft);
+}
+
+/* Avoid tiny cramped card padding */
+@media (min-width: 760px) {
+  :is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel):not(.feedback-row) {
+    padding-block: max(var(--jl-space-5), min(3vw, var(--jl-space-6)));
+  }
+}
+
+/* ---------- Dashboard simplification ---------- */
+.career-dashboard,
+.dashboard-page,
+[class*="CareerDashboard"],
+[class*="DashboardPage"] {
+  max-width: var(--jl-page-wide);
+  margin-left: auto;
+  margin-right: auto;
+  padding-inline: clamp(18px, 3vw, 40px);
+}
+
+/* Top dashboard area: more breathing room */
+.career-dashboard > *,
+.dashboard-page > *,
+[class*="CareerDashboard"] > * {
+  margin-bottom: clamp(22px, 3vw, 34px);
+}
+
+/* The greeting should not overpower the page */
+.career-dashboard h1,
+.dashboard-page h1,
+[class*="CareerDashboard"] h1 {
+  font-size: clamp(2.35rem, 5.8vw, 5.1rem) !important;
+  line-height: .95 !important;
+  letter-spacing: -0.06em !important;
+  margin-bottom: 14px !important;
+}
+
+/* Reduce noisy KPI dominance */
+[class*="stat"],
+[class*="Stat"],
+[class*="metric"],
+[class*="Metric"] {
+  min-width: 0;
+}
+
+[class*="stat"] strong,
+[class*="Stat"] strong,
+[class*="metric"] strong,
+[class*="Metric"] strong,
+[class*="score"] strong,
+[class*="Score"] strong {
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem) !important;
+  line-height: 1 !important;
+  white-space: nowrap;
+}
+
+/* Dashboard grids should not squeeze content */
+[class*="grid"],
+[class*="Grid"] {
+  min-width: 0;
+}
+
+/* Next action card: make it feel like primary recommendation */
+.career-next-action,
+.next-action-card,
+[class*="NextAction"] {
+  border-radius: var(--jl-radius-xl) !important;
+  padding: clamp(22px, 3vw, 34px) !important;
+}
+
+.career-next-action h2,
+.next-action-card h2,
+[class*="NextAction"] h2 {
+  font-size: clamp(1.65rem, 3vw, 2.4rem) !important;
+  margin-bottom: 10px !important;
+}
+
+/* Career progress: prevent too many equal-weight blocks feeling chaotic */
+.career-progress-flow,
+[class*="CareerProgress"],
+[class*="progress-flow"] {
+  border-radius: var(--jl-radius-xl) !important;
+}
+
+.career-progress-flow h2,
+[class*="CareerProgress"] h2 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem) !important;
+}
+
+/* ---------- Analyzer / forms ---------- */
+.analyzePro-shell,
+[class*="analyze"],
+[class*="Analyzer"] {
+  max-width: var(--jl-page-wide);
+}
+
+input,
+textarea,
+select {
+  border-radius: 16px !important;
+  min-height: 44px;
+}
+
+textarea {
+  line-height: 1.55 !important;
+}
+
+label {
+  line-height: 1.25;
+}
+
+button,
+.button,
+.btn,
+a[role="button"] {
+  min-height: 42px;
+  border-radius: 999px !important;
+}
+
+/* One primary action should stand out; secondary actions should breathe */
+button + button,
+.button + .button,
+.btn + .btn {
+  margin-left: 6px;
+}
+
+/* ---------- Public landing / SEO pages ---------- */
+.landing-page,
+.resource-page,
+.role-page,
+.sample-report-page,
+.early-access-page,
+.pricing-page,
+[class*="Landing"],
+[class*="Resource"],
+[class*="Role"],
+[class*="Sample"],
+[class*="Pricing"] {
+  overflow-x: clip;
+}
+
+/* Public sections should feel editorial and spaced */
+.landing-page section,
+.resource-page section,
+.role-page section,
+.sample-report-page section,
+.early-access-page section,
+.pricing-page section {
+  margin-block: clamp(38px, 7vw, 86px);
+}
+
+/* Hero sections: one focused message */
+.hero,
+[class*="hero"],
+[class*="Hero"] {
+  max-width: var(--jl-page-wide);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero h1,
+[class*="Hero"] h1,
+[class*="hero"] h1 {
+  font-size: clamp(2.6rem, 7vw, 6rem) !important;
+  max-width: 980px;
+}
+
+/* SEO/article pages should not feel like dashboards */
+.resource-article,
+.article-body,
+[class*="Article"] {
+  max-width: 880px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.resource-article p,
+.article-body p,
+[class*="Article"] p {
+  max-width: 74ch;
+}
+
+/* ---------- Pricing cleanup ---------- */
+.pricing-page,
+[class*="PricingPage"] {
+  max-width: var(--jl-page-wide);
+  margin-left: auto;
+  margin-right: auto;
+  padding-inline: clamp(18px, 3vw, 40px);
+}
+
+.pricing-page h1,
+[class*="PricingPage"] h1 {
+  font-size: clamp(2.4rem, 6vw, 5.4rem) !important;
+}
+
+[class*="pricing"] [class*="card"],
+[class*="Pricing"] [class*="Card"] {
+  align-self: stretch;
+}
+
+/* ---------- Pipeline and admin readability ---------- */
+[class*="pipeline"],
+[class*="Pipeline"],
+[class*="kanban"],
+[class*="Kanban"] {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 8px;
+}
+
+.admin-feedback-page,
+[class*="Admin"] {
+  max-width: var(--jl-page-wide);
+}
+
+/* ---------- Visual decluttering ---------- */
+[class*="badge"],
+[class*="Badge"],
+[class*="chip"],
+[class*="Chip"] {
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  padding: 7px 10px !important;
+}
+
+/* Avoid too many loud gradients competing */
+[class*="gradient"],
+[class*="Gradient"] {
+  background-size: 160% 160%;
+}
+
+/* ---------- Language / text overflow protection ---------- */
+h1,
+h2,
+h3,
+p,
+button,
+a,
+span,
+li {
+  overflow-wrap: anywhere;
+}
+
+button,
+a {
+  overflow-wrap: normal;
+}
+
+/* ---------- Mobile final pass ---------- */
+@media (max-width: 760px) {
+  :root {
+    --jl-space-5: 20px;
+    --jl-space-6: 24px;
+    --jl-space-7: 32px;
+    --jl-space-8: 44px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  main,
+  .career-dashboard,
+  .dashboard-page,
+  .pricing-page,
+  [class*="page"],
+  [class*="Page"] {
+    padding-left: max(14px, env(safe-area-inset-left)) !important;
+    padding-right: max(14px, env(safe-area-inset-right)) !important;
+  }
+
+  h1,
+  .hero h1,
+  [class*="Hero"] h1,
+  .career-dashboard h1,
+  .dashboard-page h1 {
+    font-size: clamp(2.1rem, 11vw, 3.35rem) !important;
+    line-height: .96 !important;
+  }
+
+  h2 {
+    font-size: clamp(1.55rem, 7vw, 2.25rem) !important;
+  }
+
+  p,
+  li {
+    font-size: 0.98rem;
+    line-height: 1.62;
+  }
+
+  :is([class*="card"], [class*="Card"], [class*="panel"], [class*="Panel"]):not(.feedback-panel):not(.feedback-row) {
+    border-radius: 22px !important;
+    padding: 18px !important;
+  }
+
+  button,
+  .button,
+  .btn,
+  a[role="button"] {
+    width: auto;
+    min-height: 44px;
+  }
+
+  /* CTA groups stack cleanly */
+  [class*="cta"],
+  [class*="CTA"],
+  [class*="actions"],
+  [class*="Actions"] {
+    gap: 10px !important;
+  }
+
+  /* Stats should form simple grids rather than crammed rows */
+  [class*="stat-grid"],
+  [class*="StatGrid"],
+  [class*="metric-grid"],
+  [class*="MetricGrid"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* On very narrow phones, stack stats */
+  @media (max-width: 420px) {
+    [class*="stat-grid"],
+    [class*="StatGrid"],
+    [class*="metric-grid"],
+    [class*="MetricGrid"] {
+      grid-template-columns: 1fr !important;
+    }
+  }
+}
+
+/* ---------- Print / screenshot friendliness ---------- */
+@media print {
+  .feedback-widget,
+  nav,
+  header {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: #111827 !important;
+  }
+}
