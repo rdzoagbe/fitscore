@@ -42,8 +42,12 @@ export default async function ExportIprPage(): Promise<JSX.Element> {
               <div className="rounded-md border border-border bg-elevated p-3"><strong className="text-[var(--text-primary)]">No response:</strong> {summary.noResponse}</div>
               <div className="rounded-md border border-border bg-elevated p-3"><strong className="text-[var(--text-primary)]">Pending:</strong> {summary.pending}</div>
             </div>
+            <div className="mt-5 grid gap-3">
+              <a href="/export-ipr/pdf" className="rounded-md bg-accent px-4 py-3 text-center text-sm font-medium text-slate-950 transition hover:opacity-90">Download PDF dossier</a>
+              <a href="/export-ipr/csv" className="rounded-md border border-border bg-elevated px-4 py-3 text-center text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)]">Download Excel-compatible CSV</a>
+            </div>
             <p className="mt-4 text-xs leading-6 text-[var(--text-muted)]">
-              This page is now dossier-ready from tracker data. PDF/Excel file generation can be added in the next export step.
+              PDF and CSV exports are generated from your authenticated tracker data. CSV can be opened directly in Excel.
             </p>
           </Card>
           <Card>
