@@ -354,3 +354,62 @@ a[role="button"] {
     overflow-x: auto;
   }
 }
+
+/* P8A typography refinement: modern SaaS font system */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Source+Serif+4:wght@400;500;600;700&display=swap');
+
+:root {
+  --joblytics-font-ui: 'Inter', Arial, Helvetica, sans-serif;
+  --joblytics-font-heading: 'Plus Jakarta Sans', 'Inter', Arial, Helvetica, sans-serif;
+  --joblytics-font-editorial: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+
+html,
+body,
+#root,
+button,
+input,
+textarea,
+select {
+  font-family: var(--joblytics-font-ui) !important;
+}
+
+body * {
+  font-family: var(--joblytics-font-ui);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.hero-title,
+.dashboard-title,
+.career-title,
+.page-title,
+.section-title {
+  font-family: var(--joblytics-font-heading) !important;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+p,
+li,
+span,
+label,
+input,
+textarea,
+select,
+button {
+  font-family: var(--joblytics-font-ui) !important;
+}
+
+.resource-article,
+.resource-article p,
+.article-body,
+.article-body p {
+  font-family: var(--joblytics-font-editorial) !important;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
