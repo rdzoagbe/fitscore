@@ -2,6 +2,20 @@ import type { ApplicationStatus } from '@/lib/tracker/schema'
 import { kanbanStatuses } from '@/lib/tracker/schema'
 import { createClient } from '@/lib/supabase/server'
 
+const allStatuses: ApplicationStatus[] = [
+  'wishlist',
+  'applied',
+  'screening',
+  'interview_1',
+  'interview_2',
+  'technical_test',
+  'offer',
+  'accepted',
+  'rejected',
+  'withdrawn',
+  'no_response'
+]
+
 export type ApplicationItem = {
   readonly id: string
   readonly companyName: string
@@ -73,11 +87,25 @@ export async function getApplications(userId: string, limit = 100): Promise<Appl
 }
 
 export function groupApplicationsByStatus(items: ApplicationItem[]): Record<ApplicationStatus, ApplicationItem[]> {
-  const grouped = Object.fromEntries(kanbanStatuses.map(status => [status, []])) as Record<ApplicationStatus, ApplicationItem[]>
+  const grouped: Record<ApplicationStatus, ApplicationItem[]> = {
+    wishlist: [],
+    applied: [],
+    screening: [],
+    interview_1: [],
+    interview_2: [],
+    technical_test: [],
+    offer: [],
+    accepted: [],
+    rejected: [],
+    withdrawn: [],
+    no_response: []
+  }
+
   for (const item of items) {
-    const status = kanbanStatuses.includes(item.status) ? item.status : 'wishlist'
+    const status = allStatuses.includes(item.status) ? item.status : 'wishlist'
     grouped[status].push(item)
   }
+
   return grouped
 }
 
