@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AtsAnalysisCard } from '@/components/ats/AtsAnalysisCard'
+import { usageMetricsFromSnapshot } from '@/components/billing/UsageCard'
 import { KpiCard } from '@/components/dashboard/KpiCard'
 import { PageScaffold } from '@/components/dashboard/PageScaffold'
 import { ProgressRow } from '@/components/dashboard/ProgressRow'
@@ -8,6 +9,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { buildTrackerAnalytics } from '@/lib/analytics/tracker'
 import { getAtsHistory } from '@/lib/ats/history'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { getUserPlan } from '@/lib/billing/profile-plan'
+import { getUsageSnapshot } from '@/lib/billing/usage'
 import { getApplications, getTrackerStats } from '@/lib/tracker/data'
 import { getApplicationInsight, riskClassName } from '@/lib/tracker/intelligence'
 import { statusLabels } from '@/lib/tracker/schema'
@@ -30,14 +33,21 @@ function latestApplications(items: Awaited<ReturnType<typeof getApplications>>) 
     .slice(0, 5)
 }
 
+function usagePercent(used: number, limit: number): number {
+  if (limit <= 0) return 0
+  return Math.min(100, Math.round((used / limit) * 100))
+}
+
 export default async function DashboardPage(): Promise<JSX.Element> {
   const user = await requireUserSession()
-  const [atsHistory, applications] = await Promise.all([getAtsHistory(user.id, 5), getApplications(user.id, 120)])
+  const plan = await getUserPlan(user.id)
+  const [atsHistory, applications, usage] = await Promise.all([getAtsHistory(user.id, 5), getApplications(user.id, 120), getUsageSnapshot(user.id, plan.id)])
   const latestAts = atsHistory[0]
   const avgAtsScore = averageScore(atsHistory)
   const trackerStats = getTrackerStats(applications)
   const analytics = buildTrackerAnalytics(applications)
   const recentApplications = latestApplications(applications)
+  const usageMetrics = usageMetricsFromSnapshot(usage).slice(0, 4)
 
   return (
     <AppShell>
@@ -45,8 +55,8 @@ export default async function DashboardPage(): Promise<JSX.Element> {
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <KpiCard label="Active Applications" value={String(trackerStats.active)} helper={`${trackerStats.total} tracked total`} />
           <KpiCard label="Response Rate" value={`${analytics.responseRate}%`} helper={`${analytics.responses} responses`} tone={toneForRate(analytics.responseRate)} />
+          <KpiCard label="Current Plan" value={plan.name} helper="Usage limits active" tone="amber" />
           <KpiCard label="Latest ATS Score" value={latestAts ? `${latestAts.overallScore ?? latestAts.result.overall_score}%` : '—'} helper={latestAts?.cvVersion?.name ?? 'No scan yet'} tone="violet" />
-          <KpiCard label="Avg ATS Score" value={atsHistory.length ? `${avgAtsScore}%` : '—'} helper={atsHistory.length ? 'Across recent scans' : 'Run your first scan'} tone="emerald" />
         </section>
         <section className="grid gap-4 xl:grid-cols-[1fr_1fr_22rem]">
           <Card>
@@ -73,16 +83,11 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             <Link href="/scanner" className="mt-4 inline-block text-xs text-accent">Open ATS scanner</Link>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Priority insight</CardTitle></CardHeader>
-            <div className="grid gap-3 text-sm text-[var(--text-secondary)]">
-              {analytics.insights[0] ? (
-                <>
-                  <p className="text-[var(--text-primary)]">{analytics.insights[0].title}</p>
-                  <p className="text-xs leading-6 text-[var(--text-muted)]">{analytics.insights[0].detail}</p>
-                </>
-              ) : <p>No insight yet. Add applications and run scans.</p>}
-              {analytics.topPlatform ? <p className="text-xs text-[var(--text-muted)]">Best platform: {analytics.topPlatform.platform} · {analytics.topPlatform.responseRate}% response rate.</p> : null}
+            <CardHeader><CardTitle>Plan usage</CardTitle></CardHeader>
+            <div className="grid gap-3">
+              {usageMetrics.map(metric => <ProgressRow key={metric.label} label={metric.label} value={usagePercent(metric.used, metric.limit)} tone={usagePercent(metric.used, metric.limit) >= 90 ? 'red' : usagePercent(metric.used, metric.limit) >= 70 ? 'amber' : 'emerald'} />)}
             </div>
+            <Link href="/billing" className="mt-4 inline-block text-xs text-accent">Open billing & usage</Link>
           </Card>
         </section>
         <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
