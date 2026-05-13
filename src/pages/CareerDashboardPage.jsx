@@ -7,8 +7,10 @@ import { useUsageSummary } from '../hooks/useUsageSummary'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import { getLocalizedChallenge } from '../i18n/premiumTranslations'
 import UsageLimitCard from '../components/UsageLimitCard'
+import CareerNextAction from '../components/CareerNextAction'
 import CareerProgressFlow from '../components/CareerProgressFlow'
 import '../components/UsageLimitCard.css'
+import '../components/CareerNextAction.css'
 import '../components/CareerProgressFlow.css'
 import './CareerDashboardPage.css'
 
@@ -106,6 +108,8 @@ export default function CareerDashboardPage({ setPage }) {
             </div>
           </aside>
         </section>
+
+        <CareerNextAction metrics={metrics} setPage={setPage} />
 
         <section className="careerDash-stats">
           <ScoreCard label={t('ats_checks')} value={metrics.analysesCount || 0} helper={t('total_analyses')} />
