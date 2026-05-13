@@ -8,5 +8,19 @@
     "/resources/linkedin-profile-optimizer",
     "/resources/job-application-tracker",
     "/resources/interview-preparation-from-job-description"
-  ]
+  ],
+  "role_pages": [
+    "/roles",
+    "/roles/it-manager-cv-checker",
+    "/roles/service-delivery-manager-cv-checker",
+    "/roles/cloud-infrastructure-cv-checker",
+    "/roles/support-manager-cv-checker",
+    "/roles/data-center-manager-cv-checker",
+    "/roles/business-applications-manager-cv-checker"
+  ],
+  "copy_polish": {
+    "principle": "Visual text should explain the decision, not just label the widget.",
+    "primary_cta": "Check my CV against a job",
+    "trust_line": "No LinkedIn login. No recruiter marketplace. Your career data stays in your workspace."
+  }
 }

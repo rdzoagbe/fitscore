@@ -1,0 +1,307 @@
+.role-page-shell {
+  min-height: 100dvh;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(96, 165, 250, .18), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(56, 189, 248, .12), transparent 28%),
+    linear-gradient(180deg, var(--pro-bg-top) 0%, var(--pro-bg-mid) 48%, var(--pro-bg-bottom) 100%);
+}
+
+.role-hero,
+.role-section,
+.role-final-cta {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.role-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .72fr);
+  gap: 28px;
+  padding: 86px 0 44px;
+  align-items: center;
+}
+
+.role-hero-simple {
+  display: block;
+  max-width: 920px;
+}
+
+.role-kicker {
+  margin: 0 0 12px;
+  color: var(--accent, #2563eb);
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-size: .77rem;
+}
+
+.role-hero h1,
+.role-section h2,
+.role-final-cta h2 {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.02;
+  letter-spacing: -.045em;
+}
+
+.role-hero h1 {
+  font-size: clamp(2.55rem, 6vw, 5.15rem);
+  max-width: 870px;
+}
+
+.role-section h2,
+.role-final-cta h2 {
+  font-size: clamp(2rem, 3.6vw, 3.35rem);
+}
+
+.role-lead,
+.role-section p,
+.role-final-cta p {
+  color: var(--text-secondary);
+  font-size: 1.04rem;
+  line-height: 1.75;
+}
+
+.role-lead {
+  max-width: 760px;
+  margin: 22px 0 0;
+  font-size: 1.18rem;
+}
+
+.role-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.role-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  border-radius: 999px;
+  padding: 0 20px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.role-btn:hover { transform: translateY(-1px); }
+
+.role-btn-primary {
+  color: white;
+  background: linear-gradient(135deg, #2563eb, #0f172a);
+  box-shadow: 0 18px 36px rgba(37, 99, 235, .22);
+}
+
+.role-btn-secondary {
+  color: var(--text-primary);
+  background: var(--card-bg, rgba(255,255,255,.72));
+  border: 1px solid var(--border-soft);
+}
+
+.role-trust-note {
+  margin: 18px 0 0;
+  color: var(--text-hint);
+  font-size: .92rem;
+}
+
+.role-preview-card {
+  border: 1px solid var(--border-soft);
+  border-radius: 30px;
+  padding: 24px;
+  background: color-mix(in srgb, var(--card-bg, #fff) 88%, transparent);
+  box-shadow: var(--shadow-xl, 0 24px 60px rgba(15,23,42,.12));
+}
+
+.role-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: var(--text-secondary);
+  font-size: .9rem;
+}
+
+.role-preview-header strong { color: var(--text-primary); }
+
+.role-score-ring {
+  width: 168px;
+  height: 168px;
+  border-radius: 999px;
+  margin: 28px auto;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  border: 16px solid rgba(37, 99, 235, .24);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, .32);
+}
+
+.role-score-ring span {
+  display: block;
+  font-size: 2.8rem;
+  font-weight: 900;
+}
+
+.role-score-ring small {
+  display: block;
+  color: var(--text-secondary);
+  margin-top: -12px;
+}
+
+.role-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.role-preview-list p {
+  margin: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 18px;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--card-bg, #fff) 70%, transparent);
+}
+
+.role-section {
+  padding: 58px 0;
+}
+
+.role-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(320px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.role-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.role-checklist div,
+.role-workflow-grid div,
+.role-link-card,
+.role-example-card,
+.role-faq details {
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--card-bg, #fff) 84%, transparent);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm, 0 10px 28px rgba(15,23,42,.08));
+}
+
+.role-checklist div {
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.role-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.role-pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--text-primary);
+  border: 1px solid rgba(37, 99, 235, .24);
+  background: rgba(37, 99, 235, .08);
+  font-weight: 700;
+}
+
+.before-after-grid,
+.role-workflow-grid,
+.role-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.role-example-card span {
+  display: inline-flex;
+  color: var(--text-hint);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.role-example-card p {
+  margin-bottom: 0;
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.role-example-card.strong {
+  border-color: rgba(37, 99, 235, .28);
+  background: linear-gradient(135deg, rgba(37,99,235,.12), color-mix(in srgb, var(--card-bg, #fff) 84%, transparent));
+}
+
+.role-workflow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.role-workflow-grid strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.role-workflow-grid span,
+.role-link-card span {
+  display: block;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.role-faq-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.role-faq summary {
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.role-faq details p {
+  margin-bottom: 0;
+}
+
+.role-final-cta {
+  text-align: center;
+  padding: 68px 24px 82px;
+}
+
+.role-final-cta p {
+  max-width: 720px;
+  margin: 16px auto 24px;
+}
+
+.role-card-grid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.role-link-card {
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.role-link-card strong { display: block; margin-bottom: 8px; }
+
+@media (max-width: 900px) {
+  .role-hero,
+  .role-two-col,
+  .before-after-grid,
+  .role-workflow-grid,
+  .role-card-grid.compact {
+    grid-template-columns: 1fr;
+  }
+  .role-hero { padding-top: 54px; }
+  .role-workflow-grid { gap: 12px; }
+}

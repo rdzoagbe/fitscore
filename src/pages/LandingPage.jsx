@@ -33,7 +33,7 @@ function ConversionNav({ openAuth, t }) {
 }
 
 function HeroPreview() {
-  const improvements = ['Add 2 quantified leadership bullets', 'Mirror 5 missing ATS keywords', 'Prepare answers for vendor-management gaps']
+  const improvements = ['Add measurable proof to the top CV bullets', "Mirror the role's strongest ATS keywords", 'Prepare answers for the gaps recruiters may test']
   return (
     <div className="hero-preview-card" aria-label="Product preview">
       <div className="preview-topline">
@@ -44,12 +44,12 @@ function HeroPreview() {
       <div className="score-row">
         <div className="score-ring">
           <strong>84%</strong>
-          <span>ATS fit</span>
+          <span>Application readiness</span>
         </div>
         <div>
           <p className="micro-label">Recommendation</p>
-          <h3>Apply after quick CV tuning</h3>
-          <p>Strong match, but your CV should surface the exact service-delivery keywords in the job post.</p>
+          <h3>Strong fit — improve before sending</h3>
+          <p>Your experience is relevant. Joblytics shows the precise wording and proof points to strengthen before applying.</p>
         </div>
       </div>
 
@@ -103,8 +103,8 @@ function BeforeAfter() {
     <section className="landing-section landing-split-section">
       <div>
         <p className="landing-kicker">Before / after</p>
-        <h2>Turn generic applications into role-specific submissions.</h2>
-        <p className="section-lead">Joblytics does not just score your CV. It shows what to change next, then connects that improvement to the cover letter, LinkedIn profile, tracker, and interview prep.</p>
+        <h2>Turn a generic CV into a role-specific application plan.</h2>
+        <p className="section-lead">Joblytics turns the job description into a practical action plan: what to rewrite, what to mention, what to track, and what to prepare for the interview.</p>
       </div>
       <div className="before-after-grid">
         <div className="before-card">
@@ -180,8 +180,8 @@ export default function LandingPage() {
         <section className="landing-hero-v2">
           <div className="hero-copy">
             <p className="landing-kicker">ATS checker · CV coach · job tracker · interview prep</p>
-            <h1>Stop applying blind. Build every application with evidence.</h1>
-            <p className="hero-lead">Joblytics AI turns your CV, job description, LinkedIn profile text, and application history into one guided job-search workspace.</p>
+            <h1>Stop guessing. Build every application with evidence.</h1>
+            <p className="hero-lead">Joblytics AI compares your CV with each job, then turns the result into a clearer CV, stronger cover letter, polished LinkedIn profile, application tracker, and interview kit.</p>
             <div className="hero-actions">
               <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Run a free ATS check →</button>
               <a className="landing-btn landing-btn-ghost landing-btn-large" href="#how-it-works">See how it works</a>
@@ -201,8 +201,8 @@ export default function LandingPage() {
         <section className="landing-section" id="how-it-works">
           <div className="landing-section-head centered">
             <p className="landing-kicker">Guided workflow</p>
-            <h2>From job post to interview kit in one workspace.</h2>
-            <p>Each tool feeds the next step, so users always know whether to improve, apply, follow up, or prepare.</p>
+            <h2>From job description to interview kit in one guided workspace.</h2>
+            <p>Each result becomes the next action, so you know whether to improve the CV, apply, follow up, or prepare for the interview.</p>
           </div>
           <div className="workflow-grid">
             {workflow.map(([number, title, text, cta, href]) => <WorkflowStep key={number} number={number} title={title} text={text} cta={cta} href={href} />)}
@@ -212,10 +212,10 @@ export default function LandingPage() {
         <section className="landing-section" id="features">
           <div className="landing-section-head">
             <p className="landing-kicker">Core features</p>
-            <h2>Everything connected around your next application.</h2>
+            <h2>Everything connected around the next application decision.</h2>
           </div>
           <div className="feature-grid-v2">
-            <FeatureCard icon="🎯" title="ATS match analysis" text="Score your CV against the role and identify hard requirements, missing keywords, and application risk." />
+            <FeatureCard icon="🎯" title="ATS match analysis" text="Compare your CV with the role and identify hard requirements, missing keywords, proof gaps, and application risk." />
             <FeatureCard icon="🧾" title="CV version vault" text="Keep role-specific CV versions and use your active CV directly inside the analyzer." />
             <FeatureCard icon="✉️" title="Cover letter history" text="Generate, save, reopen, and reuse tailored letters connected to your job analyses." />
             <FeatureCard icon="💼" title="Application pipeline" text="Track not applied, applied, interview, follow-up, offer, and rejected opportunities." />
@@ -230,8 +230,8 @@ export default function LandingPage() {
         <section className="landing-section trust-section" id="trust">
           <div>
             <p className="landing-kicker">Trust & privacy</p>
-            <h2>Your career data should stay yours.</h2>
-            <p className="section-lead">Joblytics is designed as a private workspace for applicants, not a recruiter marketplace. The LinkedIn feature is paste-only and does not ask users to log in to LinkedIn.</p>
+            <h2>Your career data should stay in your control.</h2>
+            <p className="section-lead">Joblytics is designed as a private workspace for applicants, not a recruiter marketplace. The LinkedIn feature is paste-only, never asks for a LinkedIn password, and does not scrape private pages.</p>
           </div>
           <div className="trust-grid">
             <span>🛡️ No CV resale</span>
@@ -244,7 +244,7 @@ export default function LandingPage() {
         <section className="landing-section pricing-preview-section">
           <div>
             <p className="landing-kicker">Pricing</p>
-            <h2>Start free. Upgrade when the job search becomes active.</h2>
+            <h2>Start free. Upgrade when you are actively applying.</h2>
             <p className="section-lead">The pricing page is already prepared for Free, Job Search Pass, and Pro Monthly. Checkout links can be connected later when Stripe is ready.</p>
           </div>
           <a className="pricing-preview-cta" href="/pricing">View pricing plans →</a>
@@ -265,8 +265,8 @@ export default function LandingPage() {
 
         <section className="landing-final-cta">
           <p className="landing-kicker">Ready</p>
-          <h2>Make your next application sharper before you send it.</h2>
-          <p>Upload your CV, paste a job description, and get your first application readiness plan.</p>
+          <h2>Make the next application stronger before you send it.</h2>
+          <p>Upload your CV or use your saved CV version, paste a job description, and get a clear action plan before applying.</p>
           <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Get started free →</button>
         </section>
       </main>

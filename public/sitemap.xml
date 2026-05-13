@@ -13,4 +13,46 @@
   <url><loc>https://joblytics-ai.com/privacy</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
   <url><loc>https://joblytics-ai.com/terms</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
   <url><loc>https://joblytics-ai.com/contact</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url>
+    <loc>https://joblytics-ai.com/roles</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/it-manager-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/service-delivery-manager-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/cloud-infrastructure-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/support-manager-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/data-center-manager-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://joblytics-ai.com/roles/business-applications-manager-cv-checker</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.72</priority>
+  </url>
 </urlset>
