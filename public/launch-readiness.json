@@ -1,0 +1,21 @@
+{
+  "product": "Joblytics AI",
+  "phase": "P7B QA / polish sprint",
+  "launchReadinessFocus": [
+    "core workflow stability",
+    "database/schema consistency",
+    "UI and copy consistency",
+    "public SEO route quality",
+    "safe LinkedIn paste-only messaging",
+    "admin/reliability visibility"
+  ],
+  "requiredChecks": [
+    "npm run build",
+    "npm run qa:product",
+    "manual dashboard workflow test",
+    "manual public route test",
+    "Supabase console error review",
+    "Vercel deployment review",
+    "Google Search Console security review"
+  ]
+}

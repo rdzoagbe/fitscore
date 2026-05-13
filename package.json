@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "qa:product": "node scripts/joblytics-qa-audit.mjs",
+    "qa:product:strict": "node scripts/joblytics-qa-audit.mjs --strict"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
