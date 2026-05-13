@@ -1,0 +1,215 @@
+/* P7D.2 Navigation polish
+   Goal: make Joblytics navigation cleaner, less cramped, and more premium without changing routes. */
+
+:root {
+  --nav-height: 64px;
+  --nav-bg: rgba(255, 255, 255, 0.86);
+  --nav-border: rgba(15, 23, 42, 0.08);
+  --nav-text: #172033;
+  --nav-muted: #64748b;
+  --nav-active-bg: #2563eb;
+  --nav-active-text: #ffffff;
+  --nav-pill-bg: rgba(37, 99, 235, 0.08);
+  --nav-radius: 999px;
+}
+
+/* Main shell/header */
+.app-nav,
+.top-nav,
+.site-nav,
+header:has(nav),
+nav[aria-label],
+nav {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.app-nav,
+.top-nav,
+.site-nav,
+header:has(nav) {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  min-height: var(--nav-height);
+  background: var(--nav-bg) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--nav-border) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05) !important;
+}
+
+/* Any direct nav row */
+.app-nav > *,
+.top-nav > *,
+.site-nav > *,
+header:has(nav) > *,
+nav[aria-label] {
+  min-height: var(--nav-height);
+}
+
+/* Brand area */
+[class*="brand"],
+[class*="logo"] {
+  letter-spacing: -0.03em;
+}
+
+[class*="brand"] small,
+[class*="brand"] span:not(:first-child),
+[class*="logo"] small {
+  color: var(--nav-muted) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.1 !important;
+}
+
+/* Navigation links/buttons: normalize visual treatment */
+.app-nav a,
+.app-nav button,
+.top-nav a,
+.top-nav button,
+.site-nav a,
+.site-nav button,
+header:has(nav) a,
+header:has(nav) button,
+nav a,
+nav button {
+  min-height: 38px;
+  border-radius: var(--nav-radius) !important;
+  padding: 0 14px !important;
+  font-size: 0.86rem !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.015em !important;
+  white-space: nowrap !important;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.app-nav a:hover,
+.app-nav button:hover,
+.top-nav a:hover,
+.top-nav button:hover,
+.site-nav a:hover,
+.site-nav button:hover,
+header:has(nav) a:hover,
+header:has(nav) button:hover,
+nav a:hover,
+nav button:hover {
+  transform: translateY(-1px);
+  background: var(--nav-pill-bg) !important;
+}
+
+/* Active navigation states — supports common class/aria patterns */
+.app-nav .active,
+.app-nav [aria-current="page"],
+.top-nav .active,
+.top-nav [aria-current="page"],
+.site-nav .active,
+.site-nav [aria-current="page"],
+nav .active,
+nav [aria-current="page"],
+button[class*="active"],
+a[class*="active"] {
+  background: var(--nav-active-bg) !important;
+  color: var(--nav-active-text) !important;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22) !important;
+}
+
+/* Reduce visual noise from icons inside nav */
+.app-nav svg,
+.app-nav img,
+.top-nav svg,
+.top-nav img,
+.site-nav svg,
+.site-nav img,
+nav svg,
+nav img {
+  flex: 0 0 auto;
+}
+
+/* CTA buttons in nav */
+.app-nav a[href*="analyzer"],
+.app-nav button[class*="primary"],
+.app-nav button[class*="cta"],
+nav a[href*="analyzer"],
+nav button[class*="primary"],
+nav button[class*="cta"] {
+  border: 1px solid rgba(37, 99, 235, 0.32) !important;
+}
+
+/* Plan/dropdown/menu controls should be compact */
+.app-nav [class*="plan"],
+.app-nav [class*="menu"],
+.top-nav [class*="plan"],
+.top-nav [class*="menu"],
+nav [class*="plan"],
+nav [class*="menu"] {
+  font-size: 0.78rem !important;
+}
+
+/* Desktop: keep the row balanced */
+@media (min-width: 980px) {
+  .app-nav,
+  .top-nav,
+  .site-nav,
+  header:has(nav) {
+    padding-inline: clamp(18px, 3vw, 36px) !important;
+  }
+
+  nav,
+  nav[aria-label] {
+    gap: 6px !important;
+  }
+}
+
+/* Tablet/mobile: make nav horizontally scrollable instead of cramped */
+@media (max-width: 979px) {
+  .app-nav,
+  .top-nav,
+  .site-nav,
+  header:has(nav) {
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .app-nav::-webkit-scrollbar,
+  .top-nav::-webkit-scrollbar,
+  .site-nav::-webkit-scrollbar,
+  header:has(nav)::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav,
+  nav[aria-label] {
+    width: max-content;
+    min-width: 100%;
+    gap: 4px !important;
+  }
+
+  .app-nav a,
+  .app-nav button,
+  .top-nav a,
+  .top-nav button,
+  .site-nav a,
+  .site-nav button,
+  nav a,
+  nav button {
+    min-height: 40px;
+    padding-inline: 12px !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+/* Small mobile: keep brand compact */
+@media (max-width: 640px) {
+  .app-nav,
+  .top-nav,
+  .site-nav,
+  header:has(nav) {
+    min-height: 58px;
+  }
+
+  [class*="brand"] small,
+  [class*="logo"] small {
+    display: none !important;
+  }
+}
