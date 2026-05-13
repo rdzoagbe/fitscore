@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { analyzeAts } from '@/lib/ats/analyze'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { createClient } from '@/lib/supabase/server'
 import type { AtsResult } from '@/lib/ats/schema'
 
@@ -19,6 +20,9 @@ function getString(formData: FormData, key: string): string {
 
 export async function runScannerAction(_prevState: ScannerState, formData: FormData): Promise<ScannerState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'atsScan')
+  if (!usage.allowed) return { error: usage.message }
+
   const cvVersionId = getString(formData, 'cvVersionId')
   const jobDescription = getString(formData, 'jobDescription')
   const language = getString(formData, 'language') === 'fr' ? 'fr' : 'en'
