@@ -1,0 +1,29 @@
+{
+  "name": "Joblytics P7E Launch QA",
+  "status": "manual_review_required",
+  "checks": [
+    "public_pages",
+    "auth_onboarding",
+    "dashboard",
+    "ats_analysis",
+    "cv_versions",
+    "cover_letter_history",
+    "linkedin_safe_mode",
+    "application_pipeline",
+    "interview_prep",
+    "pricing_billing_safe_mode",
+    "admin_analytics",
+    "reliability_dashboard",
+    "technical_seo",
+    "mobile_ux"
+  ],
+  "blockers": [
+    "safe_browsing_warning",
+    "api_analyze_500",
+    "supabase_400_or_404_in_core_flow",
+    "auth_loop",
+    "history_not_persisting",
+    "major_mobile_overflow",
+    "misleading_payment_state"
+  ]
+}
