@@ -454,7 +454,7 @@ export default function CvCoachPage() {
               <header className="coachPro-cardHeader coachPro-historyHeader">
                 <div>
                   <p className="coachPro-kicker">Cover letter history</p>
-                  <h2>Saved letters</h2>
+                  <h2>Saved application messages</h2>
                   <p>Reuse, review, or delete cover letters generated for previous applications.</p>
                 </div>
                 <button type="button" className="coachPro-copy" onClick={fetchCoverLetters}>Refresh</button>

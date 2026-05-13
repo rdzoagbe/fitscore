@@ -33,6 +33,7 @@ import TipCard from './components/TipCard'
 import LimitReachedCard from './components/LimitReachedCard'
 import { installReliabilityListeners } from './utils/reliabilityClient'
 import './pages/AnalyzerPage.css'
+import './styles/joblytics-typography-polish.css'
 import SampleReportsPage from './pages/SampleReportsPage.jsx'
 
 

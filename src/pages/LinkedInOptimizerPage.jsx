@@ -479,7 +479,7 @@ export default function LinkedInOptimizerPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: 8 }}>
               <button type="button" onClick={saveOptimization} disabled={saveLoading} className="btn-primary">
-                {saveLoading ? 'Saving...' : activeSavedId ? '✓ Saved' : '💾 Save to history'}
+                {saveLoading ? 'Saving...' : activeSavedId ? '✓ Saved' : '💾 Save to my career history'}
               </button>
               <button type="button" onClick={downloadReport} style={secondaryButtonStyle}>⬇ Download .txt</button>
               <button type="button" onClick={downloadJson} style={secondaryButtonStyle}>⬇ Download .json</button>
@@ -533,7 +533,7 @@ function LinkedInHistoryCard({ user, items, loading, onOpen, onDelete, activeSav
       {user && !loading && !items.length && (
         <div style={{ padding: 14, borderRadius: 14, background: 'var(--bg-input)', border: '1px dashed var(--border)' }}>
           <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 700, marginBottom: 4 }}>No saved LinkedIn optimizations yet.</p>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>Run an optimization, then click “Save to history”.</p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>Run an optimization, then click “Save to my career history”.</p>
         </div>
       )}
 

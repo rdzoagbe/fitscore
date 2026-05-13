@@ -41,7 +41,7 @@ const plans = [
     cta: billingReady ? 'Buy 14-day pass' : 'Request launch access',
     href: '/contact',
     highlighted: true,
-    billingState: billingReady ? 'Stripe checkout active' : 'Checkout coming soon',
+    billingState: billingReady ? 'Stripe checkout active' : 'Checkout is being prepared',
     limits: ['100 ATS analyses / 14 days', '30 cover letters / 14 days', '10 saved CV versions'],
     features: [
       'Everything in Free',
@@ -63,7 +63,7 @@ const plans = [
     cta: billingReady ? 'Start Pro Monthly' : 'Join Pro waitlist',
     href: '/contact',
     highlighted: false,
-    billingState: billingReady ? 'Stripe checkout active' : 'Checkout coming soon',
+    billingState: billingReady ? 'Stripe checkout active' : 'Checkout is being prepared',
     limits: ['150 ATS analyses / month', '60 cover letters / month', '20 saved CV versions'],
     features: [
       'Everything in Job Search Pass',
@@ -168,9 +168,9 @@ function UpgradeRecommendation({ usage }) {
       return 'You are close to your Free limits. The Job Search Pass is the best next step for an intensive application sprint.'
     }
     if (usage.cvs.remaining <= 0) {
-      return 'You have reached your saved CV limit. Upgrade when you need role-specific versions for multiple job families.'
+      return 'You have reached your saved CV limit. Unlock the full workflow when you need role-specific versions for multiple job families.'
     }
-    return 'Free is enough to validate the workflow. Upgrade once you start applying seriously across several roles.'
+    return 'Free is enough to validate the workflow. Unlock the full workflow once you start applying seriously across several roles.'
   }, [usage])
 
   if (!usage) return null
@@ -265,7 +265,7 @@ export default function PricingPage({ onBack }) {
             </div>
           </div>
 
-          <UpgradeRecommendation usage={usage} />
+          <Unlock the full workflowRecommendation usage={usage} />
         </section>
 
         <BillingPreview />

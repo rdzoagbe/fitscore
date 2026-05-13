@@ -183,8 +183,8 @@ export default function LandingPage() {
             <h1>Stop guessing. Build every application with evidence.</h1>
             <p className="hero-lead">Joblytics AI compares your CV with each job, then turns the result into a clearer CV, stronger cover letter, polished LinkedIn profile, application tracker, and interview kit.</p>
             <div className="hero-actions">
-              <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Run a free ATS check →</button>
-              <a className="landing-btn landing-btn-ghost landing-btn-large" href="#how-it-works">See how it works</a>
+              <button className="landing-btn landing-btn-primary landing-btn-large" onClick={() => openAuth('signup')}>Check my CV match →</button>
+              <a className="landing-btn landing-btn-ghost landing-btn-large" href="#how-it-works">See the workflow</a>
             </div>
             <div className="hero-proof-row">
               <span>✓ Start free</span>

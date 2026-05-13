@@ -1,0 +1,227 @@
+/* P7C — Joblytics typography and visual copy polish
+   This stylesheet is intentionally global and low-risk: it improves type scale,
+   spacing, button hierarchy, and card readability without changing product logic. */
+
+:root {
+  --jl-font-sans: Inter, "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --jl-font-display: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --jl-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --jl-text-balance: balance;
+  --jl-measure: 68ch;
+  --jl-radius-lg: 18px;
+  --jl-radius-xl: 24px;
+  --jl-shadow-soft: 0 18px 55px rgba(15, 23, 42, 0.10);
+  --jl-shadow-card: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+html {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--jl-font-sans);
+}
+
+h1,
+h2,
+h3,
+.hero-title,
+.page-title,
+.section-title,
+.pricing-title,
+.resource-title,
+.role-title,
+.sample-report-title {
+  font-family: var(--jl-font-display);
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: var(--jl-text-balance);
+}
+
+h1,
+.hero-title,
+.page-title {
+  font-weight: 800;
+}
+
+h2,
+.section-title {
+  font-weight: 760;
+}
+
+h3 {
+  font-weight: 720;
+}
+
+p,
+li,
+.article-body,
+.resource-body,
+.role-body,
+.sample-report-body {
+  line-height: 1.65;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Better long-form readability on public SEO pages */
+main p,
+main li {
+  max-width: var(--jl-measure);
+}
+
+/* Premium card readability */
+.card,
+.dashboard-card,
+.pricing-card,
+.feature-card,
+.resource-card,
+.role-card,
+.sample-card,
+.hero-preview-card,
+.career-progress-flow,
+.career-next-action,
+.admin-card,
+.reliability-card {
+  border-radius: var(--jl-radius-lg);
+}
+
+.hero-preview-card,
+.pricing-card,
+.resource-card,
+.role-card,
+.sample-card,
+.career-progress-flow,
+.career-next-action {
+  box-shadow: var(--jl-shadow-card);
+}
+
+/* CTA hierarchy */
+button,
+.button,
+.btn,
+.cta,
+.primary-cta,
+.secondary-cta,
+a[role="button"] {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+button:not(:disabled),
+.button:not([aria-disabled="true"]),
+.btn:not([aria-disabled="true"]),
+a[role="button"]:not([aria-disabled="true"]) {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+button:not(:disabled):hover,
+.button:not([aria-disabled="true"]):hover,
+.btn:not([aria-disabled="true"]):hover,
+a[role="button"]:not([aria-disabled="true"]):hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent, #6c5ce7) 35%, transparent);
+  outline-offset: 3px;
+}
+
+/* Better small labels and badges */
+.badge,
+.pill,
+.tag,
+.kicker,
+.eyebrow,
+label {
+  letter-spacing: 0.02em;
+}
+
+.kicker,
+.eyebrow,
+.overline {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Numeric scores should feel deliberate */
+.score,
+.metric-value,
+.stat-value,
+.score-ring,
+.percentage,
+[data-score] {
+  font-family: var(--jl-font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+
+/* Public-page conversion sections */
+.seo-conversion-panel,
+.lead-capture-card,
+.billing-preview-card,
+.sample-report-cta,
+.role-cta-card {
+  border-radius: var(--jl-radius-xl);
+  box-shadow: var(--jl-shadow-soft);
+}
+
+/* Empty/loading/error states */
+.empty-state,
+.loading-state,
+.error-state,
+.notice-card {
+  text-wrap: pretty;
+}
+
+.empty-state h2,
+.loading-state h2,
+.error-state h2,
+.notice-card h2 {
+  letter-spacing: -0.035em;
+}
+
+/* Mobile readability */
+@media (max-width: 720px) {
+  :root {
+    --jl-measure: 100%;
+  }
+
+  h1,
+  .hero-title,
+  .page-title {
+    letter-spacing: -0.038em;
+    line-height: 1.06;
+  }
+
+  h2,
+  .section-title {
+    letter-spacing: -0.032em;
+    line-height: 1.12;
+  }
+
+  p,
+  li {
+    line-height: 1.58;
+  }
+
+  button,
+  .button,
+  .btn,
+  a[role="button"] {
+    min-height: 44px;
+  }
+}
