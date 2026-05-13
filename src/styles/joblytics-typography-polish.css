@@ -225,3 +225,22 @@ label {
     min-height: 44px;
   }
 }
+
+/* P7D typography decision: use Arial as the primary UI font */
+:root {
+  --joblytics-font-ui: Arial, Helvetica, sans-serif;
+}
+
+html,
+body,
+#root,
+button,
+input,
+textarea,
+select {
+  font-family: var(--joblytics-font-ui) !important;
+}
+
+body * {
+  font-family: var(--joblytics-font-ui);
+}
