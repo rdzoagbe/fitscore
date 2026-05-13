@@ -360,6 +360,12 @@ export default function App() {
     const slug = path.split('/').filter(Boolean)[1]
     return <PageWithFooter><ResourceArticlePage slug={slug} /></PageWithFooter>
   }
+
+  if (path === '/sample-reports') return <PageWithFooter><SampleReportsPage /></PageWithFooter>
+  if (path.startsWith('/sample-reports/')) {
+    const slug = path.split('/').filter(Boolean)[1]
+    return <PageWithFooter><SampleReportsPage slug={slug} /></PageWithFooter>
+  }
   if (path === '/admin/reliability') return <><AppNav page="admin-reliability" setPage={setPage} onLogoClick={() => setPage('dashboard')} /><AdminReliabilityPage setPage={setPage} /><GlobalFooter /></>
   if (path === '/admin') {
     if (!user) return <LandingPage />
