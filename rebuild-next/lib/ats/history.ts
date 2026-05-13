@@ -14,17 +14,24 @@ export type AtsHistoryItem = {
   } | null
 }
 
+type CvJoinRow = {
+  id: string
+  name: string
+  file_name: string
+  target_role: string | null
+}
+
 type AtsHistoryRow = {
   id: string
   overall_score: number | null
   created_at: string
   result_json: unknown
-  cv_versions: {
-    id: string
-    name: string
-    file_name: string
-    target_role: string | null
-  } | null
+  cv_versions: CvJoinRow | CvJoinRow[] | null
+}
+
+function normalizeCvJoin(value: CvJoinRow | CvJoinRow[] | null): CvJoinRow | null {
+  if (!value) return null
+  return Array.isArray(value) ? value[0] ?? null : value
 }
 
 export async function getAtsHistory(userId: string, limit = 6): Promise<AtsHistoryItem[]> {
@@ -41,20 +48,21 @@ export async function getAtsHistory(userId: string, limit = 6): Promise<AtsHisto
     return []
   }
 
-  return ((data ?? []) as AtsHistoryRow[])
+  return ((data ?? []) as unknown as AtsHistoryRow[])
     .map(row => {
       const parsed = atsResultSchema.safeParse(row.result_json)
+      const cvVersion = normalizeCvJoin(row.cv_versions)
       if (!parsed.success) return null
       return {
         id: row.id,
         overallScore: row.overall_score,
         createdAt: row.created_at,
         result: parsed.data,
-        cvVersion: row.cv_versions ? {
-          id: row.cv_versions.id,
-          name: row.cv_versions.name,
-          fileName: row.cv_versions.file_name,
-          targetRole: row.cv_versions.target_role
+        cvVersion: cvVersion ? {
+          id: cvVersion.id,
+          name: cvVersion.name,
+          fileName: cvVersion.file_name,
+          targetRole: cvVersion.target_role
         } : null
       }
     })
