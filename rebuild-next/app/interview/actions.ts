@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { generateInterviewPrep } from '@/lib/interview/generate'
 import type { InterviewPrepResult } from '@/lib/interview/schema'
 import { createClient } from '@/lib/supabase/server'
@@ -19,6 +20,9 @@ function getString(formData: FormData, key: string): string {
 
 export async function generateInterviewPrepAction(_prevState: InterviewPrepState, formData: FormData): Promise<InterviewPrepState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'interviewPrep')
+  if (!usage.allowed) return { error: usage.message }
+
   const cvVersionId = getString(formData, 'cvVersionId')
   const companyName = getString(formData, 'companyName')
   const jobTitle = getString(formData, 'jobTitle')
