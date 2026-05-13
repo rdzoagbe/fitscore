@@ -244,3 +244,113 @@ select {
 body * {
   font-family: var(--joblytics-font-ui);
 }
+
+/* P7D.1 dashboard visual cleanup */
+:root {
+  --joblytics-font-ui: Arial, Helvetica, sans-serif;
+}
+
+/* Avoid overly heavy/stretched dashboard typography */
+h1,
+h2,
+h3,
+.display-title,
+.hero-title,
+.dashboard-title,
+.career-title {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.035em !important;
+  line-height: 0.98 !important;
+}
+
+/* Dashboard hero should feel premium, not oversized */
+.career-dashboard h1,
+.dashboard-page h1,
+.career-hero h1 {
+  font-size: clamp(2.4rem, 6vw, 4.8rem) !important;
+  max-width: 920px;
+}
+
+/* Reduce heavy all-caps labels */
+[class*="label"],
+[class*="eyebrow"],
+[class*="badge"] {
+  letter-spacing: 0.04em !important;
+  font-weight: 700 !important;
+}
+
+/* Make nav more readable */
+.app-nav,
+.app-nav *,
+nav,
+nav * {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 600;
+}
+
+.app-nav button,
+nav button {
+  white-space: nowrap;
+}
+
+/* Clean dashboard cards */
+.career-dashboard section,
+.dashboard-page section,
+.career-card,
+.dashboard-card {
+  border-radius: 24px !important;
+}
+
+/* Make KPI values readable and prevent odd wrapping */
+.stat-card h2,
+.stat-card strong,
+.metric-card h2,
+.metric-card strong,
+[class*="metric"] strong,
+[class*="stat"] strong {
+  font-size: clamp(1.6rem, 3vw, 2.4rem) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.025em !important;
+  white-space: nowrap;
+}
+
+/* Buttons: consistent and less bulky */
+button,
+.button,
+.btn,
+a[role="button"] {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Dashboard action card text cleanup */
+.career-next-action,
+.next-action-card,
+[class*="NextAction"] {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.career-next-action h2,
+.next-action-card h2,
+[class*="NextAction"] h2 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.03em !important;
+}
+
+/* Mobile: keep hero under control */
+@media (max-width: 768px) {
+  .career-dashboard h1,
+  .dashboard-page h1,
+  .career-hero h1 {
+    font-size: clamp(2.1rem, 13vw, 3.4rem) !important;
+    line-height: 0.95 !important;
+  }
+
+  .app-nav,
+  nav {
+    overflow-x: auto;
+  }
+}
