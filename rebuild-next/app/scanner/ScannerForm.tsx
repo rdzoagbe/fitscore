@@ -43,6 +43,7 @@ export function ScannerForm({ cvVersions }: { readonly cvVersions: CvOption[] })
           <textarea name="jobDescription" className="min-h-80 w-full rounded-md border border-border bg-elevated p-4 text-sm text-[var(--text-secondary)] outline-none" placeholder="Paste a job description here..." required />
         </label>
         {state.error ? <p className="rounded-md border border-danger/20 bg-danger/10 p-3 text-xs text-danger">{state.error}</p> : null}
+        {state.warning ? <p className="rounded-md border border-amber/20 bg-amber/10 p-3 text-xs text-amber">Analysis completed, but save failed: {state.warning}</p> : null}
         <div className="flex justify-end"><SubmitButton /></div>
       </form>
       {state.result ? (
