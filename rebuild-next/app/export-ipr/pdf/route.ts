@@ -13,8 +13,9 @@ export async function GET(): Promise<NextResponse> {
   const applications = await getApplications(user.id, 1000)
   const summary = buildIprEvidenceSummary(applications)
   const pdf = buildIprPdf(summary)
+  const body = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
 
-  return new NextResponse(pdf, {
+  return new NextResponse(body, {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'attachment; filename="joblytics-ipr-evidence.pdf"',
