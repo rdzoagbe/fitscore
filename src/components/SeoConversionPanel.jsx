@@ -40,6 +40,9 @@ export default function SeoConversionPanel({
           </div>
         ))}
       </div>
+      <p className="seoConversionPanel__microCta">
+        Not ready to start? <a href="/early-access">Join early access</a> for launch updates and practical examples.
+      </p>
     </section>
   )
 }

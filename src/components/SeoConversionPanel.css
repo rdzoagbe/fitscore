@@ -127,3 +127,20 @@
     width: 100%;
   }
 }
+
+
+.seoConversionPanel__microCta {
+  margin: 14px 0 0;
+  color: var(--text-secondary, rgba(255,255,255,0.68));
+  font-size: 0.9rem;
+}
+
+.seoConversionPanel__microCta a {
+  color: var(--accent, #7c5cff);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.seoConversionPanel__microCta a:hover {
+  text-decoration: underline;
+}

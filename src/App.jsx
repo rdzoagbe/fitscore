@@ -11,6 +11,7 @@ import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
+import EarlyAccessPage from './pages/EarlyAccessPage'
 import LimitsPage from './pages/LimitsPage'
 import ResourceHubPage from './pages/ResourceHubPage'
 import ResourceArticlePage from './pages/ResourceArticlePage'
@@ -345,6 +346,7 @@ export default function App() {
   if (path === '/terms') return <PageWithFooter><TermsPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/pricing') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/early-access' || path === '/waitlist') return <PageWithFooter><EarlyAccessPage /></PageWithFooter>
   if (path === '/limits') return <PageWithFooter><LimitsPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/roles') return <PageWithFooter><RoleLandingPage /></PageWithFooter>
   if (path.startsWith('/roles/')) {

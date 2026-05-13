@@ -2,6 +2,7 @@ import React, { useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useUsageSummary } from '../hooks/useUsageSummary'
 import './PricingPage.css'
+import LeadCaptureForm from '../components/LeadCaptureForm'
 
 const billingReady = false
 
@@ -334,7 +335,15 @@ export default function PricingPage({ onBack }) {
             </details>
           </div>
         </section>
-      </main>
+      
+      <LeadCaptureForm
+        compact
+        sourceLabel="pricing_page"
+        defaultGoal="Know when checkout is available"
+        title="Want to know when checkout is ready?"
+        description="Leave your email and target role. We will notify you when paid plans are available and send practical examples for improving your next application."
+      />
+</main>
     </div>
   )
 }

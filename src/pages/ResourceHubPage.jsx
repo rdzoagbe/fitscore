@@ -3,6 +3,7 @@ import SeoHead from '../components/SeoHead'
 import SeoConversionPanel from '../components/SeoConversionPanel'
 import { seoResources } from '../data/seoResources'
 import './ResourcePages.css'
+import LeadCaptureForm from '../components/LeadCaptureForm'
 
 export default function ResourceHubPage() {
   const canonical = 'https://joblytics-ai.com/resources'
@@ -71,6 +72,13 @@ export default function ResourceHubPage() {
         secondaryHref="/roles"
         secondaryLabel="Browse role-specific checkers"
       />
-    </main>
+    
+      <LeadCaptureForm
+        compact
+        sourceLabel="resource_hub"
+        title="Get a practical application-readiness checklist."
+        description="Join early access and receive examples for CV scoring, cover letters, LinkedIn profile improvement, tracking, and interview preparation."
+      />
+</main>
   )
 }

@@ -1,0 +1,76 @@
+.earlyAccessPage {
+  min-height: 100vh;
+  padding: 72px 0 24px;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(124, 92, 255, 0.16), transparent 28%),
+    var(--bg, #080912);
+}
+
+.earlyAccessHero {
+  width: min(980px, calc(100% - 40px));
+  margin: 0 auto;
+  text-align: center;
+}
+
+.earlyAccessHero__eyebrow {
+  color: var(--accent, #7c5cff);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.earlyAccessHero h1 {
+  color: var(--text-primary, #fff);
+  font-size: clamp(2.35rem, 6vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.06em;
+  margin: 0 auto 18px;
+  max-width: 850px;
+}
+
+.earlyAccessHero p {
+  color: var(--text-secondary, rgba(255,255,255,0.72));
+  font-size: clamp(1rem, 2vw, 1.18rem);
+  line-height: 1.7;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.earlyAccessNotes {
+  width: min(1180px, calc(100% - 40px));
+  margin: 28px auto 64px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.earlyAccessNotes article {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 22px;
+  padding: 22px;
+  background: rgba(255,255,255,0.045);
+}
+
+.earlyAccessNotes h2 {
+  margin: 0 0 10px;
+  color: var(--text-primary, #fff);
+  letter-spacing: -0.03em;
+}
+
+.earlyAccessNotes p {
+  margin: 0;
+  color: var(--text-secondary, rgba(255,255,255,0.72));
+  line-height: 1.65;
+}
+
+@media (max-width: 760px) {
+  .earlyAccessPage {
+    padding-top: 48px;
+  }
+  .earlyAccessNotes {
+    grid-template-columns: 1fr;
+    width: min(100% - 24px, 680px);
+  }
+}
