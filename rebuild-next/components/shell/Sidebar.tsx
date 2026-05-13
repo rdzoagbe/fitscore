@@ -30,6 +30,14 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
       { href: '/analytics', label: 'Analytics', icon: 'A' },
       { href: '/export-ipr', label: 'Export IPR', icon: 'E' }
     ]
+  },
+  {
+    title: 'Account',
+    items: [
+      { href: '/billing', label: 'Billing & Usage', icon: 'B' },
+      { href: '/pricing', label: 'Pricing', icon: 'P' },
+      { href: '/logout', label: 'Logout', icon: 'L' }
+    ]
   }
 ]
 
@@ -47,7 +55,7 @@ export function Sidebar({ userName, userEmail }: SidebarProps): JSX.Element {
           <small className="text-xs text-[var(--text-muted)]">Application workspace</small>
         </span>
       </Link>
-      <nav className="flex-1 space-y-5 p-3">
+      <nav className="flex-1 space-y-5 overflow-y-auto p-3">
         {groups.map(group => (
           <section key={group.title}>
             <p className="mb-2 px-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{group.title}</p>
