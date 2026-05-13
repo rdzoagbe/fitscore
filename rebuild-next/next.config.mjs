@@ -2,6 +2,16 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'joblytics-ai.com' }],
+        destination: 'https://www.joblytics-ai.com/:path*',
+        permanent: true
+      }
+    ]
+  },
   async headers() {
     return [
       {
