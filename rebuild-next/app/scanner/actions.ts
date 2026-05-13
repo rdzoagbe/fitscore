@@ -8,6 +8,7 @@ import type { AtsResult } from '@/lib/ats/schema'
 
 export type ScannerState = {
   readonly error?: string
+  readonly warning?: string
   readonly result?: AtsResult
 }
 
@@ -37,12 +38,16 @@ export async function runScannerAction(_prevState: ScannerState, formData: FormD
 
   const result = await analyzeAts({ cvText: cv.parsed_text, jobDescription, language })
 
-  await supabase.from('ats_analyses').insert({
+  const { error: insertError } = await supabase.from('ats_analyses').insert({
     user_id: user.id,
     cv_version_id: cvVersionId,
     result_json: result
   })
 
   revalidatePath('/scanner')
+  revalidatePath('/dashboard')
+
+  if (insertError) return { result, warning: insertError.message }
+
   return { result }
 }
