@@ -1,15 +1,17 @@
-/* P7C — Joblytics typography and visual copy polish
-   This stylesheet is intentionally global and low-risk: it improves type scale,
-   spacing, button hierarchy, and card readability without changing product logic. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Source+Serif+4:wght@400;500;600;700&display=swap');
+
+/* Joblytics final typography system
+   Purpose: remove conflicting font overrides, keep a clean modern SaaS look,
+   and improve readability across app, landing pages, dashboards, and articles. */
 
 :root {
-  --jl-font-sans: Inter, "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --jl-font-display: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --jl-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --jl-text-balance: balance;
-  --jl-measure: 68ch;
-  --jl-radius-lg: 18px;
-  --jl-radius-xl: 24px;
+  --jl-font-ui: 'Inter', Arial, Helvetica, sans-serif;
+  --jl-font-display: 'Plus Jakarta Sans', 'Inter', Arial, Helvetica, sans-serif;
+  --jl-font-editorial: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --jl-text-strong: #0f172a;
+  --jl-measure: 70ch;
+  --jl-radius-lg: 20px;
+  --jl-radius-xl: 28px;
   --jl-shadow-soft: 0 18px 55px rgba(15, 23, 42, 0.10);
   --jl-shadow-card: 0 10px 28px rgba(15, 23, 42, 0.08);
 }
@@ -25,60 +27,137 @@ button,
 input,
 textarea,
 select {
-  font-family: var(--jl-font-sans);
+  font-family: var(--jl-font-ui) !important;
+}
+
+body {
+  font-weight: 500;
 }
 
 h1,
 h2,
 h3,
+h4,
+h5,
+h6,
 .hero-title,
 .page-title,
 .section-title,
 .pricing-title,
 .resource-title,
 .role-title,
-.sample-report-title {
-  font-family: var(--jl-font-display);
-  letter-spacing: -0.045em;
-  line-height: 1.02;
-  text-wrap: var(--jl-text-balance);
+.sample-report-title,
+.dashboard-title,
+.career-title {
+  font-family: var(--jl-font-display) !important;
+  color: var(--text-primary, var(--jl-text-strong));
+  text-wrap: balance;
 }
 
 h1,
 .hero-title,
-.page-title {
-  font-weight: 800;
+.page-title,
+.dashboard-title,
+.career-title {
+  font-weight: 800 !important;
+  letter-spacing: -0.055em !important;
+  line-height: 0.98 !important;
 }
 
 h2,
 .section-title {
-  font-weight: 760;
+  font-weight: 780 !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.05 !important;
 }
 
-h3 {
-  font-weight: 720;
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 740 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.14 !important;
 }
 
 p,
-li,
-.article-body,
-.resource-body,
-.role-body,
-.sample-report-body {
-  line-height: 1.65;
-}
-
-p {
+li {
+  font-family: var(--jl-font-ui) !important;
+  line-height: 1.64;
   text-wrap: pretty;
 }
 
-/* Better long-form readability on public SEO pages */
 main p,
 main li {
   max-width: var(--jl-measure);
 }
 
-/* Premium card readability */
+label,
+small,
+.badge,
+.pill,
+.tag,
+.kicker,
+.eyebrow,
+.overline {
+  font-family: var(--jl-font-ui) !important;
+}
+
+.kicker,
+.eyebrow,
+.overline {
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.105em;
+  text-transform: uppercase;
+}
+
+button,
+.button,
+.btn,
+.cta,
+.primary-cta,
+.secondary-cta,
+a[role='button'] {
+  font-family: var(--jl-font-ui) !important;
+  font-weight: 760 !important;
+  letter-spacing: -0.012em;
+}
+
+button:not(:disabled),
+.button:not([aria-disabled='true']),
+.btn:not([aria-disabled='true']),
+a[role='button']:not([aria-disabled='true']) {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+button:not(:disabled):hover,
+.button:not([aria-disabled='true']):hover,
+.btn:not([aria-disabled='true']):hover,
+a[role='button']:not([aria-disabled='true']):hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent, #6c5ce7) 35%, transparent);
+  outline-offset: 3px;
+}
+
+.score,
+.metric-value,
+.stat-value,
+.score-ring,
+.percentage,
+[data-score] {
+  font-family: var(--jl-font-display) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
 .card,
 .dashboard-card,
 .pricing-card,
@@ -104,72 +183,6 @@ main li {
   box-shadow: var(--jl-shadow-card);
 }
 
-/* CTA hierarchy */
-button,
-.button,
-.btn,
-.cta,
-.primary-cta,
-.secondary-cta,
-a[role="button"] {
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-button:not(:disabled),
-.button:not([aria-disabled="true"]),
-.btn:not([aria-disabled="true"]),
-a[role="button"]:not([aria-disabled="true"]) {
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
-}
-
-button:not(:disabled):hover,
-.button:not([aria-disabled="true"]):hover,
-.btn:not([aria-disabled="true"]):hover,
-a[role="button"]:not([aria-disabled="true"]):hover {
-  transform: translateY(-1px);
-}
-
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent, #6c5ce7) 35%, transparent);
-  outline-offset: 3px;
-}
-
-/* Better small labels and badges */
-.badge,
-.pill,
-.tag,
-.kicker,
-.eyebrow,
-label {
-  letter-spacing: 0.02em;
-}
-
-.kicker,
-.eyebrow,
-.overline {
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-/* Numeric scores should feel deliberate */
-.score,
-.metric-value,
-.stat-value,
-.score-ring,
-.percentage,
-[data-score] {
-  font-family: var(--jl-font-display);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.035em;
-}
-
-/* Public-page conversion sections */
 .seo-conversion-panel,
 .lead-capture-card,
 .billing-preview-card,
@@ -179,7 +192,6 @@ label {
   box-shadow: var(--jl-shadow-soft);
 }
 
-/* Empty/loading/error states */
 .empty-state,
 .loading-state,
 .error-state,
@@ -187,14 +199,19 @@ label {
   text-wrap: pretty;
 }
 
-.empty-state h2,
-.loading-state h2,
-.error-state h2,
-.notice-card h2 {
-  letter-spacing: -0.035em;
+.resource-article,
+.article-body {
+  max-width: 880px;
 }
 
-/* Mobile readability */
+.resource-article p,
+.article-body p {
+  font-family: var(--jl-font-editorial) !important;
+  font-size: 1.075rem;
+  line-height: 1.76;
+  max-width: 74ch;
+}
+
 @media (max-width: 720px) {
   :root {
     --jl-measure: 100%;
@@ -202,15 +219,19 @@ label {
 
   h1,
   .hero-title,
-  .page-title {
-    letter-spacing: -0.038em;
-    line-height: 1.06;
+  .page-title,
+  .dashboard-title,
+  .career-title {
+    font-size: clamp(2.05rem, 11vw, 3.35rem) !important;
+    letter-spacing: -0.042em !important;
+    line-height: 1.02 !important;
   }
 
   h2,
   .section-title {
-    letter-spacing: -0.032em;
-    line-height: 1.12;
+    font-size: clamp(1.45rem, 7vw, 2.2rem) !important;
+    letter-spacing: -0.032em !important;
+    line-height: 1.1 !important;
   }
 
   p,
@@ -221,195 +242,7 @@ label {
   button,
   .button,
   .btn,
-  a[role="button"] {
+  a[role='button'] {
     min-height: 44px;
   }
-}
-
-/* P7D typography decision: use Arial as the primary UI font */
-:root {
-  --joblytics-font-ui: Arial, Helvetica, sans-serif;
-}
-
-html,
-body,
-#root,
-button,
-input,
-textarea,
-select {
-  font-family: var(--joblytics-font-ui) !important;
-}
-
-body * {
-  font-family: var(--joblytics-font-ui);
-}
-
-/* P7D.1 dashboard visual cleanup */
-:root {
-  --joblytics-font-ui: Arial, Helvetica, sans-serif;
-}
-
-/* Avoid overly heavy/stretched dashboard typography */
-h1,
-h2,
-h3,
-.display-title,
-.hero-title,
-.dashboard-title,
-.career-title {
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.035em !important;
-  line-height: 0.98 !important;
-}
-
-/* Dashboard hero should feel premium, not oversized */
-.career-dashboard h1,
-.dashboard-page h1,
-.career-hero h1 {
-  font-size: clamp(2.4rem, 6vw, 4.8rem) !important;
-  max-width: 920px;
-}
-
-/* Reduce heavy all-caps labels */
-[class*="label"],
-[class*="eyebrow"],
-[class*="badge"] {
-  letter-spacing: 0.04em !important;
-  font-weight: 700 !important;
-}
-
-/* Make nav more readable */
-.app-nav,
-.app-nav *,
-nav,
-nav * {
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-weight: 600;
-}
-
-.app-nav button,
-nav button {
-  white-space: nowrap;
-}
-
-/* Clean dashboard cards */
-.career-dashboard section,
-.dashboard-page section,
-.career-card,
-.dashboard-card {
-  border-radius: 24px !important;
-}
-
-/* Make KPI values readable and prevent odd wrapping */
-.stat-card h2,
-.stat-card strong,
-.metric-card h2,
-.metric-card strong,
-[class*="metric"] strong,
-[class*="stat"] strong {
-  font-size: clamp(1.6rem, 3vw, 2.4rem) !important;
-  line-height: 1 !important;
-  letter-spacing: -0.025em !important;
-  white-space: nowrap;
-}
-
-/* Buttons: consistent and less bulky */
-button,
-.button,
-.btn,
-a[role="button"] {
-  font-family: Arial, Helvetica, sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.01em;
-}
-
-/* Dashboard action card text cleanup */
-.career-next-action,
-.next-action-card,
-[class*="NextAction"] {
-  font-family: Arial, Helvetica, sans-serif !important;
-}
-
-.career-next-action h2,
-.next-action-card h2,
-[class*="NextAction"] h2 {
-  font-size: clamp(1.5rem, 3vw, 2.2rem) !important;
-  line-height: 1.05 !important;
-  letter-spacing: -0.03em !important;
-}
-
-/* Mobile: keep hero under control */
-@media (max-width: 768px) {
-  .career-dashboard h1,
-  .dashboard-page h1,
-  .career-hero h1 {
-    font-size: clamp(2.1rem, 13vw, 3.4rem) !important;
-    line-height: 0.95 !important;
-  }
-
-  .app-nav,
-  nav {
-    overflow-x: auto;
-  }
-}
-
-/* P8A typography refinement: modern SaaS font system */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Source+Serif+4:wght@400;500;600;700&display=swap');
-
-:root {
-  --joblytics-font-ui: 'Inter', Arial, Helvetica, sans-serif;
-  --joblytics-font-heading: 'Plus Jakarta Sans', 'Inter', Arial, Helvetica, sans-serif;
-  --joblytics-font-editorial: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-}
-
-html,
-body,
-#root,
-button,
-input,
-textarea,
-select {
-  font-family: var(--joblytics-font-ui) !important;
-}
-
-body * {
-  font-family: var(--joblytics-font-ui);
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.hero-title,
-.dashboard-title,
-.career-title,
-.page-title,
-.section-title {
-  font-family: var(--joblytics-font-heading) !important;
-  font-weight: 800;
-  letter-spacing: -0.045em;
-}
-
-p,
-li,
-span,
-label,
-input,
-textarea,
-select,
-button {
-  font-family: var(--joblytics-font-ui) !important;
-}
-
-.resource-article,
-.resource-article p,
-.article-body,
-.article-body p {
-  font-family: var(--joblytics-font-editorial) !important;
-  font-size: 1.05rem;
-  line-height: 1.75;
 }
