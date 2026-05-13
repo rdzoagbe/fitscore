@@ -2,31 +2,37 @@ import { KpiCard } from '@/components/dashboard/KpiCard'
 import { PageScaffold } from '@/components/dashboard/PageScaffold'
 import { AppShell } from '@/components/shell/AppShell'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { ApplicationCard } from '@/components/tracker/ApplicationCard'
+import { requireUserSession } from '@/lib/auth/profile-session'
+import { getApplications, getTrackerStats, groupApplicationsByStatus } from '@/lib/tracker/data'
+import { kanbanStatuses, statusLabels } from '@/lib/tracker/schema'
+import { ApplicationForm } from './ApplicationForm'
 
-const columns = [
-  { title: 'Applied', items: ['Capgemini · Chef de Projet SI', 'Thales · Senior Project Manager', 'Atos · IT Infrastructure Manager'] },
-  { title: 'Screening', items: ['Dassault Systèmes · Infrastructure Manager', 'Orange Business · Service Delivery Manager'] },
-  { title: 'Interview', items: ['Summit Paris · Business Applications Manager', 'Société Générale · IT Service Delivery'] },
-  { title: 'Offer', items: ['BNP Paribas · Infrastructure Lead'] },
-  { title: 'Rejected', items: ['L’Oréal · Digital Ops Manager', 'Renault · IT Project Manager'] }
-]
+export default async function TrackerPage(): Promise<JSX.Element> {
+  const user = await requireUserSession()
+  const applications = await getApplications(user.id)
+  const grouped = groupApplicationsByStatus(applications)
+  const stats = getTrackerStats(applications)
 
-export default function TrackerPage(): JSX.Element {
   return (
     <AppShell>
       <PageScaffold title="Job Tracker" subtitle="Kanban pipeline for applications, interviews and outcomes">
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Active" value="39" helper="In pipeline" />
-          <KpiCard label="This Week" value="8" helper="+3 vs last week" tone="emerald" />
-          <KpiCard label="Interviews" value="6" helper="2 this week" tone="violet" />
-          <KpiCard label="Awaiting Reply" value="18" helper="Average 9 days" tone="amber" />
+          <KpiCard label="Active" value={String(stats.active)} helper="In pipeline" />
+          <KpiCard label="Total" value={String(stats.total)} helper="Tracked applications" tone="emerald" />
+          <KpiCard label="Interviews" value={String(stats.interviews)} helper="Interview or test stage" tone="violet" />
+          <KpiCard label="Offers" value={String(stats.offers)} helper={`${stats.rejected} rejected`} tone="amber" />
         </section>
-        <section className="grid gap-3 xl:grid-cols-5">
-          {columns.map(column => (
-            <Card key={column.title} className="min-h-80">
-              <CardHeader><CardTitle>{column.title}</CardTitle></CardHeader>
+        <Card>
+          <CardHeader><CardTitle>Add application</CardTitle></CardHeader>
+          <ApplicationForm />
+        </Card>
+        <section className="grid gap-3 xl:grid-cols-7">
+          {kanbanStatuses.map(status => (
+            <Card key={status} className="min-h-80 p-3">
+              <CardHeader className="mb-3"><CardTitle className="text-base">{statusLabels[status]}</CardTitle></CardHeader>
               <div className="grid gap-2">
-                {column.items.map(item => <div key={item} className="rounded-md border border-border bg-elevated p-3 text-xs text-[var(--text-secondary)]">{item}</div>)}
+                {grouped[status].length === 0 ? <p className="rounded-md border border-border bg-elevated p-3 text-xs text-[var(--text-muted)]">No applications.</p> : grouped[status].map(item => <ApplicationCard key={item.id} item={item} />)}
               </div>
             </Card>
           ))}
