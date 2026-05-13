@@ -13,6 +13,9 @@ export function Topbar({ title, subtitle }: TopbarProps): JSX.Element {
       <div className="hidden items-center gap-2 md:flex">
         <span className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-[var(--text-secondary)]">FR</span>
         <span className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-[var(--text-secondary)]">EN</span>
+        <form action="/logout" method="post">
+          <button className="rounded-md border border-border bg-surface px-3 py-2 text-xs text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]" type="submit">Logout</button>
+        </form>
       </div>
     </header>
   )
