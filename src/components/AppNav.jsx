@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLang } from '../context/LangContext'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import UserMenu from './UserMenu'
 import './AppNav.css'
 
@@ -10,6 +12,49 @@ const navItems = [
   { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
   { id: 'linkedin', icon: 'in', labelKey: null, fallback: 'LinkedIn' }
 ]
+
+
+function AdminNavButton({ page, goTo, mobile = false }) {
+  const { user } = useAuth()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setIsAdmin(false)
+      return () => { active = false }
+    }
+
+    supabase.rpc('admin_is_current_user')
+      .then(({ data }) => { if (active) setIsAdmin(Boolean(data)) })
+      .catch(() => { if (active) setIsAdmin(false) })
+
+    return () => { active = false }
+  }, [user?.id])
+
+  if (!isAdmin) return null
+
+  if (mobile) {
+    return (
+      <button className={`jobNav-mobileItem ${page === 'admin' ? 'is-active' : ''}`} type="button" onClick={() => goTo('admin')}>
+        <span>📈</span>
+        <em>Admin</em>
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className={`jobNav-link ${page === 'admin' ? 'is-active' : ''}`}
+      onClick={() => goTo('admin')}
+      title="Admin analytics"
+    >
+      <span>📈</span>
+      Admin
+    </button>
+  )
+}
 
 function PlanDropdown() {
   const { t } = useLang()
@@ -138,6 +183,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               {item.labelKey ? t(item.labelKey) : item.fallback}
             </button>
           ))}
+          <AdminNavButton page={page} goTo={goTo} />
           <PlanDropdown />
         </nav>
 
@@ -165,6 +211,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             <em>{item.labelKey ? t(item.labelKey) : item.fallback}</em>
           </button>
         ))}
+        <AdminNavButton page={page} goTo={goTo} mobile />
         <button className={`jobNav-mobileItem ${planActive ? 'is-active' : ''}`} type="button" onClick={() => setMobilePlanOpen(true)}>
           <span>📦</span>
           <em>{planLabel}</em>

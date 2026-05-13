@@ -1,0 +1,321 @@
+.adminAnalyticsPage {
+  width: min(1400px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 34px 0 76px;
+  color: var(--text-primary);
+}
+
+.adminAnalyticsHero,
+.adminRestrictedCard {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(92, 124, 250, 0.16), transparent 32%),
+    radial-gradient(circle at 92% 12%, rgba(22, 163, 74, 0.12), transparent 34%),
+    var(--bg-card);
+  box-shadow: var(--shadow-soft, 0 24px 80px rgba(0,0,0,.12));
+}
+
+.adminAnalyticsHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 30px;
+  margin-bottom: 22px;
+}
+
+.adminAnalyticsHero p,
+.adminPanelHeader p,
+.adminRestrictedCard > p:first-of-type {
+  margin: 0 0 7px;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.adminAnalyticsHero h1,
+.adminRestrictedCard h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 62px);
+  letter-spacing: -.055em;
+  line-height: .95;
+}
+
+.adminAnalyticsHero span,
+.adminMuted {
+  display: block;
+  max-width: 720px;
+  margin-top: 14px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.adminHeroActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.adminHeroActions select,
+.adminHeroActions button,
+.adminRestrictedCard button {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  background: var(--bg-input, rgba(255,255,255,.06));
+  color: var(--text-primary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.adminHeroActions button,
+.adminRestrictedCard button {
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  border-color: transparent;
+}
+
+.adminStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.adminStat,
+.adminPanel,
+.adminSafetyNote {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--bg-card);
+  box-shadow: 0 16px 50px rgba(0,0,0,.08);
+}
+
+.adminStat {
+  padding: 18px;
+  min-height: 126px;
+}
+
+.adminStat p {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.adminStat strong {
+  display: block;
+  font-size: 34px;
+  letter-spacing: -.05em;
+}
+
+.adminStat span {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.adminStat--blue {
+  background: linear-gradient(135deg, rgba(92,124,250,.18), var(--bg-card));
+}
+
+.adminAnalyticsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.adminPanel {
+  padding: 22px;
+}
+
+.adminPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.adminPanelHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -.035em;
+}
+
+.adminPanelHeader > span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adminProgressRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid var(--border-soft, rgba(148,163,184,.16));
+}
+
+.adminProgressRow strong {
+  display: block;
+  font-size: 14px;
+}
+
+.adminProgressRow span,
+.adminProgressRow em {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.adminProgressRow em {
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.adminProgressTrack {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .18);
+  overflow: hidden;
+}
+
+.adminProgressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), rgba(22, 163, 74, .9));
+}
+
+.adminActivityPanel {
+  grid-row: span 2;
+}
+
+.adminActivityList {
+  display: grid;
+  gap: 10px;
+}
+
+.adminActivityItem {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border-soft, rgba(148,163,184,.16));
+  border-radius: 16px;
+  background: rgba(255,255,255,.035);
+}
+
+.adminActivityItem > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(92,124,250,.14);
+}
+
+.adminActivityItem strong {
+  display: block;
+  font-size: 14px;
+}
+
+.adminActivityItem p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.adminActivityItem em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.adminSafetyNote {
+  margin-top: 16px;
+  padding: 18px 20px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.adminSafetyNote strong {
+  white-space: nowrap;
+}
+
+.adminSafetyNote p,
+.adminEmpty {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.adminRestrictedCard {
+  padding: 34px;
+  max-width: 720px;
+  margin: 60px auto;
+  text-align: center;
+}
+
+.adminRestrictedCard > span {
+  display: inline-grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 12px;
+  border-radius: 18px;
+  background: rgba(245, 158, 11, .14);
+}
+
+.adminRestrictedCard pre {
+  text-align: left;
+  white-space: pre-wrap;
+  background: rgba(0,0,0,.18);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--text-secondary);
+  margin: 18px 0;
+}
+
+.adminSpinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: adminSpin .8s linear infinite;
+}
+
+@keyframes adminSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1100px) {
+  .adminStatsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .adminAnalyticsGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  .adminAnalyticsPage { width: min(100% - 22px, 1400px); padding-top: 18px; }
+  .adminAnalyticsHero { flex-direction: column; padding: 22px; border-radius: 22px; }
+  .adminStatsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adminStat strong { font-size: 28px; }
+  .adminActivityItem { grid-template-columns: 32px 1fr; }
+  .adminActivityItem em { grid-column: 2; }
+  .adminSafetyNote { display: block; }
+}

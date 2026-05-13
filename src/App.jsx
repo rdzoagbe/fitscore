@@ -12,6 +12,7 @@ import TermsPage from './pages/TermsPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
 import LimitsPage from './pages/LimitsPage'
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
 import CvCoachPage from './pages/CvCoachPage'
 import LinkedInOptimizerPage from './pages/LinkedInOptimizerPage'
 import ResultsView from './components/ResultsView'
@@ -336,6 +337,16 @@ export default function App() {
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/pricing') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/limits') return <PageWithFooter><LimitsPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/admin') {
+    if (!user) return <LandingPage />
+    if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
+    return <>
+      {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
+      <AppNav page="admin" setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
+      <AdminAnalyticsPage setPage={setPage} />
+      <GlobalFooter />
+    </>
+  }
   if (path === '/linkedin') {
     if (!user) return <LandingPage />
   }
@@ -348,6 +359,7 @@ export default function App() {
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach': return <CvCoachPage />
+      case 'admin': return <AdminAnalyticsPage setPage={setPage} />
       case 'linkedin': return <LinkedInOptimizerPage />
       default: return <CareerDashboardPage setPage={setPage} />
     }
