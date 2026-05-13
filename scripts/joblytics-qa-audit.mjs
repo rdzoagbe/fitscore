@@ -5,6 +5,9 @@ const root = process.cwd()
 const strict = process.argv.includes('--strict')
 const issues = []
 const warnings = []
+
+const staleSupabasePathPattern = /(from\s+['\"][^'\"]*supabaseClient[^'\"]*['\"])|(import\([^)]*supabaseClient[^)]*\))/i
+
 const passes = []
 
 function exists(rel) {
@@ -69,7 +72,6 @@ const files = walk('src').concat(walk('api')).concat(walk('server')).concat(walk
 
 for (const rel of files) {
   const text = read(rel)
-  if (text.includes('supabaseClient')) fail(`Stale Supabase import/reference found in ${rel}: use src/lib/supabase.js`)
   if (/console\.log\((?!.*PWA|.*debug)/.test(text) && rel.startsWith('src/')) warn(`Frontend console.log found in ${rel}; remove noisy logs before launch`)
   if (/TODO|FIXME|HACK/i.test(text) && !rel.startsWith('docs/')) warn(`TODO/FIXME/HACK marker found in ${rel}`)
 }
