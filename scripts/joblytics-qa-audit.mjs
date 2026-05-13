@@ -109,8 +109,8 @@ for (const item of expectedSitemap) {
 
 const robots = read('public/robots.txt')
 if (robots) {
-  /Disallow:\s*\/admin/i.test(robots) ? pass('robots.txt blocks /admin') : warn('robots.txt should block /admin')
-  /Disallow:\s*\/api/i.test(robots) ? pass('robots.txt blocks /api') : warn('robots.txt should block /api')
+  new RegExp('Disallow:\\s*/admin', 'i').test(robots) ? pass('robots.txt blocks /admin') : warn('robots.txt should block /admin')
+  new RegExp('Disallow:\\s*/api', 'i').test(robots) ? pass('robots.txt blocks /api') : warn('robots.txt should block /api')
 }
 
 const vercel = read('vercel.json')
