@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useLang } from '../context/LangContext'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 function downloadTextFile(fileName, content, type = 'text/plain;charset=utf-8') {
   const blob = new Blob([content], { type })
@@ -29,6 +31,15 @@ function readTextFile(file) {
     reader.onerror = () => reject(reader.error || new Error('Could not read file.'))
     reader.readAsText(file)
   })
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  } catch (_) {
+    return value
+  }
 }
 
 function formatReport(data) {
@@ -66,6 +77,7 @@ function formatReport(data) {
 
 export default function LinkedInOptimizerPage() {
   const { t, lang } = useLang()
+  const { user } = useAuth()
   const tr = (key, fallback) => t?.(key) || fallback
 
   const [headline, setHeadline] = useState('')
@@ -80,6 +92,12 @@ export default function LinkedInOptimizerPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState({})
+  const [savedItems, setSavedItems] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveMessage, setSaveMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [activeSavedId, setActiveSavedId] = useState(null)
 
   const uploadValid = profileText.trim().length >= 50
   const pasteValid = headline.trim().length >= 5 || about.trim().length >= 30 || experience.trim().length >= 50
@@ -95,9 +113,66 @@ export default function LinkedInOptimizerPage() {
     return items.join(' · ')
   }, [headline, about, experience, skills, profileText])
 
+  const profileInput = useMemo(() => ({
+    mode: profileText.trim() ? 'upload' : 'paste',
+    targetRole: targetRole.trim(),
+    headline: headline.trim(),
+    about: about.trim(),
+    experience: experience.trim(),
+    skills: skills.trim(),
+    profileText: profileText.trim() ? profileText.trim().slice(0, 12000) : '',
+    uploadName: uploadName || ''
+  }), [headline, about, experience, skills, targetRole, profileText, uploadName])
+
+  useEffect(() => {
+    loadSavedOptimizations()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  async function loadSavedOptimizations() {
+    if (!user?.id) {
+      setSavedItems([])
+      return
+    }
+
+    setHistoryLoading(true)
+    try {
+      const { data, error: historyError } = await supabase
+        .from('linkedin_optimizations')
+        .select('id,target_role,score,result_json,profile_input,created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(8)
+
+      if (historyError) throw historyError
+      setSavedItems(data || [])
+    } catch (err) {
+      console.warn('Could not load LinkedIn optimization history:', err.message)
+      setSavedItems([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  function markLinkedInProgress(record = {}) {
+    try {
+      window.localStorage.setItem('joblytics_linkedin_optimization_saved', JSON.stringify({
+        savedAt: new Date().toISOString(),
+        targetRole: record.target_role || targetRole || '',
+        score: record.score || optimization?.overall_score || 0,
+        id: record.id || null
+      }))
+    } catch (_) {
+      // localStorage is only used to help the dashboard progress card; ignore failures.
+    }
+  }
+
   async function optimize() {
     if (!canSubmit) return
     setError('')
+    setSaveError('')
+    setSaveMessage('')
+    setActiveSavedId(null)
     setLoading(true)
     setOptimization(null)
 
@@ -118,6 +193,14 @@ export default function LinkedInOptimizerPage() {
       }
 
       setOptimization(data.optimization)
+      try {
+        window.localStorage.setItem('joblytics_linkedin_latest_optimization', JSON.stringify({
+          optimizedAt: new Date().toISOString(),
+          targetRole,
+          score: data.optimization?.overall_score || 0
+        }))
+      } catch (_) {}
+
       window.setTimeout(() => {
         document.getElementById('linkedin-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
@@ -126,6 +209,73 @@ export default function LinkedInOptimizerPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function saveOptimization() {
+    if (!optimization) return
+    setSaveError('')
+    setSaveMessage('')
+
+    if (!user?.id) {
+      setSaveError('Sign in to save this optimization to your history.')
+      return
+    }
+
+    setSaveLoading(true)
+    try {
+      const score = Number(optimization?.overall_score || 0)
+      const { data, error: saveErr } = await supabase
+        .from('linkedin_optimizations')
+        .insert({
+          user_id: user.id,
+          target_role: targetRole.trim() || profileInput.targetRole || 'LinkedIn profile',
+          profile_input: profileInput,
+          result_json: optimization,
+          score
+        })
+        .select('id,target_role,score,result_json,profile_input,created_at')
+        .single()
+
+      if (saveErr) throw saveErr
+
+      setActiveSavedId(data.id)
+      setSavedItems(prev => [data, ...prev.filter(item => item.id !== data.id)].slice(0, 8))
+      markLinkedInProgress(data)
+      setSaveMessage('Saved to LinkedIn history.')
+    } catch (err) {
+      setSaveError(err.message || 'Could not save this optimization.')
+    } finally {
+      setSaveLoading(false)
+    }
+  }
+
+  async function deleteSavedOptimization(id) {
+    if (!user?.id || !id) return
+    try {
+      const { error: deleteErr } = await supabase
+        .from('linkedin_optimizations')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+      if (deleteErr) throw deleteErr
+      setSavedItems(prev => prev.filter(item => item.id !== id))
+      if (activeSavedId === id) setActiveSavedId(null)
+    } catch (err) {
+      setSaveError(err.message || 'Could not delete this saved optimization.')
+    }
+  }
+
+  function openSavedOptimization(item) {
+    if (!item?.result_json) return
+    setOptimization(item.result_json)
+    setActiveSavedId(item.id)
+    setTargetRole(item.target_role || item.profile_input?.targetRole || '')
+    setSaveError('')
+    setSaveMessage('Loaded saved optimization.')
+    window.setTimeout(() => {
+      document.getElementById('linkedin-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   async function handleProfileUpload(event) {
@@ -281,11 +431,7 @@ export default function LinkedInOptimizerPage() {
           </p>
         )}
 
-        {error && (
-          <div style={{ marginBottom: 14, padding: '10px 12px', background: 'rgba(255,107,107,0.08)', border: '1px solid rgba(255,107,107,0.25)', borderRadius: 10 }}>
-            <p style={{ fontSize: 12, color: '#ff6b6b', lineHeight: 1.5, margin: 0 }}>⚠ {error}</p>
-          </div>
-        )}
+        {error && <Alert tone="error">⚠ {error}</Alert>}
 
         <button type="button" onClick={optimize} disabled={!canSubmit} className="btn-primary" style={{ width: '100%', opacity: canSubmit ? 1 : 0.55 }}>
           {loading ? '⏳ Analyzing your profile...' : '✨ Optimize my profile →'}
@@ -297,6 +443,15 @@ export default function LinkedInOptimizerPage() {
           </p>
         )}
       </section>
+
+      <LinkedInHistoryCard
+        user={user}
+        items={savedItems}
+        loading={historyLoading}
+        onOpen={openSavedOptimization}
+        onDelete={deleteSavedOptimization}
+        activeSavedId={activeSavedId}
+      />
 
       {optimization && (
         <section id="linkedin-results" style={{ animation: 'fadeUp 0.4s ease' }}>
@@ -314,12 +469,26 @@ export default function LinkedInOptimizerPage() {
           {!!optimization.quick_wins?.length && <QuickWinsCard wins={optimization.quick_wins} />}
 
           <div style={{ ...cardStyle, marginBottom: 18 }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontFamily: 'Syne, sans-serif' }}>⬇️ Download your optimized profile</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>Download a plain-text report or JSON for review.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 8 }}>
-              <button type="button" onClick={downloadReport} className="btn-primary">⬇ Download .txt</button>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontFamily: 'Syne, sans-serif' }}>Save and export</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
+              Save this optimization to your account history, or download a local copy.
+            </p>
+
+            {saveMessage && <Alert tone="success">✓ {saveMessage}</Alert>}
+            {saveError && <Alert tone="error">⚠ {saveError}</Alert>}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: 8 }}>
+              <button type="button" onClick={saveOptimization} disabled={saveLoading} className="btn-primary">
+                {saveLoading ? 'Saving...' : activeSavedId ? '✓ Saved' : '💾 Save to history'}
+              </button>
+              <button type="button" onClick={downloadReport} style={secondaryButtonStyle}>⬇ Download .txt</button>
               <button type="button" onClick={downloadJson} style={secondaryButtonStyle}>⬇ Download .json</button>
             </div>
+            {!user && (
+              <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 10 }}>
+                Sign in to keep LinkedIn optimizations in your Joblytics history.
+              </p>
+            )}
           </div>
 
           <p style={{ fontSize: 11, color: 'var(--text-hint)', textAlign: 'center', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 30 }}>
@@ -328,6 +497,65 @@ export default function LinkedInOptimizerPage() {
         </section>
       )}
     </main>
+  )
+}
+
+function Alert({ children, tone }) {
+  const isSuccess = tone === 'success'
+  return (
+    <div style={{ marginBottom: 14, padding: '10px 12px', background: isSuccess ? 'rgba(76,175,125,0.08)' : 'rgba(255,107,107,0.08)', border: `1px solid ${isSuccess ? 'rgba(76,175,125,0.25)' : 'rgba(255,107,107,0.25)'}`, borderRadius: 10 }}>
+      <p style={{ fontSize: 12, color: isSuccess ? '#4caf7d' : '#ff6b6b', lineHeight: 1.5, margin: 0 }}>{children}</p>
+    </div>
+  )
+}
+
+function LinkedInHistoryCard({ user, items, loading, onOpen, onDelete, activeSavedId }) {
+  return (
+    <section style={{ ...cardStyle, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div>
+          <p style={kickerStyle}>🗂 LinkedIn history</p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+            Saved optimizations stay available so users can compare profile versions and export them again later.
+          </p>
+        </div>
+        <span style={pillStyle}>{user ? `${items.length} saved` : 'Sign in required'}</span>
+      </div>
+
+      {!user && (
+        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
+          Sign in to save LinkedIn optimization results to your account history.
+        </p>
+      )}
+
+      {user && loading && <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Loading saved optimizations...</p>}
+
+      {user && !loading && !items.length && (
+        <div style={{ padding: 14, borderRadius: 14, background: 'var(--bg-input)', border: '1px dashed var(--border)' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 700, marginBottom: 4 }}>No saved LinkedIn optimizations yet.</p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>Run an optimization, then click “Save to history”.</p>
+        </div>
+      )}
+
+      {user && !!items.length && (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {items.map(item => (
+            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center', border: '1px solid var(--border)', borderRadius: 14, padding: 12, background: activeSavedId === item.id ? 'rgba(74,144,226,0.08)' : 'var(--bg-input)' }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 700, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.target_role || 'LinkedIn profile'} · {item.score || item.result_json?.overall_score || 0}/100
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-hint)', margin: 0 }}>{formatDate(item.created_at)}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => onOpen(item)} style={secondaryButtonStyle}>Open</button>
+                <button type="button" onClick={() => onDelete(item.id)} style={{ ...secondaryButtonStyle, color: '#ff6b6b' }}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
