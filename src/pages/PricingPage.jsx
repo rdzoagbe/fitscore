@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext'
 import { useUsageSummary } from '../hooks/useUsageSummary'
 import './PricingPage.css'
 import LeadCaptureForm from '../components/LeadCaptureForm'
+import BillingCheckoutButtons from '../components/BillingCheckoutButtons.jsx'
+import '../components/BillingCheckoutButtons.css'
+
 
 const billingReady = false
 
@@ -343,7 +346,8 @@ export default function PricingPage({ onBack }) {
         title="Want to know when checkout is ready?"
         description="Leave your email and target role. We will notify you when paid plans are available and send practical examples for improving your next application."
       />
-</main>
+      <BillingCheckoutButtons />
+    </main>
     </div>
   )
 }

@@ -1,0 +1,108 @@
+.billing-ready-panel {
+  margin: 32px 0;
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.82));
+  color: #f8fafc;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.billing-ready-header {
+  max-width: 760px;
+}
+
+.billing-ready-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.16);
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-ready-header h2 {
+  margin: 14px 0 10px;
+  font-size: clamp(1.5rem, 2.5vw, 2.2rem);
+  line-height: 1.1;
+}
+
+.billing-ready-header p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.billing-ready-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.billing-ready-card {
+  padding: 22px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.billing-ready-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #dbeafe;
+}
+
+.billing-ready-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.billing-ready-card p {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.billing-ready-card ul {
+  margin: 0 0 18px;
+  padding-left: 18px;
+  color: #e2e8f0;
+  line-height: 1.65;
+}
+
+.billing-ready-button {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.billing-ready-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.billing-ready-message {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(250, 204, 21, 0.14);
+  color: #fef3c7;
+  border: 1px solid rgba(250, 204, 21, 0.24);
+}
+
+@media (max-width: 760px) {
+  .billing-ready-panel { padding: 20px; border-radius: 22px; }
+  .billing-ready-grid { grid-template-columns: 1fr; }
+}
