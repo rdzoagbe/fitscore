@@ -1,0 +1,58 @@
+.cvVault-card {
+  position: relative;
+  margin: 22px 0;
+  padding: 22px;
+  border: 1px solid rgba(120, 144, 180, 0.22);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.94), rgba(246,249,255,0.88));
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
+  color: #111827;
+}
+
+.dark .cvVault-card,
+[data-theme='dark'] .cvVault-card,
+.cvVault-card:where(.dark *) {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(17, 24, 39, 0.88));
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #eef2ff;
+}
+
+.cvVault-muted { opacity: 0.95; }
+.cvVault-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.cvVault-header h2 { margin: 4px 0 6px; font-size: clamp(1.25rem, 2vw, 1.65rem); }
+.cvVault-header p, .cvVault-context, .cvVault-version p, .cvVault-version small, .cvVault-empty { color: #64748b; }
+.dark .cvVault-header p, .dark .cvVault-context, .dark .cvVault-version p, .dark .cvVault-version small, .dark .cvVault-empty { color: #a9b4c7; }
+.cvVault-kicker { margin: 0; text-transform: uppercase; letter-spacing: .12em; font-size: .74rem; font-weight: 800; color: #2563eb; }
+.cvVault-primary { border: 0; border-radius: 16px; padding: 12px 16px; background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 16px 34px rgba(37, 99, 235, 0.25); }
+.cvVault-primary:disabled { opacity: .65; cursor: wait; }
+.cvVault-context { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 18px; padding: 12px 14px; border-radius: 18px; background: rgba(37, 99, 235, 0.08); }
+.cvVault-context span { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: #2563eb; }
+.cvVault-context em { font-style: normal; font-weight: 800; color: #059669; }
+.cvVault-form { margin-top: 18px; padding: 16px; border-radius: 20px; background: rgba(148, 163, 184, 0.10); display: grid; gap: 14px; }
+.cvVault-grid { display: grid; grid-template-columns: 1fr 1fr 160px; gap: 12px; }
+.cvVault-form label { display: grid; gap: 7px; font-weight: 800; font-size: .88rem; }
+.cvVault-form input, .cvVault-form select, .cvVault-form textarea { width: 100%; border: 1px solid rgba(148, 163, 184, 0.32); border-radius: 14px; padding: 12px 13px; background: rgba(255,255,255,0.92); color: #111827; outline: none; font: inherit; }
+.dark .cvVault-form input, .dark .cvVault-form select, .dark .cvVault-form textarea { background: rgba(15,23,42,0.65); color: #f8fafc; border-color: rgba(148,163,184,0.22); }
+.cvVault-actions { display: flex; gap: 10px; align-items: center; }
+.cvVault-actions button:not(.cvVault-primary), .cvVault-versionActions button { border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,0.72); color: inherit; font-weight: 800; cursor: pointer; }
+.dark .cvVault-actions button:not(.cvVault-primary), .dark .cvVault-versionActions button { background: rgba(15,23,42,0.55); }
+.cvVault-alert { margin-top: 14px; padding: 12px 14px; border-radius: 16px; font-weight: 800; }
+.cvVault-alert--error { background: rgba(239, 68, 68, 0.10); color: #dc2626; }
+.cvVault-alert--success { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.cvVault-list { display: grid; gap: 12px; margin-top: 16px; }
+.cvVault-empty { padding: 16px; border: 1px dashed rgba(148,163,184,.35); border-radius: 18px; text-align: center; }
+.cvVault-version { display: flex; justify-content: space-between; gap: 14px; align-items: center; padding: 16px; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 20px; background: rgba(255,255,255,0.62); }
+.dark .cvVault-version { background: rgba(15,23,42,0.45); }
+.cvVault-version.is-active { border-color: rgba(37, 99, 235, 0.55); box-shadow: 0 14px 35px rgba(37, 99, 235, 0.12); }
+.cvVault-versionTop { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.cvVault-versionTop strong { font-size: 1rem; }
+.cvVault-versionTop span { padding: 4px 9px; border-radius: 999px; background: rgba(16, 185, 129, 0.14); color: #059669; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.cvVault-version p { margin: 5px 0; }
+.cvVault-version small { display: block; }
+.cvVault-versionActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.cvVault-versionActions .cvVault-danger { color: #dc2626; }
+@media (max-width: 860px) {
+  .cvVault-header, .cvVault-version { flex-direction: column; align-items: stretch; }
+  .cvVault-grid { grid-template-columns: 1fr; }
+  .cvVault-versionActions { justify-content: flex-start; }
+}

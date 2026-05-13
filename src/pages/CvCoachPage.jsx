@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useUserProfile } from '../hooks/useUserProfile'
 import OptimizeCvCard from '../components/OptimizeCvCard'
+import CvVersionVault from '../components/CvVersionVault'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import './CvCoachPage.css'
@@ -380,6 +381,8 @@ export default function CvCoachPage() {
             </div>
           </aside>
         </section>
+
+        <CvVersionVault selectedAnalysis={selected} />
 
         <section className="coachPro-selectorCard">
           <div>
