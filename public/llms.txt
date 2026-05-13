@@ -1,0 +1,18 @@
+# Joblytics AI
+
+Joblytics AI is a privacy-conscious career workspace for job seekers. It includes an ATS CV checker, CV optimization support, AI cover letter generation, LinkedIn paste-based profile optimization, job application tracking, CV versioning, and interview preparation.
+
+## Public pages
+- https://joblytics-ai.com/
+- https://joblytics-ai.com/pricing
+- https://joblytics-ai.com/privacy
+- https://joblytics-ai.com/resources
+- https://joblytics-ai.com/resources/ats-cv-checker
+- https://joblytics-ai.com/resources/cv-keyword-matching
+- https://joblytics-ai.com/resources/ai-cover-letter-generator
+- https://joblytics-ai.com/resources/linkedin-profile-optimizer
+- https://joblytics-ai.com/resources/job-application-tracker
+- https://joblytics-ai.com/resources/interview-preparation-from-job-description
+
+## Safety and privacy
+Joblytics AI does not ask for LinkedIn passwords, does not log into LinkedIn on behalf of users, and does not scrape private LinkedIn pages. The LinkedIn optimizer uses paste-only user-provided text.

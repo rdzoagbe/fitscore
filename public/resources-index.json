@@ -1,0 +1,12 @@
+{
+  "name": "Joblytics AI Career Resources",
+  "url": "https://joblytics-ai.com/resources",
+  "resources": [
+    "/resources/ats-cv-checker",
+    "/resources/cv-keyword-matching",
+    "/resources/ai-cover-letter-generator",
+    "/resources/linkedin-profile-optimizer",
+    "/resources/job-application-tracker",
+    "/resources/interview-preparation-from-job-description"
+  ]
+}

@@ -12,6 +12,8 @@ import TermsPage from './pages/TermsPage'
 import ContactPage from './pages/ContactPage'
 import PricingPage from './pages/PricingPage'
 import LimitsPage from './pages/LimitsPage'
+import ResourceHubPage from './pages/ResourceHubPage'
+import ResourceArticlePage from './pages/ResourceArticlePage'
 import AdminReliabilityPage from './pages/AdminReliabilityPage'
 import AdminAnalyticsPage from './pages/AdminAnalyticsPage'
 import CvCoachPage from './pages/CvCoachPage'
@@ -343,6 +345,11 @@ export default function App() {
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/pricing') return <PageWithFooter><PricingPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/limits') return <PageWithFooter><LimitsPage onBack={() => window.history.back()} /></PageWithFooter>
+  if (path === '/resources' || path === '/blog') return <PageWithFooter><ResourceHubPage /></PageWithFooter>
+  if (path.startsWith('/resources/')) {
+    const slug = path.split('/').filter(Boolean)[1]
+    return <PageWithFooter><ResourceArticlePage slug={slug} /></PageWithFooter>
+  }
   if (path === '/admin/reliability') return <><AppNav page="admin-reliability" setPage={setPage} onLogoClick={() => setPage('dashboard')} /><AdminReliabilityPage setPage={setPage} /><GlobalFooter /></>
   if (path === '/admin') {
     if (!user) return <LandingPage />
