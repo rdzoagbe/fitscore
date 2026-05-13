@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { LoginForm } from './LoginForm'
 
@@ -13,7 +14,9 @@ export default function LoginPage(): JSX.Element {
             <p className="mt-2 text-xs text-[var(--text-muted)]">Access your protected job search cockpit.</p>
           </div>
         </CardHeader>
-        <LoginForm />
+        <Suspense fallback={<p className="text-xs text-[var(--text-muted)]">Loading sign-in form…</p>}>
+          <LoginForm />
+        </Suspense>
         <p className="mt-4 text-xs text-[var(--text-muted)]"><Link href="/" className="text-accent">Back home</Link></p>
       </Card>
     </main>
