@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { assertUsageAllowed } from '@/lib/billing/guards'
 import { createApplicationSchema, applicationStatusSchema } from '@/lib/tracker/schema'
 import { createClient } from '@/lib/supabase/server'
 
@@ -17,6 +18,8 @@ function getString(formData: FormData, key: string): string {
 
 export async function createApplicationAction(_prevState: TrackerActionState, formData: FormData): Promise<TrackerActionState> {
   const user = await requireUserSession()
+  const usage = await assertUsageAllowed(user.id, 'applicationTracking')
+  if (!usage.allowed) return { error: usage.message }
 
   const parsed = createApplicationSchema.safeParse({
     companyName: getString(formData, 'companyName'),
