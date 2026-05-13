@@ -20,6 +20,7 @@ export default function Footer({ compact = false }) {
           <a href="/early-access" style={{ color: 'var(--text-hint)', textDecoration: 'none' }}>Early access</a>
           <a href="/roles" style={{ color: 'var(--text-hint)', textDecoration: 'none' }}>Role pages</a>
           <a href="/resources" style={{ color: 'var(--text-hint)', textDecoration: 'none' }}>Resources</a>
+          <a href="/sample-reports" onClick={(e) => { e.preventDefault(); window.location.hash = '#/sample-reports'; }}>Sample reports</a>
           <button onClick={() => setContactOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--text-hint)', textDecoration: 'none', fontSize: 11, padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
             {t('footer_contact') || 'Contact'}
           </button>

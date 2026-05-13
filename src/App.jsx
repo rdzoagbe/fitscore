@@ -33,6 +33,8 @@ import TipCard from './components/TipCard'
 import LimitReachedCard from './components/LimitReachedCard'
 import { installReliabilityListeners } from './utils/reliabilityClient'
 import './pages/AnalyzerPage.css'
+import SampleReportsPage from './pages/SampleReportsPage.jsx'
+
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
