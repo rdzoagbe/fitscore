@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import type { NavItem } from '@/types'
 
+interface SidebarProps {
+  readonly userName: string
+  readonly userEmail: string
+}
+
 const groups: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Workspace',
@@ -28,9 +33,13 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
   }
 ]
 
-export function Sidebar(): JSX.Element {
+function initials(name: string): string {
+  return name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'U'
+}
+
+export function Sidebar({ userName, userEmail }: SidebarProps): JSX.Element {
   return (
-    <aside className="hidden min-h-dvh w-64 shrink-0 border-r border-border bg-[var(--bg-input)] lg:block">
+    <aside className="hidden min-h-dvh w-64 shrink-0 border-r border-border bg-[var(--bg-input)] lg:flex lg:flex-col">
       <Link href="/dashboard" className="flex h-16 items-center gap-3 border-b border-border px-4">
         <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-sm font-semibold text-slate-950">J</span>
         <span>
@@ -38,7 +47,7 @@ export function Sidebar(): JSX.Element {
           <small className="text-xs text-[var(--text-muted)]">Application workspace</small>
         </span>
       </Link>
-      <nav className="space-y-5 p-3">
+      <nav className="flex-1 space-y-5 p-3">
         {groups.map(group => (
           <section key={group.title}>
             <p className="mb-2 px-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{group.title}</p>
@@ -53,6 +62,13 @@ export function Sidebar(): JSX.Element {
           </section>
         ))}
       </nav>
+      <div className="m-3 flex items-center gap-3 rounded-md border border-border bg-surface p-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-elevated text-xs text-accent">{initials(userName)}</span>
+        <span className="min-w-0">
+          <strong className="block truncate text-xs text-[var(--text-primary)]">{userName}</strong>
+          <small className="block truncate text-[10px] text-[var(--text-muted)]">{userEmail}</small>
+        </span>
+      </div>
     </aside>
   )
 }
