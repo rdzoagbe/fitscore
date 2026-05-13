@@ -1,5 +1,6 @@
 import React from 'react'
 import SeoHead from '../components/SeoHead'
+import SeoConversionPanel from '../components/SeoConversionPanel'
 import { seoResources } from '../data/seoResources'
 import './ResourcePages.css'
 
@@ -60,6 +61,16 @@ export default function ResourceHubPage() {
           They need a workflow: analyze the job, compare the CV, improve the application, generate the cover letter, optimize the profile, track the pipeline, and prepare the interview. These resources support the same workflow inside Joblytics AI.
         </p>
       </section>
+
+      <SeoConversionPanel
+        eyebrow="Ready to test your application?"
+        title="Move from reading guides to improving one real application."
+        description="Paste a job description and compare it with your CV to see the missing keywords, proof gaps, and next best action before applying."
+        primaryHref="/app"
+        primaryLabel="Start a free ATS check"
+        secondaryHref="/roles"
+        secondaryLabel="Browse role-specific checkers"
+      />
     </main>
   )
 }

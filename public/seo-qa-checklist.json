@@ -1,0 +1,16 @@
+{
+  "project": "Joblytics AI",
+  "version": "P6C",
+  "checks": [
+    "Every public page has one clear H1.",
+    "Every public page has a unique title and meta description.",
+    "Every public page has a canonical URL.",
+    "Role pages use role-specific language, not duplicated generic text.",
+    "Resource pages include a useful CTA that matches the guide topic.",
+    "No copy claims guaranteed interviews, guaranteed ATS pass, or automatic LinkedIn scraping.",
+    "Sitemap includes resources and role pages.",
+    "robots.txt blocks /admin and /api routes.",
+    "Mobile layout keeps CTAs visible and readable.",
+    "Public pages do not expose private user content or admin analytics."
+  ]
+}

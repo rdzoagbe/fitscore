@@ -1,5 +1,6 @@
 import React from 'react'
 import SeoHead from '../components/SeoHead'
+import SeoConversionPanel from '../components/SeoConversionPanel'
 import { getRolePage, seoRolePages } from '../data/seoRolePages'
 import './RoleLandingPages.css'
 
@@ -73,7 +74,7 @@ export default function RoleLandingPage({ slug }) {
             <a className="role-btn role-btn-primary" href="/app">Check my CV against a job →</a>
             <a className="role-btn role-btn-secondary" href="/resources/ats-cv-checker">Read the ATS guide</a>
           </div>
-          <p className="role-trust-note">No LinkedIn login. No recruiter marketplace. Your CV analysis stays inside your workspace.</p>
+          <p className="role-trust-note">No LinkedIn password. No private page scraping. Your CV analysis stays inside your workspace.</p>
         </div>
 
         <aside className="role-preview-card" aria-label={`${page.role} CV analysis preview`}>
@@ -150,6 +151,22 @@ export default function RoleLandingPage({ slug }) {
           ))}
         </div>
       </section>
+
+      <SeoConversionPanel
+        eyebrow="Role-specific next step"
+        title={`Check whether your ${page.role} CV is ready before you apply.`}
+        description="Joblytics turns the job description into a focused action plan: fit score, missing proof points, keyword gaps, cover letter, tracker, and interview kit."
+        primaryHref="/app"
+        primaryLabel="Check my CV against a job"
+        secondaryHref="/resources/ats-cv-checker"
+        secondaryLabel="Read the ATS guide"
+        proofPoints={[
+          `Evaluate ${page.role} keywords with evidence`,
+          'Find weak bullets before a recruiter sees them',
+          'Continue into cover letter and interview preparation'
+        ]}
+        variant="compact"
+      />
 
       <section className="role-final-cta">
         <p className="role-kicker">Ready</p>

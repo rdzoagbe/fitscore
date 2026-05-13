@@ -1,5 +1,6 @@
 import React from 'react'
 import SeoHead from '../components/SeoHead'
+import SeoConversionPanel from '../components/SeoConversionPanel'
 import { getResourceBySlug, seoResources } from '../data/seoResources'
 import './ResourcePages.css'
 
@@ -110,6 +111,17 @@ export default function ResourceArticlePage({ slug }) {
               </div>
               <a href={article.ctaHref} className="resourcePrimaryCta">{article.ctaLabel}</a>
             </section>
+
+            <SeoConversionPanel
+              eyebrow="Apply this guide"
+              title="Convert the advice into a practical application plan."
+              description="Use the same workflow inside Joblytics: compare your CV to the job, identify proof gaps, create the cover letter, and prepare the interview kit."
+              primaryHref={article.ctaHref}
+              primaryLabel={article.ctaLabel}
+              secondaryHref="/roles"
+              secondaryLabel="Explore role-specific checkers"
+              variant="compact"
+            />
 
             <div id="faq">
               <FaqBlock items={article.faq} />
