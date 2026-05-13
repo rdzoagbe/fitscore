@@ -13,8 +13,26 @@ const companyName = item => {
   return company && company !== 'Not specified' ? company : ''
 }
 
+const formatDateTime = value => {
+  if (!value) return ''
+  try {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  } catch (_) {
+    return String(value).slice(0, 10)
+  }
+}
+
+const getAnalysisCompany = analysis => companyName(analysis) || analysis?.result?.job_context?.company || ''
+const getAnalysisJobTitle = (analysis, t) => jobTitle(analysis, t)
+
+
 function CopyButton({ value, children, t }) {
   const [copied, setCopied] = useState(false)
+  const [savedLetters, setSavedLetters] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
+  const [historyError, setHistoryError] = useState('')
   return (
     <button
       type="button"
@@ -139,13 +157,23 @@ export default function CvCoachPage() {
   const [genLoading, setGenLoading] = useState(false)
   const [genError, setGenError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [savedLetters, setSavedLetters] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
+  const [historyError, setHistoryError] = useState('')
 
   useEffect(() => { fetchAnalyses() }, [])
+
+  useEffect(() => {
+    if (user?.id) fetchCoverLetters()
+  }, [user?.id])
 
   useEffect(() => {
     setRecipient(selected?.result?.job_context?.hiring_contact || '')
     setCoverLetter('')
     setGenError('')
+    setSaveStatus('')
   }, [selected?.id])
 
   const fetchAnalyses = async () => {
@@ -158,6 +186,106 @@ export default function CvCoachPage() {
     setAnalyses(data || [])
     if (data?.length) setSelected(data[0])
     setLoading(false)
+  }
+
+  const fetchCoverLetters = async () => {
+    if (!user?.id) return
+    setHistoryLoading(true)
+    setHistoryError('')
+    const { data, error } = await supabase
+      .from('cover_letters')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(25)
+
+    if (error) {
+      setHistoryError(error.message || 'Could not load saved cover letters.')
+      setSavedLetters([])
+    } else {
+      setSavedLetters(data || [])
+    }
+    setHistoryLoading(false)
+  }
+
+  const saveCoverLetter = async () => {
+    if (!user?.id || !coverLetter.trim()) return
+    setSaveLoading(true)
+    setSaveStatus('')
+    setHistoryError('')
+
+    const payload = {
+      user_id: user.id,
+      analysis_id: selected?.id || null,
+      job_title: getAnalysisJobTitle(selected, t),
+      company: getAnalysisCompany(selected),
+      recipient: recipient.trim() || null,
+      tone,
+      length,
+      language: lang,
+      letter: coverLetter.trim(),
+      metadata: {
+        score: selected?.score || null,
+        source: 'cv_coach',
+        saved_from: 'cover_letter_generator'
+      }
+    }
+
+    const { error } = await supabase
+      .from('cover_letters')
+      .insert(payload)
+
+    if (error) {
+      setSaveStatus(`⚠ ${error.message || 'Could not save cover letter.'}`)
+    } else {
+      setSaveStatus('✅ Saved to history')
+      try {
+        window.localStorage.setItem('joblytics_cover_letter_history_signal', JSON.stringify({ savedAt: new Date().toISOString(), jobTitle: payload.job_title }))
+      } catch (_) {}
+      await fetchCoverLetters()
+    }
+    setSaveLoading(false)
+  }
+
+  const loadSavedCoverLetter = saved => {
+    if (!saved) return
+    setCoverLetter(saved.letter || '')
+    setRecipient(saved.recipient || '')
+    setTone(saved.tone || 'professional')
+    setLength(saved.length || 'standard')
+    setSaveStatus('Loaded from history')
+    if (saved.analysis_id) {
+      const linked = analyses.find(item => item.id === saved.analysis_id)
+      if (linked) setSelected(linked)
+    }
+  }
+
+  const deleteSavedCoverLetter = async id => {
+    if (!id) return
+    const { error } = await supabase
+      .from('cover_letters')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+
+    if (error) {
+      setHistoryError(error.message || 'Could not delete cover letter.')
+    } else {
+      setSavedLetters(current => current.filter(item => item.id !== id))
+    }
+  }
+
+  const downloadCoverLetter = () => {
+    if (!coverLetter.trim()) return
+    const blob = new Blob([coverLetter], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `joblytics-cover-letter-${Date.now()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
 
   const generateCoverLetter = async () => {
@@ -179,9 +307,13 @@ export default function CvCoachPage() {
         throw new Error(t('add_full_name_error'))
       }
 
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Please sign in again before generating a cover letter.')
+
       const response = await fetch('/api/cover-letter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ analysis: selected.result, lang, tone, length, recipient: recipient.trim() || null, fullName: nameToUse })
       })
       if (!response.ok) {
@@ -190,6 +322,7 @@ export default function CvCoachPage() {
       }
       const data = await response.json()
       setCoverLetter(data.letter || '')
+      setSaveStatus('')
     } catch (error) {
       setGenError(error.message || t('cover_letter_error'))
     }
@@ -299,9 +432,52 @@ export default function CvCoachPage() {
                   </>
                 )}
                 {genLoading && <div className="coachPro-generating"><div /><p>{t('writing_cover_letter')}</p></div>}
-                {coverLetter && <div className="coachPro-letterResult"><pre>{coverLetter}</pre><div><button type="button" onClick={copyLetter}>{copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}</button><button type="button" onClick={generateCoverLetter}>↺ {t('regenerate')}</button></div></div>}
+                {coverLetter && (
+                  <div className="coachPro-letterResult">
+                    <pre>{coverLetter}</pre>
+                    {saveStatus && <p className={`coachPro-saveStatus ${saveStatus.startsWith('⚠') ? 'is-error' : ''}`}>{saveStatus}</p>}
+                    <div className="coachPro-letterActions">
+                      <button type="button" onClick={copyLetter}>{copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}</button>
+                      <button type="button" onClick={saveCoverLetter} disabled={saveLoading}>{saveLoading ? 'Saving...' : '💾 Save to history'}</button>
+                      <button type="button" onClick={downloadCoverLetter}>⬇ Download .txt</button>
+                      <button type="button" onClick={generateCoverLetter}>↺ {t('regenerate')}</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </article>
+
+            <article className="coachPro-card coachPro-historyCard">
+              <header className="coachPro-cardHeader coachPro-historyHeader">
+                <div>
+                  <p className="coachPro-kicker">Cover letter history</p>
+                  <h2>Saved letters</h2>
+                  <p>Reuse, review, or delete cover letters generated for previous applications.</p>
+                </div>
+                <button type="button" className="coachPro-copy" onClick={fetchCoverLetters}>Refresh</button>
+              </header>
+
+              <div className="coachPro-historyBody">
+                {historyError && <p className="coachPro-error">⚠ {historyError}</p>}
+                {historyLoading && <div className="coachPro-miniSkeleton" />}
+                {!historyLoading && !savedLetters.length && !historyError && (
+                  <div className="coachPro-historyEmpty">
+                    <strong>No saved letters yet</strong>
+                    <span>Generate a letter, then click “Save to history”.</span>
+                  </div>
+                )}
+                {!historyLoading && savedLetters.map(item => (
+                  <div key={item.id} className="coachPro-historyItem">
+                    <button type="button" onClick={() => loadSavedCoverLetter(item)}>
+                      <strong>{item.job_title || 'Cover letter'}</strong>
+                      <span>{item.company ? `@ ${item.company}` : 'Saved cover letter'} · {formatDateTime(item.created_at)}</span>
+                    </button>
+                    <button type="button" aria-label="Delete saved cover letter" onClick={() => deleteSavedCoverLetter(item.id)}>×</button>
+                  </div>
+                ))}
+              </div>
+            </article>
+
             <div className="coachPro-optimizeWrap"><OptimizeCvCard selected={selected} /></div>
           </div>
         </section>

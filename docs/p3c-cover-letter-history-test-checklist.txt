@@ -1,0 +1,15 @@
+P3C test checklist
+
+1. Run supabase/p3c_cover_letter_history.sql in the correct Supabase project.
+2. Push the patch and wait for Vercel to deploy.
+3. Sign in to Joblytics.
+4. Open CV Coach.
+5. Select an existing ATS analysis.
+6. Generate a cover letter.
+7. Confirm no 401 error appears from /api/cover-letter.
+8. Click Save to history.
+9. Refresh the page.
+10. Confirm the saved letter appears in Saved letters.
+11. Open the saved letter.
+12. Delete the saved letter.
+13. Return to dashboard and confirm the cover-letter progress step is marked completed after saving.
