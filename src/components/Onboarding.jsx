@@ -1,93 +1,275 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
+import { supabase } from '../lib/supabase'
+import './Onboarding.css'
 
-const steps = [
+const roleOptions = [
+  'IT Manager',
+  'Service Delivery Manager',
+  'Cloud / Infrastructure Manager',
+  'Support Manager',
+  'Business Applications Manager',
+  'Data Center Manager',
+  'Project / Delivery Manager',
+  'Other'
+]
+
+const seniorityOptions = ['Junior', 'Mid-level', 'Senior', 'Lead / Manager', 'Director / Head of']
+const goalOptions = ['Find a new job', 'Improve my CV', 'Prepare interviews', 'Track applications', 'Explore opportunities']
+const marketOptions = ['France', 'UK', 'Europe', 'Remote', 'International']
+const languageOptions = ['English', 'French', 'Both']
+
+const tourSteps = [
+  {
+    icon: '🧭',
+    kicker: 'Setup',
+    title: 'Personalize your job-search workspace',
+    desc: 'Tell Joblytics what kind of roles you are targeting so the dashboard, next actions, and career workflow feel relevant from the first session.'
+  },
   {
     icon: '📄',
-    kicker: 'Step 1',
-    title: 'Add your CV',
-    desc: 'Upload the CV you want to use most often. You can keep separate versions for English, French, IT Manager, Service Delivery, and more.',
-    bullets: ['PDF or Word supported', 'Multiple CVs available', 'Switch CV before each analysis']
+    kicker: 'CV Vault',
+    title: 'Keep role-specific CV versions',
+    desc: 'Store different versions of your CV and mark one as active before running ATS analysis.'
   },
   {
     icon: '🔎',
-    kicker: 'Step 2',
-    title: 'Analyze a job offer',
-    desc: 'Paste a job URL or the full job description. Paste mode is best for LinkedIn and job boards that block automatic reading.',
-    bullets: ['ATS-style scoring', 'Keyword gap detection', 'Seniority and salary insights']
+    kicker: 'Analysis',
+    title: 'Analyze roles before applying',
+    desc: 'Paste a job description, use your active CV, and get a practical match score with missing keywords and improvement actions.'
   },
   {
-    icon: '🎯',
-    kicker: 'Step 3',
-    title: 'Improve before applying',
-    desc: 'Use the quick wins to strengthen your CV before sending it. Then generate a tailored cover letter and prepare for interview questions.',
-    bullets: ['Quick CV improvements', 'Cover letter generator', 'Interview prep']
-  },
-  {
-    icon: '📊',
-    kicker: 'Step 4',
-    title: 'Track your applications',
-    desc: 'Every analysis is saved in your History board so you can compare roles, monitor progress, and update application status.',
-    bullets: ['Saved analyses', 'Application statuses', 'Progress over time']
+    icon: '🚀',
+    kicker: 'Workflow',
+    title: 'Move from analysis to application',
+    desc: 'Generate cover letters, optimize LinkedIn, track applications, and prepare interview answers from the same workspace.'
   }
 ]
 
+function PillGroup({ label, options, value, onChange }) {
+  return (
+    <div className="onbField">
+      <label>{label}</label>
+      <div className="onbPills">
+        {options.map(option => (
+          <button
+            type="button"
+            key={option}
+            className={`onbPill ${value === option ? 'active' : ''}`}
+            onClick={() => onChange(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Onboarding({ onDone }) {
   const { t } = useLang()
+  const { user } = useAuth()
   const [step, setStep] = useState(0)
-  const current = steps[step]
-  const isLast = step === steps.length - 1
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [profile, setProfile] = useState({
+    targetRole: roleOptions[0],
+    customRole: '',
+    seniority: 'Lead / Manager',
+    goal: 'Find a new job',
+    market: 'France',
+    language: 'Both'
+  })
+
+  const isProfileStep = step === 0
+  const isLast = step === tourSteps.length - 1
+  const current = tourSteps[step]
+
+  const finalRole = useMemo(() => {
+    if (profile.targetRole === 'Other') return profile.customRole.trim() || 'Other'
+    return profile.targetRole
+  }, [profile.targetRole, profile.customRole])
+
+  const nextPage = useMemo(() => {
+    if (profile.goal === 'Improve my CV') return 'coach'
+    if (profile.goal === 'Track applications') return 'history'
+    return 'analyzer'
+  }, [profile.goal])
+
+  const complete = async () => {
+    setSaving(true)
+    setError('')
+
+    const payload = {
+      onboarding_completed: true,
+      target_role: finalRole,
+      seniority_level: profile.seniority,
+      job_search_goal: profile.goal,
+      preferred_market: profile.market,
+      preferred_language: profile.language,
+      updated_at: new Date().toISOString()
+    }
+
+    try {
+      if (user?.id) {
+        const { error: upsertError } = await supabase
+          .from('user_profiles')
+          .upsert({ user_id: user.id, ...payload }, { onConflict: 'user_id' })
+
+        if (upsertError) {
+          console.warn('Onboarding profile save failed:', upsertError.message)
+          setError('Your setup was saved locally. Profile sync will retry later.')
+        }
+      }
+
+      localStorage.setItem('fitscore_onboarded', 'true')
+      localStorage.setItem('joblytics_onboarding_profile', JSON.stringify(payload))
+      onDone?.({ nextPage, profile: payload })
+    } catch (e) {
+      console.warn('Onboarding completion failed:', e)
+      localStorage.setItem('fitscore_onboarded', 'true')
+      onDone?.({ nextPage, profile: payload })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const skip = () => {
+    localStorage.setItem('fitscore_onboarded', 'true')
+    onDone?.({ nextPage: 'dashboard', skipped: true })
+  }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center', padding: 20, background: 'rgba(15,23,42,0.62)', backdropFilter: 'blur(14px)' }}>
-      <section style={{ width: 'min(940px, 100%)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 340px', gap: 0, overflow: 'hidden', borderRadius: 34, border: '1px solid var(--pro-border)', background: 'linear-gradient(180deg, var(--pro-card-strong), var(--pro-card-soft)), var(--bg-card)', boxShadow: 'var(--shadow-lg)' }}>
-        <div style={{ padding: 'clamp(28px, 5vw, 52px)' }}>
-          <p style={{ margin: 0, color: 'var(--accent)', fontSize: 11, fontWeight: 950, letterSpacing: '0.13em', textTransform: 'uppercase' }}>{current.kicker}</p>
-          <div style={{ fontSize: 58, margin: '18px 0 14px' }}>{current.icon}</div>
-          <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 'clamp(34px, 5vw, 64px)', lineHeight: 0.95, letterSpacing: '-0.075em', color: 'var(--text-primary)' }}>{current.title}</h2>
-          <p style={{ margin: '18px 0 0', color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.75, maxWidth: 620 }}>{current.desc}</p>
+    <div className="onbOverlay" role="dialog" aria-modal="true" aria-label="Joblytics onboarding">
+      <section className="onbShell">
+        <div className="onbMain">
+          <div className="onbTopline">
+            <span>{current.kicker}</span>
+            <button type="button" onClick={skip}>{t('onb_skip') || 'Skip for now'}</button>
+          </div>
 
-          <div style={{ display: 'grid', gap: 10, marginTop: 24 }}>
-            {current.bullets.map(item => (
-              <div key={item} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 16, background: 'var(--bg-input)', border: '1px solid var(--border-soft)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 700 }}>
-                <span style={{ width: 22, height: 22, borderRadius: 999, display: 'grid', placeItems: 'center', background: 'var(--success-soft)', color: 'var(--success)' }}>✓</span>
-                {item}
+          <div className="onbIcon">{current.icon}</div>
+          <h2>{current.title}</h2>
+          <p className="onbDesc">{current.desc}</p>
+
+          {isProfileStep ? (
+            <div className="onbForm">
+              <PillGroup
+                label="Target role"
+                options={roleOptions}
+                value={profile.targetRole}
+                onChange={targetRole => setProfile(p => ({ ...p, targetRole }))}
+              />
+
+              {profile.targetRole === 'Other' && (
+                <div className="onbField">
+                  <label>Custom role</label>
+                  <input
+                    value={profile.customRole}
+                    onChange={e => setProfile(p => ({ ...p, customRole: e.target.value }))}
+                    placeholder="Example: IT Operations Manager"
+                  />
+                </div>
+              )}
+
+              <PillGroup
+                label="Seniority"
+                options={seniorityOptions}
+                value={profile.seniority}
+                onChange={seniority => setProfile(p => ({ ...p, seniority }))}
+              />
+
+              <PillGroup
+                label="Main goal"
+                options={goalOptions}
+                value={profile.goal}
+                onChange={goal => setProfile(p => ({ ...p, goal }))}
+              />
+
+              <div className="onbGridTwo">
+                <PillGroup
+                  label="Target market"
+                  options={marketOptions}
+                  value={profile.market}
+                  onChange={market => setProfile(p => ({ ...p, market }))}
+                />
+                <PillGroup
+                  label="Preferred language"
+                  options={languageOptions}
+                  value={profile.language}
+                  onChange={language => setProfile(p => ({ ...p, language }))}
+                />
               </div>
+            </div>
+          ) : (
+            <div className="onbFeatureGrid">
+              {[
+                ['ATS score', 'Know if the role is worth applying to.'],
+                ['CV versions', 'Use the right CV for the right job.'],
+                ['Cover letters', 'Generate and save tailored letters.'],
+                ['Pipeline', 'Track applications through every status.']
+              ].map(([title, copy]) => (
+                <div key={title} className="onbFeatureCard">
+                  <strong>{title}</strong>
+                  <span>{copy}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {error && <p className="onbWarning">{error}</p>}
+
+          <div className="onbProgressDots">
+            {tourSteps.map((_, index) => (
+              <button
+                type="button"
+                key={index}
+                aria-label={`Go to onboarding step ${index + 1}`}
+                className={index === step ? 'active' : ''}
+                onClick={() => setStep(index)}
+              />
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 7, marginTop: 32 }}>
-            {steps.map((_, i) => <button key={i} aria-label={`Go to onboarding step ${i + 1}`} onClick={() => setStep(i)} style={{ width: i === step ? 34 : 8, height: 8, borderRadius: 999, border: 0, background: i === step ? 'var(--accent)' : 'var(--border)', cursor: 'pointer', transition: 'all .2s ease' }} />)}
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
-            <button onClick={() => step > 0 ? setStep(s => s - 1) : onDone()} style={{ flex: 1, minHeight: 48, borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 850, cursor: 'pointer' }}>
+          <div className="onbActions">
+            <button type="button" className="onbSecondary" onClick={() => step > 0 ? setStep(s => s - 1) : skip()}>
               {step > 0 ? (t('onb_back') || 'Back') : (t('onb_skip') || 'Skip')}
             </button>
-            <button onClick={() => isLast ? onDone() : setStep(s => s + 1)} style={{ flex: 1.5, minHeight: 48, borderRadius: 999, border: 0, background: 'var(--accent)', color: 'var(--text-inverse)', fontFamily: 'Syne, sans-serif', fontWeight: 900, cursor: 'pointer', boxShadow: '0 16px 34px var(--accent-ring)' }}>
-              {isLast ? (t('onb_get_started') || 'Start using Joblytics') : (t('onb_next') || 'Next')}
+            <button
+              type="button"
+              className="onbPrimary"
+              disabled={saving}
+              onClick={() => isLast ? complete() : setStep(s => s + 1)}
+            >
+              {saving ? 'Saving...' : isLast ? 'Start my workflow' : (t('onb_next') || 'Next')}
             </button>
           </div>
         </div>
 
-        <aside style={{ padding: 24, background: 'linear-gradient(160deg, var(--accent-soft), var(--pro-card-soft) 52%, var(--pro-card)), var(--bg-card)', borderLeft: '1px solid var(--border-soft)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ width: 76, height: 76, display: 'grid', placeItems: 'center', borderRadius: 26, background: 'var(--bg-card)', border: '1px solid var(--border)', fontSize: 32 }}>✦</div>
-            <h3 style={{ margin: '24px 0 8px', fontFamily: 'Syne, sans-serif', fontSize: 30, lineHeight: 1.05, letterSpacing: '-0.06em', color: 'var(--text-primary)' }}>Your career workspace</h3>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.65 }}>Joblytics is built to help you apply smarter, not just faster.</p>
+        <aside className="onbSide">
+          <div className="onbScoreMock">
+            <span>Workspace setup</span>
+            <strong>{Math.min(100, 25 + step * 25)}%</strong>
+            <div><em style={{ width: `${Math.min(100, 25 + step * 25)}%` }} /></div>
           </div>
-          <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
-            {['Analyze', 'Improve', 'Track', 'Prepare'].map((item, i) => (
-              <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border-soft)' }}>
-                <span style={{ color: 'var(--text-primary)', fontSize: 13, fontWeight: 850 }}>{item}</span>
-                <em style={{ color: i <= step ? 'var(--accent)' : 'var(--text-hint)', fontStyle: 'normal', fontWeight: 900 }}>0{i + 1}</em>
+
+          <div className="onbRoutePreview">
+            <p>Your recommended start</p>
+            <h3>{nextPage === 'coach' ? 'Open CV Coach' : nextPage === 'history' ? 'Open Application Board' : 'Run your first analysis'}</h3>
+            <span>Based on your goal: {profile.goal}</span>
+          </div>
+
+          <div className="onbMiniList">
+            {tourSteps.map((item, index) => (
+              <div key={item.title} className={index <= step ? 'done' : ''}>
+                <span>{index < step ? '✓' : index + 1}</span>
+                <p>{item.title}</p>
               </div>
             ))}
           </div>
         </aside>
       </section>
-
-      <style>{`@media(max-width:760px){section[style*="grid-template-columns: minmax(0, 1fr) 340px"]{grid-template-columns:1fr!important} section[style*="grid-template-columns: minmax(0, 1fr) 340px"] aside{display:none!important}}`}</style>
     </div>
   )
 }

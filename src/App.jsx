@@ -353,5 +353,5 @@ export default function App() {
     }
   }
 
-  return <>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}<GlobalFooter /></>
+  return <>{showOnboarding && <Onboarding onDone={(result) => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (result?.nextPage) setPage(result.nextPage) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />{renderPage()}<GlobalFooter /></>
 }
