@@ -4,8 +4,8 @@ const items = [
   { href: '/dashboard', label: 'Home' },
   { href: '/tracker', label: 'Track' },
   { href: '/scanner', label: 'Scan' },
-  { href: '/cover-letters', label: 'Letters' },
-  { href: '/analytics', label: 'Stats' }
+  { href: '/cv-enhancer', label: 'CV' },
+  { href: '/billing', label: 'Plan' }
 ]
 
 export function MobileNav(): JSX.Element {
