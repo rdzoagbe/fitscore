@@ -1,0 +1,39 @@
+{
+  "name": "Joblytics P7F Trust / Search Console / Safe Browsing",
+  "status": "verification_required",
+  "soft_launch_status": "ready_for_soft_launch_pending_trust_confirmation",
+  "checks": {
+    "chrome_safe_browsing": "verify_no_warning",
+    "google_search_console_security_issues": "verify_no_issues",
+    "google_search_console_manual_actions": "verify_no_issues",
+    "sitemap_submitted": "submit_or_confirm",
+    "robots_txt_verified": "verify",
+    "sitemap_xml_verified": "verify",
+    "linkedin_safe_mode": "paste_only_confirmed",
+    "payment_state": "checkout_prepared_not_live"
+  },
+  "public_urls_to_verify": [
+    "/",
+    "/pricing",
+    "/linkedin",
+    "/resources",
+    "/roles",
+    "/sample-reports",
+    "/early-access",
+    "/privacy",
+    "/terms",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/p7e-launch-qa.json"
+  ],
+  "blockers": [
+    "chrome_dangerous_site_warning",
+    "search_console_security_issue",
+    "manual_action",
+    "sitemap_not_readable",
+    "robots_blocking_public_pages",
+    "misleading_payment_state",
+    "linkedin_login_or_import_flow_visible"
+  ],
+  "last_updated": "2026-05-13T09:56:14Z"
+}
