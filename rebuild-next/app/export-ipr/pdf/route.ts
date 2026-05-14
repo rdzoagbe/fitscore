@@ -12,8 +12,7 @@ export async function GET(): Promise<NextResponse> {
 
   const applications = await getApplications(user.id, 1000)
   const summary = buildIprEvidenceSummary(applications)
-  const pdf = buildIprPdf(summary)
-  const body = pdf.buffer.slice(pdf.byteOffset, pdf.byteOffset + pdf.byteLength)
+  const body = buildIprPdf(summary)
 
   return new NextResponse(body, {
     headers: {
