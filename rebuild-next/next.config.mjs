@@ -2,18 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  async redirects() {
-    return [
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'joblytics-ai.com' }],
-        destination: 'https://www.joblytics-ai.com/:path*',
-        permanent: true
-      }
-    ]
-  },
   async headers() {
     return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, proxy-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' }
+        ]
+      },
       {
         source: '/(.*)',
         headers: [
