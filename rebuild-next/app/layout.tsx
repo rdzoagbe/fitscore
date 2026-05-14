@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Mono, Instrument_Serif } from 'next/font/google'
+import { ServiceWorkerReset } from '@/components/system/ServiceWorkerReset'
 import './globals.css'
 
 const dmMono = DM_Mono({ subsets: ['latin', 'latin-ext'], weight: ['300', '400', '500'], variable: '--font-mono', display: 'swap' })
@@ -16,7 +17,10 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 }
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
   return (
     <html lang="fr" className={`${dmMono.variable} ${instrumentSerif.variable}`}>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerReset />
+        {children}
+      </body>
     </html>
   )
 }
