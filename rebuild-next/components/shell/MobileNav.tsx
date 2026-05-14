@@ -5,7 +5,7 @@ const items = [
   { href: '/tracker', label: 'Track' },
   { href: '/scanner', label: 'Scan' },
   { href: '/cv-enhancer', label: 'CV' },
-  { href: '/billing', label: 'Plan' }
+  { href: '/more', label: 'More' }
 ]
 
 export function MobileNav(): JSX.Element {
