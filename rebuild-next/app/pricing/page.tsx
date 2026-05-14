@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { PageScaffold } from '@/components/dashboard/PageScaffold'
-import { AppShell } from '@/components/shell/AppShell'
+import { PublicNav } from '@/components/shell/PublicNav'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatPrice, plans, type PlanDefinition } from '@/lib/billing/plans'
 import { isCheckoutConfigured } from '@/lib/billing/profile-plan'
@@ -61,9 +60,15 @@ export default function PricingPage(): JSX.Element {
   const checkoutReady = isCheckoutConfigured()
 
   return (
-    <AppShell>
-      <PageScaffold title="Pricing" subtitle="Clear limits for every stage of your job search cockpit">
-        <section className="rounded-lg border border-border bg-elevated p-4 text-sm leading-6 text-[var(--text-secondary)]">
+    <main className="min-h-dvh bg-bg text-[var(--text-primary)]">
+      <PublicNav />
+      <section className="mx-auto w-full max-w-6xl px-5 py-10">
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-[0.22em] text-accent">Pricing</p>
+          <h1 className="mt-3 font-display text-5xl italic leading-none md:text-6xl">Clear limits for every stage of your job search.</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--text-secondary)]">Start free, then upgrade later when checkout is active.</p>
+        </div>
+        <section className="mb-6 rounded-lg border border-border bg-elevated p-4 text-sm leading-6 text-[var(--text-secondary)]">
           {checkoutReady ? (
             <p><strong className="text-[var(--text-primary)]">Checkout is active.</strong> Paid plans can be started from this page.</p>
           ) : (
@@ -73,7 +78,7 @@ export default function PricingPage(): JSX.Element {
         <section className="grid gap-4 xl:grid-cols-3">
           {planList.map(plan => <PlanCard key={plan.id} plan={plan} checkoutReady={checkoutReady} />)}
         </section>
-      </PageScaffold>
-    </AppShell>
+      </section>
+    </main>
   )
 }
