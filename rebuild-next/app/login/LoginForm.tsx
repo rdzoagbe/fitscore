@@ -18,6 +18,7 @@ export function LoginForm(): JSX.Element {
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? '/dashboard'
   const urlError = searchParams.get('error')
+  const loggedOut = searchParams.get('logged_out') === '1'
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const action = mode === 'signin' ? signInAction : signUpAction
   const [state, formAction] = useFormState(action, initialState)
@@ -25,6 +26,7 @@ export function LoginForm(): JSX.Element {
 
   return (
     <div className="grid gap-4">
+      {loggedOut ? <p className="rounded-md border border-emerald/20 bg-emerald/10 p-3 text-xs text-emerald">You have been signed out. You can sign back in below.</p> : null}
       <Link href={googleHref} className="rounded-md border border-border bg-elevated px-4 py-3 text-center text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)]">
         Continue with Google
       </Link>
