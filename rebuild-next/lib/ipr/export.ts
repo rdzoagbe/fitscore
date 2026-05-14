@@ -52,7 +52,7 @@ export function buildIprCsv(summary: IprEvidenceSummary): string {
   return lines.map(line => line.map(cell => csvEscape(cell ?? '')).join(';')).join('\n')
 }
 
-export function buildIprPdf(summary: IprEvidenceSummary): Uint8Array {
+export function buildIprPdf(summary: IprEvidenceSummary): ArrayBuffer {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
   const margin = 36
 
@@ -96,5 +96,5 @@ export function buildIprPdf(summary: IprEvidenceSummary): Uint8Array {
     margin: { left: margin, right: margin }
   })
 
-  return new Uint8Array(doc.output('arraybuffer'))
+  return doc.output('arraybuffer')
 }
