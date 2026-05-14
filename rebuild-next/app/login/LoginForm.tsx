@@ -1,25 +1,17 @@
 'use client'
 
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/Button'
-import { signInAction, signInWithGoogleAction, signUpAction, type AuthActionState } from './actions'
+import { signInAction, signUpAction, type AuthActionState } from './actions'
 
 const initialState: AuthActionState = {}
 
 function SubmitButton({ mode }: { readonly mode: 'signin' | 'signup' }): JSX.Element {
   const { pending } = useFormStatus()
   return <Button variant="primary" type="submit" disabled={pending}>{pending ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}</Button>
-}
-
-function GoogleButton(): JSX.Element {
-  const { pending } = useFormStatus()
-  return (
-    <button type="submit" disabled={pending} className="rounded-md border border-border bg-elevated px-4 py-3 text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)] disabled:opacity-60">
-      {pending ? 'Opening Google…' : 'Continue with Google'}
-    </button>
-  )
 }
 
 export function LoginForm(): JSX.Element {
@@ -29,13 +21,13 @@ export function LoginForm(): JSX.Element {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const action = mode === 'signin' ? signInAction : signUpAction
   const [state, formAction] = useFormState(action, initialState)
+  const googleHref = `/auth/google?next=${encodeURIComponent(next)}`
 
   return (
     <div className="grid gap-4">
-      <form action={signInWithGoogleAction} className="grid gap-3">
-        <input type="hidden" name="next" value={next} />
-        <GoogleButton />
-      </form>
+      <Link href={googleHref} className="rounded-md border border-border bg-elevated px-4 py-3 text-center text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)]">
+        Continue with Google
+      </Link>
       <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
         <span className="h-px flex-1 bg-border" />
         Email access
