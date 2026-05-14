@@ -20,6 +20,10 @@ function getNextPath(formData: FormData): string {
   return next
 }
 
+function getOrigin(): string {
+  return headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+}
+
 export async function signInAction(_prevState: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
@@ -35,6 +39,23 @@ export async function signInAction(_prevState: AuthActionState, formData: FormDa
   redirect(next)
 }
 
+export async function signInWithGoogleAction(formData: FormData): Promise<void> {
+  const next = getNextPath(formData)
+  const supabase = createClient()
+  const origin = getOrigin()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+    }
+  })
+
+  if (error || !data.url) redirect(`/login?error=${encodeURIComponent(error?.message ?? 'Google sign-in could not be started.')}`)
+
+  redirect(data.url)
+}
+
 export async function signUpAction(_prevState: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
@@ -44,7 +65,7 @@ export async function signUpAction(_prevState: AuthActionState, formData: FormDa
   if (!email || !password) return { error: 'Email and password are required.' }
   if (password.length < 8) return { error: 'Password must be at least 8 characters.' }
 
-  const origin = headers().get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const origin = getOrigin()
   const supabase = createClient()
 
   const { data, error } = await supabase.auth.signUp({
