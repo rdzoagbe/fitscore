@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useEffect, useTransition, useRef } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { runScannerAction, deleteCvAction, uploadCvAction, type ScannerState, type CvUploadState } from './actions'
@@ -64,17 +64,21 @@ export function ScannerForm({ cvVersions, stats, greeting, firstName, history }:
   const [showUpload, setShowUpload] = useState(false)
   const [selectedCvId, setSelectedCvId] = useState(cvVersions[0]?.id ?? '')
   const [isPending, startTransition] = useTransition()
+  const handledUploadMessage = useRef<string | undefined>(undefined)
 
   const selectedCv = cvVersions.find(cv => cv.id === selectedCvId) ?? cvVersions[0]
   const isLinkedIn = jobUrl.includes('linkedin.com/jobs/')
   const hasCV = cvVersions.length > 0
 
   useEffect(() => {
-    if (uploadState.message) {
+    if (uploadState.message && uploadState.message !== handledUploadMessage.current) {
+      handledUploadMessage.current = uploadState.message
       setShowUpload(false)
       router.refresh()
     }
-  }, [uploadState.message, router])
+  // router is a stable singleton — intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadState.message])
 
   function handleDelete(): void {
     if (!selectedCv || !confirm('Remove this CV version?')) return
