@@ -8,16 +8,29 @@ import { formatPrice } from '@/lib/billing/plans'
 import { getUserPlan, isCheckoutConfigured } from '@/lib/billing/profile-plan'
 import { getUsageSnapshot } from '@/lib/billing/usage'
 
-export default async function BillingPage(): Promise<JSX.Element> {
+type BillingPageProps = {
+  readonly searchParams?: {
+    readonly checkout?: string
+    readonly plan?: string
+  }
+}
+
+export default async function BillingPage({ searchParams }: BillingPageProps): Promise<JSX.Element> {
   const user = await requireUserSession()
   const plan = await getUserPlan(user.id)
   const usage = await getUsageSnapshot(user.id, plan.id)
   const checkoutReady = isCheckoutConfigured()
   const metrics = usageMetricsFromSnapshot(usage)
+  const checkoutNotice = searchParams?.checkout === 'not_configured'
 
   return (
     <AppShell>
       <PageScaffold title="Billing & Usage" subtitle="Your current plan, feature limits and remaining usage">
+        {checkoutNotice ? (
+          <section className="rounded-lg border border-amber/30 bg-amber/10 p-4 text-sm leading-6 text-[var(--text-secondary)]">
+            <strong className="text-[var(--text-primary)]">Checkout is not active yet.</strong> The selected plan{searchParams?.plan ? ` (${searchParams.plan})` : ''} is visible, but payment is disabled until Stripe checkout is configured.
+          </section>
+        ) : null}
         <section className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
           <Card>
             <CardHeader><CardTitle>Current plan</CardTitle></CardHeader>
@@ -31,7 +44,7 @@ export default async function BillingPage(): Promise<JSX.Element> {
             </div>
             <div className="mt-5 grid gap-3">
               <Link href="/pricing" className="rounded-md bg-accent px-4 py-3 text-center text-sm font-medium text-slate-950 transition hover:opacity-90">View plans</Link>
-              {!checkoutReady ? <p className="text-xs leading-6 text-[var(--text-muted)]">Checkout is prepared but not active yet. No payment is taken from this preview build.</p> : null}
+              {!checkoutReady ? <p className="text-xs leading-6 text-[var(--text-muted)]">Checkout is prepared but not active yet. No payment is taken from this build.</p> : null}
             </div>
           </Card>
           <Card>
