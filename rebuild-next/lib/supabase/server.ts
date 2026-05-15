@@ -1,34 +1,26 @@
 import { cookies } from 'next/headers'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getSupabaseEnv } from '@/lib/supabase/env'
-
-function safelySetCookie(cookieStore: ReturnType<typeof cookies>, name: string, value: string, options: CookieOptions): void {
-  try {
-    cookieStore.set({ name, value, ...options })
-  } catch {
-    // Server Components cannot always mutate cookies during RSC navigation.
-    // Supabase may try to refresh auth cookies while rendering a page; swallowing
-    // this keeps app navigation from crashing and lets middleware/route handlers
-    // handle cookie writes where Next.js allows them.
-  }
-}
 
 export function createClient(): SupabaseClient {
   const cookieStore = cookies()
-  const env = getSupabaseEnv()
 
-  return createServerClient(env.url, env.anonKey, {
-    cookies: {
-      get(name: string): string | undefined {
-        return cookieStore.get(name)?.value
-      },
-      set(name: string, value: string, options: CookieOptions): void {
-        safelySetCookie(cookieStore, name, value, options)
-      },
-      remove(name: string, options: CookieOptions): void {
-        safelySetCookie(cookieStore, name, '', options)
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {}
+        }
       }
     }
-  })
+  )
 }
