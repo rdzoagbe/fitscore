@@ -5,29 +5,67 @@ export type SupabaseEnv = {
     readonly url: string
     readonly anonKey: string
   }
+  readonly diagnostics: {
+    readonly urlCandidates: Array<{ readonly name: string; readonly present: boolean; readonly valid: boolean }>
+  }
+}
+
+type EnvCandidate = {
+  readonly name: string
+  readonly value: string
 }
 
 function clean(value: string | undefined): string {
   return (value ?? '').trim()
 }
 
+function isValidHttpUrl(value: string): boolean {
+  if (!value) return false
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+function firstValid(candidates: EnvCandidate[]): EnvCandidate | null {
+  return candidates.find(candidate => isValidHttpUrl(candidate.value)) ?? null
+}
+
+function firstPresent(candidates: EnvCandidate[]): EnvCandidate | null {
+  return candidates.find(candidate => candidate.value.length > 0) ?? null
+}
+
 export function getSupabaseEnv(): SupabaseEnv {
-  const nextUrl = clean(process.env.NEXT_PUBLIC_SUPABASE_URL)
-  const viteUrl = clean(process.env.VITE_SUPABASE_URL)
-  const legacyUrl = clean(process.env.SUPABASE_URL)
+  const urlCandidates: EnvCandidate[] = [
+    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: clean(process.env.NEXT_PUBLIC_SUPABASE_URL) },
+    { name: 'VITE_SUPABASE_URL', value: clean(process.env.VITE_SUPABASE_URL) },
+    { name: 'SUPABASE_URL', value: clean(process.env.SUPABASE_URL) }
+  ]
 
-  const nextAnon = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  const viteAnon = clean(process.env.VITE_SUPABASE_ANON_KEY)
+  const anonCandidates: EnvCandidate[] = [
+    { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', value: clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) },
+    { name: 'VITE_SUPABASE_ANON_KEY', value: clean(process.env.VITE_SUPABASE_ANON_KEY) }
+  ]
 
-  const url = nextUrl || viteUrl || legacyUrl
-  const anonKey = nextAnon || viteAnon
+  const validUrl = firstValid(urlCandidates)
+  const fallbackUrl = firstPresent(urlCandidates)
+  const anonKey = firstPresent(anonCandidates)
 
   return {
-    url,
-    anonKey,
+    url: validUrl?.value ?? fallbackUrl?.value ?? '',
+    anonKey: anonKey?.value ?? '',
     source: {
-      url: nextUrl ? 'NEXT_PUBLIC_SUPABASE_URL' : viteUrl ? 'VITE_SUPABASE_URL' : legacyUrl ? 'SUPABASE_URL' : 'missing',
-      anonKey: nextAnon ? 'NEXT_PUBLIC_SUPABASE_ANON_KEY' : viteAnon ? 'VITE_SUPABASE_ANON_KEY' : 'missing'
+      url: validUrl?.name ?? fallbackUrl?.name ?? 'missing',
+      anonKey: anonKey?.name ?? 'missing'
+    },
+    diagnostics: {
+      urlCandidates: urlCandidates.map(candidate => ({
+        name: candidate.name,
+        present: candidate.value.length > 0,
+        valid: isValidHttpUrl(candidate.value)
+      }))
     }
   }
 }
@@ -39,13 +77,8 @@ export function validateSupabaseEnv(): { ok: true; env: SupabaseEnv } | { ok: fa
     return { ok: false, message: 'Missing Supabase URL or anon key.', env }
   }
 
-  try {
-    const parsed = new URL(env.url)
-    if (!parsed.protocol.startsWith('http')) {
-      return { ok: false, message: 'Supabase URL must start with http or https.', env }
-    }
-  } catch {
-    return { ok: false, message: 'Supabase URL is not a valid URL.', env }
+  if (!isValidHttpUrl(env.url)) {
+    return { ok: false, message: 'Supabase URL is not a valid URL. It must look like https://your-project-ref.supabase.co', env }
   }
 
   if (env.anonKey.length < 40) {
