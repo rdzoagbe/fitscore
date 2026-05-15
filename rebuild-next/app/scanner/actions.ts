@@ -123,7 +123,6 @@ export async function runScannerAction(_prevState: ScannerState, formData: FormD
   const { error: insertError } = await supabase.from('ats_analyses').insert({
     user_id: user.id,
     cv_version_id: cvVersionId,
-    overall_score: result.overall_score,
     result_json: result
   })
 
