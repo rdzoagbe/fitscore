@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Mono, Instrument_Serif } from 'next/font/google'
+import { PreferencesProvider } from '@/components/system/PreferencesProvider'
 import { ServiceWorkerReset } from '@/components/system/ServiceWorkerReset'
 import './globals.css'
 
@@ -16,8 +17,9 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
   return (
-    <html lang="fr" className={`${dmMono.variable} ${instrumentSerif.variable}`}>
+    <html lang="en" className={`${dmMono.variable} ${instrumentSerif.variable}`} data-theme="dark" data-language="en">
       <body>
+        <PreferencesProvider />
         <ServiceWorkerReset />
         {children}
       </body>
