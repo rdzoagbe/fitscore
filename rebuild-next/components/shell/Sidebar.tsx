@@ -1,45 +1,10 @@
 import Link from 'next/link'
-import type { NavItem } from '@/types'
+import { navGroups } from '@/components/shell/NavLinks'
 
 interface SidebarProps {
   readonly userName: string
   readonly userEmail: string
 }
-
-const groups: Array<{ title: string; items: NavItem[] }> = [
-  {
-    title: 'Workspace',
-    items: [
-      { href: '/dashboard', label: 'Dashboard', icon: 'D' },
-      { href: '/tracker', label: 'Job Tracker', icon: 'T' },
-      { href: '/scanner', label: 'ATS Scanner', icon: 'S' },
-      { href: '/cover-letters', label: 'Cover Letters', icon: 'C' }
-    ]
-  },
-  {
-    title: 'Prepare',
-    items: [
-      { href: '/interview', label: 'Interview Prep', icon: 'I' },
-      { href: '/cv-enhancer', label: 'CV Enhancer', icon: 'V' },
-      { href: '/keywords', label: 'Keywords', icon: 'K' }
-    ]
-  },
-  {
-    title: 'Reports',
-    items: [
-      { href: '/analytics', label: 'Analytics', icon: 'A' },
-      { href: '/export-ipr', label: 'Export IPR', icon: 'E' }
-    ]
-  },
-  {
-    title: 'Account',
-    items: [
-      { href: '/billing', label: 'Billing & Usage', icon: 'B' },
-      { href: '/pricing', label: 'Pricing', icon: 'P' },
-      { href: '/logout', label: 'Logout', icon: 'L' }
-    ]
-  }
-]
 
 function initials(name: string): string {
   return name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'U'
@@ -56,7 +21,7 @@ export function Sidebar({ userName, userEmail }: SidebarProps): JSX.Element {
         </span>
       </Link>
       <nav className="flex-1 space-y-5 overflow-y-auto p-3">
-        {groups.map(group => (
+        {navGroups.map(group => (
           <section key={group.title}>
             <p className="mb-2 px-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{group.title}</p>
             <div className="space-y-1">
