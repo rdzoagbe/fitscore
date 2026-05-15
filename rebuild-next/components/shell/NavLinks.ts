@@ -28,7 +28,7 @@ export const navGroups = [
     items: [
       { href: '/billing', label: 'Billing & Usage', icon: 'B', description: 'Current plan and usage limits' },
       { href: '/pricing', label: 'Pricing', icon: 'P', description: 'Public plans and checkout-safe pricing' },
-      { href: '/logout', label: 'Logout', icon: 'L', description: 'End this session securely' }
+      { href: '/settings', label: 'Settings', icon: 'S', description: 'Account, profile and preferences' }
     ]
   }
 ] as const
@@ -37,6 +37,6 @@ export const mobileNavItems = [
   { href: '/dashboard', label: 'Home' },
   { href: '/tracker', label: 'Track' },
   { href: '/scanner', label: 'Scan' },
-  { href: '/cv-enhancer', label: 'CV' },
-  { href: '/more', label: 'More' }
+  { href: '/cover-letters', label: 'Letters' },
+  { href: '/settings', label: 'Account' }
 ] as const
