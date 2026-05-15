@@ -28,7 +28,7 @@ export function LoginForm({ nextPath, initialError, loggedOut = false }: LoginFo
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(initialError ?? null)
   const [info, setInfo] = useState<string | null>(loggedOut ? 'You have been signed out. You can sign back in below.' : null)
-  const [ready, setReady] = useState(false)
+  const [ready] = useState(true)
 
   useEffect(() => {
     let active = true
@@ -38,16 +38,12 @@ export function LoginForm({ nextPath, initialError, loggedOut = false }: LoginFo
         .then(({ data: { session } }) => {
           if (!active) return
           if (session) router.replace(next)
-          else setReady(true)
         })
-        .catch(authError => {
-          if (!active) return
-          setError(authError instanceof Error ? authError.message : 'Authentication could not be initialized.')
-          setReady(true)
+        .catch(() => {
+          // session check failed — stay on login page
         })
     } catch (clientError) {
-      setError(clientError instanceof Error ? clientError.message : 'Authentication could not be initialized.')
-      setReady(true)
+      if (active) setError(clientError instanceof Error ? clientError.message : 'Authentication could not be initialized.')
     }
 
     return () => { active = false }
