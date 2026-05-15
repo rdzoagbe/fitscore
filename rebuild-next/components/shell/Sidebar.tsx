@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { navGroups } from '@/components/shell/NavLinks'
 
 interface SidebarProps {
@@ -13,23 +12,23 @@ function initials(name: string): string {
 export function Sidebar({ userName, userEmail }: SidebarProps): JSX.Element {
   return (
     <aside className="hidden min-h-dvh w-64 shrink-0 border-r border-border bg-[var(--bg-input)] lg:flex lg:flex-col">
-      <Link href="/dashboard" className="flex h-16 items-center gap-3 border-b border-border px-4">
+      <a href="/dashboard" className="flex h-16 items-center gap-3 border-b border-border px-4">
         <span className="grid h-9 w-9 place-items-center rounded-md bg-accent text-sm font-semibold text-slate-950">J</span>
         <span>
           <strong className="block font-display text-lg italic font-normal">Joblytics</strong>
           <small className="text-xs text-[var(--text-muted)]">Application workspace</small>
         </span>
-      </Link>
+      </a>
       <nav className="flex-1 space-y-5 overflow-y-auto p-3">
         {navGroups.map(group => (
           <section key={group.title}>
             <p className="mb-2 px-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{group.title}</p>
             <div className="space-y-1">
               {group.items.map(item => (
-                <Link key={item.href} href={item.href} className="focus-ring flex min-h-11 items-center gap-3 rounded-md px-3 text-sm text-[var(--text-secondary)] transition hover:bg-elevated hover:text-[var(--text-primary)]">
+                <a key={item.href} href={item.href} className="focus-ring flex min-h-11 items-center gap-3 rounded-md px-3 text-sm text-[var(--text-secondary)] transition hover:bg-elevated hover:text-[var(--text-primary)]">
                   <span className="grid h-6 w-6 place-items-center rounded-sm bg-elevated text-[10px] text-accent">{item.icon}</span>
                   <span className="truncate">{item.label}</span>
-                </Link>
+                </a>
               ))}
             </div>
           </section>
