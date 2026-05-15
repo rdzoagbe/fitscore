@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { validateSupabaseEnv } from '@/lib/supabase/env'
 
 function safeNext(value: string | null): string {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard'
@@ -27,12 +28,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return redirectToLogin(requestUrl.origin, 'Authentication callback did not include a code.')
   }
 
-  const supabase = createClient()
+  const envCheck = validateSupabaseEnv()
+  if (!envCheck.ok) {
+    return redirectToLogin(requestUrl.origin, envCheck.message)
+  }
+
+  const redirectResponse = NextResponse.redirect(new URL(next, requestUrl.origin))
+
+  const supabase = createServerClient(envCheck.env.url, envCheck.env.anonKey, {
+    cookies: {
+      get(name: string): string | undefined {
+        return request.cookies.get(name)?.value
+      },
+      set(name: string, value: string, options: CookieOptions): void {
+        redirectResponse.cookies.set({ name, value, ...options })
+      },
+      remove(name: string, options: CookieOptions): void {
+        redirectResponse.cookies.set({ name, value: '', ...options })
+      }
+    }
+  })
+
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
   if (exchangeError) {
     return redirectToLogin(requestUrl.origin, exchangeError.message)
   }
 
-  return NextResponse.redirect(new URL(next, requestUrl.origin))
+  return redirectResponse
 }
