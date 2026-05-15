@@ -12,7 +12,7 @@ interface SidebarProps {
 }
 
 function initials(name: string): string {
-  return name.split(' ').map(part => part[0]).join('').slice(0, 2).join('').toUpperCase() || 'U'
+  return name.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'U'
 }
 
 export function Sidebar({ userName, userEmail }: SidebarProps): JSX.Element {
