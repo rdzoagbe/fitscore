@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
@@ -27,9 +26,9 @@ export function LoginForm(): JSX.Element {
   return (
     <div className="grid gap-4">
       {loggedOut ? <p className="rounded-md border border-emerald/20 bg-emerald/10 p-3 text-xs text-emerald">You have been signed out. You can sign back in below.</p> : null}
-      <Link href={googleHref} className="rounded-md border border-border bg-elevated px-4 py-3 text-center text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)]">
+      <a href={googleHref} className="rounded-md border border-border bg-elevated px-4 py-3 text-center text-sm text-[var(--text-primary)] transition hover:border-[var(--border-strong)]">
         Continue with Google
-      </Link>
+      </a>
       <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
         <span className="h-px flex-1 bg-border" />
         Email access
