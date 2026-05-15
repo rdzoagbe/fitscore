@@ -9,7 +9,7 @@ import {
   type Theme, type Language,
 } from '@/components/system/PreferencesProvider'
 
-/* ── SVG icon helper ───────────────────────────────────── */
+/* ── SVG icon helper ─────────────────────────────────────── */
 function Ico({ d, size = 16 }: { readonly d: string; readonly size?: number }): JSX.Element {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -20,7 +20,7 @@ function Ico({ d, size = 16 }: { readonly d: string; readonly size?: number }): 
   )
 }
 
-/* ── Icon paths ────────────────────────────────────────── */
+/* ── Icon paths ──────────────────────────────────────────── */
 const ic = {
   analyze:     'M22 11.08V12a10 10 0 11-5.93-9.14M22 4L12 14.01l-3-3',
   tracker:     'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
@@ -42,7 +42,7 @@ const ic = {
 
 type IconKey = keyof typeof ic
 
-/* ── Nav data ──────────────────────────────────────────── */
+/* ── Nav data ────────────────────────────────────────────── */
 type NavItem = { href: string; label: string; icon: IconKey }
 
 const mainItems: NavItem[] = [
@@ -56,11 +56,11 @@ const toolItems: NavItem[] = [
   { href: '/cv-enhancer',   label: 'CV Manager',     icon: 'cv' },
 ]
 const reportItems: NavItem[] = [
-  { href: '/analytics',  label: 'Analytics',   icon: 'analytics' },
+  { href: '/analytics',  label: 'Analytics',    icon: 'analytics' },
   { href: '/export-ipr', label: 'Export / IPR', icon: 'exportIpr' },
 ]
 
-/* ── Language data ─────────────────────────────────────── */
+/* ── Language data ─────────────────────────────────────────── */
 const langs: { code: Language; flag: string; name: string }[] = [
   { code: 'en', flag: '🇺🇸', name: 'English' },
   { code: 'fr', flag: '🇫🇷', name: 'Français' },
@@ -72,7 +72,7 @@ const langs: { code: Language; flag: string; name: string }[] = [
   { code: 'ar', flag: '🇸🇦', name: 'العربية' },
 ]
 
-/* ── Nav link ──────────────────────────────────────────── */
+/* ── Nav link ────────────────────────────────────────────── */
 function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string; onClick?: () => void }): JSX.Element {
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
   return (
@@ -100,7 +100,7 @@ function Label({ children }: { readonly children: string }): JSX.Element {
   )
 }
 
-/* ── Inner content (shared) ────────────────────────────── */
+/* ── Inner content (shared) ──────────────────────────────────── */
 function Content({ userName, userEmail, pathname, onClose }: {
   readonly userName: string
   readonly userEmail: string
@@ -239,7 +239,7 @@ function Content({ userName, userEmail, pathname, onClose }: {
   )
 }
 
-/* ── Public export ─────────────────────────────────────── */
+/* ── Public export ───────────────────────────────────────────── */
 export function Sidebar({ userName, userEmail }: { readonly userName: string; readonly userEmail: string }): JSX.Element {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
