@@ -1,5 +1,4 @@
 import { AtsAnalysisCard } from '@/components/ats/AtsAnalysisCard'
-import { PageScaffold } from '@/components/dashboard/PageScaffold'
 import { ProgressRow } from '@/components/dashboard/ProgressRow'
 import { AppShell } from '@/components/shell/AppShell'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -35,32 +34,30 @@ export default async function ScannerPage(): Promise<JSX.Element> {
 
   return (
     <AppShell>
-      <PageScaffold title="ATS Scanner" subtitle="Compare a job description against your parsed CV versions">
-        <section className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
-          <Card>
-            <CardHeader><CardTitle>Run ATS analysis</CardTitle></CardHeader>
-            {cvVersions.length === 0 ? (
-              <p className="rounded-md border border-amber/20 bg-amber/10 p-4 text-sm text-amber">Upload and parse a CV in CV Enhancer before running an ATS scan.</p>
-            ) : <ScannerForm cvVersions={cvVersions} />}
-          </Card>
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+        {/* Main scanner form */}
+        <ScannerForm cvVersions={cvVersions} />
+
+        {/* Sidebar */}
+        <div className="flex flex-col gap-4">
           <Card>
             <CardHeader><CardTitle>Scan readiness</CardTitle></CardHeader>
             <div className="grid gap-3">
               <ProgressRow label="CV versions" value={cvVersions.length > 0 ? 100 : 0} tone={cvVersions.length > 0 ? 'emerald' : 'red'} />
               <ProgressRow label="Latest score" value={latestScore ?? 0} tone={(latestScore ?? 0) >= 70 ? 'emerald' : 'amber'} />
               <ProgressRow label="Saved scans" value={Math.min(history.length * 20, 100)} tone={history.length > 0 ? 'emerald' : 'amber'} />
-              <ProgressRow label="AI fallback" value={100} tone="violet" />
             </div>
-            <p className="mt-5 text-sm leading-6 text-[var(--text-secondary)]">The scanner uses structured AI output when ANTHROPIC_API_KEY is available, and a deterministic ATS fallback when it is not.</p>
           </Card>
-        </section>
-        <Card>
-          <CardHeader><CardTitle>Recent ATS scans</CardTitle></CardHeader>
-          <div className="grid gap-3">
-            {history.length === 0 ? <p className="text-sm text-[var(--text-muted)]">No ATS scans saved yet. Run your first scan above.</p> : history.map(item => <AtsAnalysisCard key={item.id} item={item} compact />)}
-          </div>
-        </Card>
-      </PageScaffold>
+          <Card>
+            <CardHeader><CardTitle>Recent ATS scans</CardTitle></CardHeader>
+            <div className="grid gap-3">
+              {history.length === 0
+                ? <p className="text-sm text-[var(--text-muted)]">No scans yet. Run your first scan.</p>
+                : history.map(item => <AtsAnalysisCard key={item.id} item={item} compact />)}
+            </div>
+          </Card>
+        </div>
+      </div>
     </AppShell>
   )
 }
