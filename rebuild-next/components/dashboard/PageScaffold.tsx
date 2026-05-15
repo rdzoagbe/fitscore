@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { Topbar } from '@/components/shell/Topbar'
 
 interface PageScaffoldProps {
   readonly title: string
@@ -9,9 +8,12 @@ interface PageScaffoldProps {
 
 export function PageScaffold({ title, subtitle, children }: PageScaffoldProps): JSX.Element {
   return (
-    <>
-      <Topbar title={title} subtitle={subtitle} />
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 lg:p-6">{children}</main>
-    </>
+    <div className="flex flex-col gap-5">
+      <div>
+        <h1 className="font-display text-2xl font-semibold text-[var(--text-primary)]">{title}</h1>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">{subtitle}</p>
+      </div>
+      {children}
+    </div>
   )
 }
