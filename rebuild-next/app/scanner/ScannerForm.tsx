@@ -3,8 +3,8 @@
 import { useState, useEffect, useTransition } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { runScannerAction, deleteCvAction, type ScannerState } from './actions'
-import { uploadCvAction, type CvUploadState } from '@/app/cv-enhancer/actions'
+import { runScannerAction, deleteCvAction, uploadCvAction, type ScannerState, type CvUploadState } from './actions'
+import type { AtsHistoryItem } from '@/lib/ats/history'
 
 type CvOption = {
   readonly id: string
@@ -48,11 +48,12 @@ function UploadSubmitButton(): JSX.Element {
   )
 }
 
-export function ScannerForm({ cvVersions, stats, greeting, firstName }: {
+export function ScannerForm({ cvVersions, stats, greeting, firstName, history }: {
   readonly cvVersions: CvOption[]
   readonly stats: Stats
   readonly greeting: string
   readonly firstName: string
+  readonly history: AtsHistoryItem[]
 }): JSX.Element {
   const router = useRouter()
   const [scanState, scanFormAction] = useFormState(runScannerAction, emptyScan)
@@ -371,6 +372,37 @@ export function ScannerForm({ cvVersions, stats, greeting, firstName }: {
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Scan history */}
+      {history.length > 0 && (
+        <section className="mt-8">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">Recent scans</h3>
+          <div className="grid gap-2">
+            {history.map(item => {
+              const score = item.overallScore ?? item.result.overall_score
+              const scoreColor = score >= 70 ? 'text-emerald-400' : score >= 50 ? 'text-amber-400' : 'text-red-400'
+              const date = new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+              return (
+                <div key={item.id} className="flex items-center gap-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-3">
+                  <span className={`w-12 shrink-0 text-right text-xl font-bold ${scoreColor}`}>{score}%</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                      {item.cvVersion?.name ?? 'CV'}
+                      {item.cvVersion?.targetRole ? <span className="ml-1 text-[var(--text-muted)]">· {item.cvVersion.targetRole}</span> : null}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">{date}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-1">
+                    {item.result.missing_keywords.slice(0, 3).map(k => (
+                      <span key={k.keyword} className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">{k.keyword}</span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
       )}

@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/shell/AppShell'
 import { requireUserSession } from '@/lib/auth/profile-session'
 import { createClient } from '@/lib/supabase/server'
+import { getAtsHistory } from '@/lib/ats/history'
 import { ScannerForm } from './ScannerForm'
 
 type CvOption = { id: string; name: string; file_name: string; target_role: string | null }
@@ -41,7 +42,7 @@ function getGreeting(): string {
 
 export default async function ScannerPage(): Promise<JSX.Element> {
   const user = await requireUserSession()
-  const [cvVersions, stats] = await Promise.all([getCvVersions(user.id), getScanStats(user.id)])
+  const [cvVersions, stats, history] = await Promise.all([getCvVersions(user.id), getScanStats(user.id), getAtsHistory(user.id, 10)])
   const firstName = user.name.split(' ')[0] ?? user.name
 
   return (
@@ -51,6 +52,7 @@ export default async function ScannerPage(): Promise<JSX.Element> {
         stats={stats}
         greeting={getGreeting()}
         firstName={firstName}
+        history={history}
       />
     </AppShell>
   )
