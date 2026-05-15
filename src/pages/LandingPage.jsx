@@ -77,13 +77,19 @@ function StatStrip() {
   )
 }
 
-function WorkflowStep({ number, title, text, cta, href }) {
+function WorkflowStep({ number, title, text, cta, href, onClick }) {
+  const handleClick = event => {
+    if (!onClick) return
+    event.preventDefault()
+    onClick()
+  }
+
   return (
     <article className="workflow-step">
       <span>{number}</span>
       <h3>{title}</h3>
       <p>{text}</p>
-      {href && <a href={href}>{cta} →</a>}
+      {cta && <a href={href || '#signup'} onClick={handleClick}>{cta} →</a>}
     </article>
   )
 }
@@ -167,9 +173,9 @@ export default function LandingPage() {
   const openAuth = mode => { setAuthMode(mode); setAuthOpen(true) }
 
   const workflow = useMemo(() => ([
-    ['01', 'Upload or select a CV version', 'Use your uploaded CV or the active version from your CV vault.', 'Start with CV', '/app'],
-    ['02', 'Analyze the job match', 'Paste a job description and see score, keyword gaps, risks, and next steps.', 'Run ATS check', '/app'],
-    ['03', 'Improve the application package', 'Generate better CV bullets, a cover letter, LinkedIn improvements, and interview prep.', 'Open workspace', '/app']
+    ['01', 'Upload or select a CV version', 'Use your uploaded CV or the active version from your CV vault.', 'Start with CV'],
+    ['02', 'Analyze the job match', 'Paste a job description and see score, keyword gaps, risks, and next steps.', 'Run ATS check'],
+    ['03', 'Improve the application package', 'Generate better CV bullets, a cover letter, LinkedIn improvements, and interview prep.', 'Open workspace']
   ]), [])
 
   return (
@@ -205,7 +211,7 @@ export default function LandingPage() {
             <p>Each result becomes the next action, so you know whether to improve the CV, apply, follow up, or prepare for the interview.</p>
           </div>
           <div className="workflow-grid">
-            {workflow.map(([number, title, text, cta, href]) => <WorkflowStep key={number} number={number} title={title} text={text} cta={cta} href={href} />)}
+            {workflow.map(([number, title, text, cta]) => <WorkflowStep key={number} number={number} title={title} text={text} cta={cta} onClick={() => openAuth('signup')} />)}
           </div>
         </section>
 
