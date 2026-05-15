@@ -1,20 +1,20 @@
 import type { ReactNode } from 'react'
-import { TopNav } from '@/components/shell/TopNav'
 import { requireUserSession } from '@/lib/auth/profile-session'
+import { Sidebar } from '@/components/shell/Sidebar'
 
-interface AppShellProps {
-  readonly children: ReactNode
-}
-
-export async function AppShell({ children }: AppShellProps): Promise<JSX.Element> {
-  const currentUser = await requireUserSession()
-
+export async function AppShell({ children }: { readonly children: ReactNode }): Promise<JSX.Element> {
+  const user = await requireUserSession()
   return (
-    <div className="min-h-dvh bg-bg text-[var(--text-primary)]">
-      <TopNav userName={currentUser.name} />
-      <main className="mx-auto w-full max-w-5xl px-4 py-6">
-        {children}
-      </main>
+    <div className="flex min-h-dvh bg-[var(--bg)]">
+      <Sidebar userName={user.name} userEmail={user.email} />
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-[var(--sidebar-w)]">
+        <div className="h-14 shrink-0 lg:hidden" />
+        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
+          <div className="mx-auto max-w-5xl">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
