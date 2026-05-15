@@ -1,49 +1,20 @@
 import Link from 'next/link'
 import { PageScaffold } from '@/components/dashboard/PageScaffold'
 import { AppShell } from '@/components/shell/AppShell'
+import { navGroups } from '@/components/shell/NavLinks'
+import { PreferenceControls } from '@/components/shell/PreferenceControls'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-
-const groups = [
-  {
-    title: 'Workspace',
-    items: [
-      { href: '/dashboard', label: 'Dashboard', description: 'Main cockpit overview' },
-      { href: '/tracker', label: 'Job Tracker', description: 'Applications, statuses and follow-up intelligence' },
-      { href: '/scanner', label: 'ATS Scanner', description: 'Compare CV versions against job descriptions' },
-      { href: '/cover-letters', label: 'Cover Letters', description: 'Generate and review saved letters' }
-    ]
-  },
-  {
-    title: 'Prepare',
-    items: [
-      { href: '/interview', label: 'Interview Prep', description: 'Generate role-specific interview preparation' },
-      { href: '/cv-enhancer', label: 'CV Enhancer', description: 'Upload, parse and improve CV versions' },
-      { href: '/keywords', label: 'Keywords', description: 'Keyword intelligence from ATS history' }
-    ]
-  },
-  {
-    title: 'Reports',
-    items: [
-      { href: '/analytics', label: 'Analytics', description: 'Conversion rates, platforms and trends' },
-      { href: '/export-ipr', label: 'Export IPR', description: 'France Travail evidence dossier export' }
-    ]
-  },
-  {
-    title: 'Account',
-    items: [
-      { href: '/billing', label: 'Billing & Usage', description: 'Current plan and usage limits' },
-      { href: '/pricing', label: 'Pricing', description: 'Public plans and checkout-safe pricing' },
-      { href: '/logout', label: 'Logout', description: 'End this session securely' }
-    ]
-  }
-]
 
 export default function MorePage(): JSX.Element {
   return (
     <AppShell>
       <PageScaffold title="More" subtitle="All Joblytics pages in one mobile-friendly menu">
+        <section className="rounded-lg border border-border bg-elevated p-4 md:hidden">
+          <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">Preferences</p>
+          <PreferenceControls />
+        </section>
         <section className="grid gap-4 xl:grid-cols-2">
-          {groups.map(group => (
+          {navGroups.map(group => (
             <Card key={group.title}>
               <CardHeader><CardTitle>{group.title}</CardTitle></CardHeader>
               <div className="grid gap-2">
