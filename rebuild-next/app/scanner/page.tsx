@@ -1,18 +1,9 @@
-import { AtsAnalysisCard } from '@/components/ats/AtsAnalysisCard'
-import { ProgressRow } from '@/components/dashboard/ProgressRow'
 import { AppShell } from '@/components/shell/AppShell'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { getAtsHistory } from '@/lib/ats/history'
 import { requireUserSession } from '@/lib/auth/profile-session'
 import { createClient } from '@/lib/supabase/server'
 import { ScannerForm } from './ScannerForm'
 
-type CvOption = {
-  id: string
-  name: string
-  file_name: string
-  target_role: string | null
-}
+type CvOption = { id: string; name: string; file_name: string; target_role: string | null }
 
 async function getCvVersions(userId: string): Promise<CvOption[]> {
   const supabase = createClient()
@@ -23,41 +14,44 @@ async function getCvVersions(userId: string): Promise<CvOption[]> {
     .not('parsed_text', 'is', null)
     .order('created_at', { ascending: false })
     .limit(10)
-
   return (data ?? []) as CvOption[]
+}
+
+async function getScanStats(userId: string): Promise<{ total: number; avg: number; best: number }> {
+  const supabase = createClient()
+  const { data } = await supabase
+    .from('ats_analyses')
+    .select('overall_score')
+    .eq('user_id', userId)
+    .not('overall_score', 'is', null)
+
+  const scores = (data ?? []).map(r => (r as { overall_score: number }).overall_score)
+  const total = scores.length
+  const avg = total > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / total) : 0
+  const best = total > 0 ? Math.max(...scores) : 0
+  return { total, avg, best }
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
 }
 
 export default async function ScannerPage(): Promise<JSX.Element> {
   const user = await requireUserSession()
-  const [cvVersions, history] = await Promise.all([getCvVersions(user.id), getAtsHistory(user.id, 5)])
-  const latestScore = history[0]?.overallScore ?? history[0]?.result.overall_score ?? null
+  const [cvVersions, stats] = await Promise.all([getCvVersions(user.id), getScanStats(user.id)])
+  const firstName = user.name.split(' ')[0] ?? user.name
 
   return (
     <AppShell>
-      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        {/* Main scanner form */}
-        <ScannerForm cvVersions={cvVersions} />
-
-        {/* Sidebar */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader><CardTitle>Scan readiness</CardTitle></CardHeader>
-            <div className="grid gap-3">
-              <ProgressRow label="CV versions" value={cvVersions.length > 0 ? 100 : 0} tone={cvVersions.length > 0 ? 'emerald' : 'red'} />
-              <ProgressRow label="Latest score" value={latestScore ?? 0} tone={(latestScore ?? 0) >= 70 ? 'emerald' : 'amber'} />
-              <ProgressRow label="Saved scans" value={Math.min(history.length * 20, 100)} tone={history.length > 0 ? 'emerald' : 'amber'} />
-            </div>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Recent ATS scans</CardTitle></CardHeader>
-            <div className="grid gap-3">
-              {history.length === 0
-                ? <p className="text-sm text-[var(--text-muted)]">No scans yet. Run your first scan.</p>
-                : history.map(item => <AtsAnalysisCard key={item.id} item={item} compact />)}
-            </div>
-          </Card>
-        </div>
-      </div>
+      <ScannerForm
+        cvVersions={cvVersions}
+        stats={stats}
+        greeting={getGreeting()}
+        firstName={firstName}
+      />
     </AppShell>
   )
 }
