@@ -2,51 +2,45 @@
 
 import { useEffect } from 'react'
 
-const THEME_KEY = 'joblytics-theme'
-const LANGUAGE_KEY = 'joblytics-language'
+export type Theme = 'dark' | 'light'
+export type Language = 'en' | 'fr' | 'de' | 'es' | 'pt' | 'it' | 'nl' | 'ar'
 
-function applyTheme(value: string | null): void {
-  const theme = value === 'light' ? 'light' : 'dark'
-  document.documentElement.dataset.theme = theme
+const THEME_KEY    = 'joblytics-theme'
+const LANG_KEY     = 'joblytics-language'
+const VALID_THEMES = new Set(['dark', 'light'])
+const VALID_LANGS  = new Set(['en', 'fr', 'de', 'es', 'pt', 'it', 'nl', 'ar'])
+
+function applyTheme(v: string | null): void {
+  document.documentElement.dataset.theme = VALID_THEMES.has(v ?? '') ? (v as Theme) : 'dark'
 }
-
-function applyLanguage(value: string | null): void {
-  const language = value === 'fr' ? 'fr' : 'en'
-  document.documentElement.lang = language
-  document.documentElement.dataset.language = language
+function applyLang(v: string | null): void {
+  const lang = VALID_LANGS.has(v ?? '') ? (v as Language) : 'en'
+  document.documentElement.lang = lang
+  document.documentElement.dataset.language = lang
 }
 
 export function PreferencesProvider(): null {
   useEffect(() => {
-    applyTheme(window.localStorage.getItem(THEME_KEY))
-    applyLanguage(window.localStorage.getItem(LANGUAGE_KEY))
-
-    function onStorage(event: StorageEvent): void {
-      if (event.key === THEME_KEY) applyTheme(event.newValue)
-      if (event.key === LANGUAGE_KEY) applyLanguage(event.newValue)
+    applyTheme(localStorage.getItem(THEME_KEY))
+    applyLang(localStorage.getItem(LANG_KEY))
+    function onStorage(e: StorageEvent): void {
+      if (e.key === THEME_KEY) applyTheme(e.newValue)
+      if (e.key === LANG_KEY) applyLang(e.newValue)
     }
-
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
-
   return null
 }
 
-export function setStoredTheme(theme: 'dark' | 'light'): void {
-  window.localStorage.setItem(THEME_KEY, theme)
-  applyTheme(theme)
+export function setStoredTheme(t: Theme): void { localStorage.setItem(THEME_KEY, t); applyTheme(t) }
+export function getStoredTheme(): Theme {
+  const v = typeof window !== 'undefined' ? localStorage.getItem(THEME_KEY) : null
+  return VALID_THEMES.has(v ?? '') ? (v as Theme) : 'dark'
 }
 
-export function getStoredTheme(): 'dark' | 'light' {
-  return window.localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark'
-}
-
-export function setStoredLanguage(language: 'en' | 'fr'): void {
-  window.localStorage.setItem(LANGUAGE_KEY, language)
-  applyLanguage(language)
-}
-
-export function getStoredLanguage(): 'en' | 'fr' {
-  return window.localStorage.getItem(LANGUAGE_KEY) === 'fr' ? 'fr' : 'en'
+export function setStoredLanguage(l: Language): void { localStorage.setItem(LANG_KEY, l); applyLang(l) }
+export function getStoredLanguage(): Language {
+  const v = typeof window !== 'undefined' ? localStorage.getItem(LANG_KEY) : null
+  return VALID_LANGS.has(v ?? '') ? (v as Language) : 'en'
 }

@@ -16,8 +16,9 @@ const config: Config = {
         border: 'var(--border)'
       },
       fontFamily: {
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         display: ['var(--font-display)'],
-        mono: ['var(--font-mono)']
+        mono: ['var(--font-mono)'],
       }
     }
   },
