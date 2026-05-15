@@ -265,7 +265,7 @@ export default function PricingPage({ onBack }) {
             </div>
           </div>
 
-          <Unlock the full workflowRecommendation usage={usage} />
+          <UpgradeRecommendation usage={usage} />
         </section>
 
         <BillingPreview />
