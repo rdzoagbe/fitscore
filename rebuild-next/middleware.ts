@@ -1,8 +1,7 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { validateSupabaseEnv } from '@/lib/supabase/env'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-const protectedPrefixes = [
+const PROTECTED_PREFIXES = [
   '/dashboard',
   '/tracker',
   '/scanner',
@@ -13,56 +12,59 @@ const protectedPrefixes = [
   '/analytics',
   '/export-ipr',
   '/billing',
+  '/settings',
+  '/account',
   '/more'
 ]
 
+function hasSupabaseEnv(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
 function redirectToLogin(request: NextRequest): NextResponse {
-  const redirectUrl = request.nextUrl.clone()
-  redirectUrl.pathname = '/login'
-  redirectUrl.searchParams.set('next', request.nextUrl.pathname)
-  return NextResponse.redirect(redirectUrl)
+  const loginUrl = new URL('/login', request.url)
+  loginUrl.searchParams.set('next', request.nextUrl.pathname)
+  return NextResponse.redirect(loginUrl)
 }
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
-  const isProtected = protectedPrefixes.some(prefix => request.nextUrl.pathname.startsWith(prefix))
-
-  if (!isProtected) return NextResponse.next({ request })
-
-  const envCheck = validateSupabaseEnv()
-  if (!envCheck.ok) return redirectToLogin(request)
-
+  const path = request.nextUrl.pathname
   let response = NextResponse.next({ request })
 
-  try {
-    const supabase = createServerClient(envCheck.env.url, envCheck.env.anonKey, {
+  if (!hasSupabaseEnv()) {
+    if (isProtectedPath(path)) return redirectToLogin(request)
+    return response
+  }
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
       cookies: {
-        get(name: string): string | undefined {
-          return request.cookies.get(name)?.value
+        getAll() {
+          return request.cookies.getAll()
         },
-        set(name: string, value: string, options: CookieOptions): void {
-          request.cookies.set({ name, value, ...options })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions): void {
-          request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({ request })
-          response.cookies.set({ name, value: '', ...options })
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         }
       }
-    })
+    }
+  )
 
-    const { data } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-    if (!data.user) return redirectToLogin(request)
+  if (isProtectedPath(path) && !user) return redirectToLogin(request)
+  if (user && path === '/login') return NextResponse.redirect(new URL('/dashboard', request.url))
 
-    return response
-  } catch (error) {
-    console.error('Middleware auth check failed', error)
-    return redirectToLogin(request)
-  }
+  return response
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']
+  matcher: ['/dashboard/:path*', '/tracker/:path*', '/scanner/:path*', '/cover-letters/:path*', '/interview/:path*', '/cv-enhancer/:path*', '/keywords/:path*', '/analytics/:path*', '/export-ipr/:path*', '/billing/:path*', '/settings/:path*', '/account/:path*', '/more/:path*', '/login']
 }
