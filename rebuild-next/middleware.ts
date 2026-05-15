@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { validateSupabaseEnv } from '@/lib/supabase/env'
 
 const protectedPrefixes = [
   '/dashboard',
@@ -27,15 +28,13 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   if (!isProtected) return NextResponse.next({ request })
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) return redirectToLogin(request)
+  const envCheck = validateSupabaseEnv()
+  if (!envCheck.ok) return redirectToLogin(request)
 
   let response = NextResponse.next({ request })
 
   try {
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createServerClient(envCheck.env.url, envCheck.env.anonKey, {
       cookies: {
         get(name: string): string | undefined {
           return request.cookies.get(name)?.value
