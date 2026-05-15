@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 const PROTECTED_PREFIXES = [
   '/dashboard', '/tracker', '/scanner', '/cover-letters',
   '/interview', '/cv-enhancer', '/keywords', '/analytics',
-  '/export-ipr', '/billing', '/settings', '/account', '/more'
+  '/export-ipr', '/billing', '/settings', '/account', '/more', '/linkedin'
 ]
 
 function isProtectedPath(pathname: string): boolean {
@@ -26,7 +26,7 @@ export function middleware(request: NextRequest): NextResponse {
   }
 
   if (hasSession && path === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/scanner', request.url))
   }
 
   return NextResponse.next({ request })
@@ -38,6 +38,6 @@ export const config = {
     '/cover-letters/:path*', '/interview/:path*', '/cv-enhancer/:path*',
     '/keywords/:path*', '/analytics/:path*', '/export-ipr/:path*',
     '/billing/:path*', '/settings/:path*', '/account/:path*',
-    '/more/:path*', '/login'
+    '/more/:path*', '/linkedin/:path*', '/login'
   ]
 }
