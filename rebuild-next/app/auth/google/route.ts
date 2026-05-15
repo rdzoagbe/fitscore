@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateSupabaseEnv } from '@/lib/supabase/env'
 
 function safeNextPath(value: string | null): string {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard'
@@ -15,12 +16,10 @@ function redirectToLoginWithError(origin: string, message: string): NextResponse
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const next = safeNextPath(request.nextUrl.searchParams.get('next'))
   const origin = request.nextUrl.origin
+  const envCheck = validateSupabaseEnv()
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return redirectToLoginWithError(origin, 'Authentication is not configured on this deployment. Missing Supabase environment variables.')
+  if (!envCheck.ok) {
+    return redirectToLoginWithError(origin, `Authentication is not configured correctly: ${envCheck.message}`)
   }
 
   try {
