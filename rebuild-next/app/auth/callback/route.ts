@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { validateSupabaseEnv } from '@/lib/supabase/env'
+
+type CookieEntry = { name: string; value: string; options?: Record<string, unknown> }
 
 function safeNext(value: string | null): string {
   if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard'
@@ -37,14 +39,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const supabase = createServerClient(envCheck.env.url, envCheck.env.anonKey, {
     cookies: {
-      get(name: string): string | undefined {
-        return request.cookies.get(name)?.value
+      getAll() {
+        return request.cookies.getAll()
       },
-      set(name: string, value: string, options: CookieOptions): void {
-        redirectResponse.cookies.set({ name, value, ...options })
-      },
-      remove(name: string, options: CookieOptions): void {
-        redirectResponse.cookies.set({ name, value: '', ...options })
+      setAll(cookiesToSet: CookieEntry[]) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cookiesToSet.forEach(({ name, value, options }) => redirectResponse.cookies.set(name, value, options as any))
       }
     }
   })
