@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-type CookieToSet = { name: string; value: string; options?: Record<string, unknown> }
+type CookieEntry = { name: string; value: string; options?: Record<string, unknown> }
 
 export function createClient(): SupabaseClient {
   const cookieStore = cookies()
@@ -15,11 +15,10 @@ export function createClient(): SupabaseClient {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet: CookieToSet[]) {
+        setAll(cookiesToSet: CookieEntry[]) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
-            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options as any))
           } catch {}
         }
       }
