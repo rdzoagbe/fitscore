@@ -7,6 +7,31 @@ import { assertUsageAllowed } from '@/lib/billing/guards'
 import { createClient } from '@/lib/supabase/server'
 import type { AtsResult } from '@/lib/ats/schema'
 
+export async function deleteCvAction(cvVersionId: string): Promise<{ error?: string }> {
+  const user = await requireUserSession()
+  const supabase = createClient()
+
+  const { data: cv } = await supabase
+    .from('cv_versions')
+    .select('file_url')
+    .eq('id', cvVersionId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!cv) return { error: 'CV not found.' }
+
+  if (cv.file_url) {
+    await supabase.storage.from('cv-files').remove([cv.file_url as string])
+  }
+
+  const { error } = await supabase.from('cv_versions').delete().eq('id', cvVersionId).eq('user_id', user.id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/scanner')
+  revalidatePath('/cv-enhancer')
+  return {}
+}
+
 export type ScannerState = {
   readonly error?: string
   readonly warning?: string
