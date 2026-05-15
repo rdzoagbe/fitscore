@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+:root[data-theme='dark'] {
   --bg: #0f172a;
   --bg-surface: #1e293b;
   --bg-elevated: #263148;
@@ -17,6 +18,23 @@
   --text-muted: #64748b;
   --border: rgba(148, 163, 184, 0.10);
   --border-strong: rgba(148, 163, 184, 0.20);
+}
+
+:root[data-theme='light'] {
+  --bg: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eef2ff;
+  --bg-input: #ffffff;
+  --accent: #0284c7;
+  --accent-violet: #6366f1;
+  --accent-emerald: #059669;
+  --accent-amber: #ea580c;
+  --accent-red: #dc2626;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border: rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.20);
 }
 
 * { box-sizing: border-box; }
