@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useTransition, useRef } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { runScannerAction, deleteCvAction, uploadCvAction, type ScannerState, type CvUploadState } from './actions'
+import { runScannerAction, deleteCvAction, type ScannerState } from './actions'
 import type { AtsHistoryItem } from '@/lib/ats/history'
 
 type CvOption = {
@@ -20,7 +20,6 @@ type Stats = {
 }
 
 const emptyScan: ScannerState = {}
-const emptyUpload: CvUploadState = {}
 
 function ScanSubmitButton(): JSX.Element {
   const { pending } = useFormStatus()
@@ -35,19 +34,6 @@ function ScanSubmitButton(): JSX.Element {
   )
 }
 
-function UploadSubmitButton(): JSX.Element {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-    >
-      {pending ? 'Uploading…' : 'Upload CV'}
-    </button>
-  )
-}
-
 export function ScannerForm({ cvVersions, stats, greeting, firstName, history }: {
   readonly cvVersions: CvOption[]
   readonly stats: Stats
@@ -57,28 +43,49 @@ export function ScannerForm({ cvVersions, stats, greeting, firstName, history }:
 }): JSX.Element {
   const router = useRouter()
   const [scanState, scanFormAction] = useFormState(runScannerAction, emptyScan)
-  const [uploadState, uploadFormAction] = useFormState(uploadCvAction, emptyUpload)
 
   const [jobUrl, setJobUrl] = useState('')
   const [pasteMode, setPasteMode] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [selectedCvId, setSelectedCvId] = useState(cvVersions[0]?.id ?? '')
   const [isPending, startTransition] = useTransition()
-  const handledUploadMessage = useRef<string | undefined>(undefined)
+
+  // Upload state (fetch-based, no useFormState)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const selectedCv = cvVersions.find(cv => cv.id === selectedCvId) ?? cvVersions[0]
   const isLinkedIn = jobUrl.includes('linkedin.com/jobs/')
   const hasCV = cvVersions.length > 0
 
-  useEffect(() => {
-    if (uploadState.message && uploadState.message !== handledUploadMessage.current) {
-      handledUploadMessage.current = uploadState.message
-      setShowUpload(false)
-      router.refresh()
+  async function handleUpload(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+    e.preventDefault()
+    const file = fileInputRef.current?.files?.[0]
+    if (!file) { setUploadError('Choose a file first.'); return }
+
+    setUploading(true)
+    setUploadError(null)
+
+    const body = new FormData()
+    body.append('cvFile', file)
+    body.append('label', 'Base CV')
+
+    try {
+      const res = await fetch('/api/cv/upload', { method: 'POST', body })
+      const data = await res.json() as { error?: string; message?: string }
+      if (!res.ok || data.error) {
+        setUploadError(data.error ?? 'Upload failed.')
+      } else {
+        setShowUpload(false)
+        router.refresh()
+      }
+    } catch {
+      setUploadError('Network error — please try again.')
+    } finally {
+      setUploading(false)
     }
-  // router is a stable singleton — intentionally omitted from deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadState.message])
+  }
 
   function handleDelete(): void {
     if (!selectedCv || !confirm('Remove this CV version?')) return
@@ -293,39 +300,44 @@ export function ScannerForm({ cvVersions, stats, greeting, firstName, history }:
         <p className="text-center text-[11px] text-[var(--text-muted)]">Processing takes ~15 seconds</p>
       </form>
 
-      {/* Upload form — separate element, no nesting */}
+      {/* Upload form — fetch-based, no useFormState */}
       {(!hasCV || showUpload) && (
-        <form action={uploadFormAction} className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
+        <form onSubmit={handleUpload} className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
           <p className="mb-3 text-sm font-semibold text-[var(--text-primary)]">
             {showUpload ? 'Upload a new CV' : 'Upload your CV to get started'}
           </p>
-          <input type="hidden" name="label" value="Base CV" />
 
           <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-[var(--border)] p-6 text-center transition hover:border-[var(--accent)]/50">
             <span className="text-3xl">📄</span>
             <span className="text-sm font-medium text-[var(--text-secondary)]">Click to select file</span>
             <span className="text-xs text-[var(--text-muted)]">PDF, DOCX or TXT · max 8 MB</span>
             <input
+              ref={fileInputRef}
               type="file"
               name="cvFile"
               accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
               className="sr-only"
-              required
             />
           </label>
 
-          {uploadState.error && (
+          {uploadError && (
             <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
-              {uploadState.error}
+              {uploadError}
             </div>
           )}
 
           <div className="mt-3 flex gap-2">
-            <UploadSubmitButton />
+            <button
+              type="submit"
+              disabled={uploading}
+              className="rounded-xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {uploading ? 'Uploading…' : 'Upload CV'}
+            </button>
             {showUpload && (
               <button
                 type="button"
-                onClick={() => setShowUpload(false)}
+                onClick={() => { setShowUpload(false); setUploadError(null) }}
                 className="rounded-xl border border-[var(--border)] px-4 py-3 text-sm text-[var(--text-muted)] transition hover:text-[var(--text-primary)]"
               >
                 Cancel
