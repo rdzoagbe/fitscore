@@ -2,11 +2,11 @@
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
-  color: var(--text-primary, #f7f3ee);
+  color: #10182B;
   background:
-    radial-gradient(circle at 16% 8%, rgba(255,117,85,0.16), transparent 34%),
-    radial-gradient(circle at 86% 14%, rgba(126,87,255,0.13), transparent 30%),
-    linear-gradient(180deg, #15171e 0%, #101116 48%, #0c0d11 100%);
+    radial-gradient(circle at 16% 8%, rgba(181,102,60,0.12), transparent 34%),
+    radial-gradient(circle at 86% 14%, rgba(16,24,43,0.08), transparent 30%),
+    linear-gradient(180deg, #FAF7F1 0%, #F8F1E8 48%, #FAF7F1 100%);
 }
 
 .historyWide-glow {
@@ -14,7 +14,7 @@
   pointer-events: none;
   border-radius: 999px;
   filter: blur(32px);
-  opacity: 0.6;
+  opacity: 0.54;
 }
 
 .historyWide-glowOne {
@@ -22,7 +22,7 @@
   height: 420px;
   right: -150px;
   top: 130px;
-  background: rgba(255,117,85,0.16);
+  background: rgba(181,102,60,0.13);
 }
 
 .historyWide-glowTwo {
@@ -30,7 +30,7 @@
   height: 300px;
   left: -120px;
   bottom: 150px;
-  background: rgba(255,255,255,0.07);
+  background: rgba(16,24,43,0.06);
 }
 
 .historyWide-shell {
@@ -53,11 +53,9 @@
 .historyWide-stat,
 .historyWide-card,
 .historyWide-item {
-  border: 1px solid rgba(255,255,255,0.09);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
-    rgba(255,255,255,0.035);
-  box-shadow: 0 26px 90px rgba(0,0,0,0.28);
+  border: 1px solid rgba(16,24,43,0.12);
+  background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(255,253,248,0.82));
+  box-shadow: 0 24px 70px rgba(16,24,43,0.09);
   backdrop-filter: blur(18px);
 }
 
@@ -72,7 +70,7 @@
 
 .historyWide-kicker {
   margin: 0;
-  color: #ffad91;
+  color: #B5663C;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.13em;
@@ -81,16 +79,18 @@
 
 .historyWide-hero h1 {
   margin: 12px 0 0;
-  font-family: Syne, Inter, system-ui, sans-serif;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
   font-size: clamp(54px, 6.8vw, 96px);
   line-height: 0.9;
   letter-spacing: -0.08em;
+  color: #10182B;
 }
 
 .historyWide-hero p:not(.historyWide-kicker) {
   max-width: 820px;
   margin: 22px 0 0;
-  color: rgba(247,243,238,0.66);
+  color: #5F6472;
   font-size: 15px;
   line-height: 1.75;
 }
@@ -109,7 +109,7 @@
   min-height: 44px;
   padding: 0 16px;
   border-radius: 999px;
-  font-family: Syne, Inter, system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "DM Sans", Inter, system-ui, sans-serif;
   font-size: 12px;
   font-weight: 850;
   cursor: pointer;
@@ -118,15 +118,15 @@
 
 .historyWide-primaryBtn {
   border: 0;
-  color: #151515;
-  background: linear-gradient(135deg, #ff8a64, #ffc46b);
-  box-shadow: 0 18px 40px rgba(255,122,85,0.22);
+  color: #FAF7F1;
+  background: #10182B;
+  box-shadow: 0 18px 40px rgba(16,24,43,0.18);
 }
 
 .historyWide-dangerBtn {
-  color: #ff9a9a;
-  background: rgba(255,107,107,0.10);
-  border: 1px solid rgba(255,107,107,0.28);
+  color: #B85C55;
+  background: rgba(184,92,85,0.10);
+  border: 1px solid rgba(184,92,85,0.24);
 }
 
 .historyWide-primaryBtn:hover,
@@ -142,9 +142,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background:
-    linear-gradient(160deg, rgba(255,117,85,0.20), rgba(255,255,255,0.05) 52%, rgba(255,255,255,0.035)),
-    rgba(255,255,255,0.035);
+  background: linear-gradient(160deg, rgba(181,102,60,0.13), rgba(255,253,248,0.94) 52%, rgba(255,253,248,0.82));
 }
 
 .historyWide-orb {
@@ -154,19 +152,21 @@
   place-items: center;
   align-content: center;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: radial-gradient(circle, rgba(255,255,255,0.10), rgba(0,0,0,0.12));
+  border: 1px solid rgba(16,24,43,0.14);
+  background: radial-gradient(circle, rgba(255,255,255,0.62), rgba(181,102,60,0.08));
 }
 
 .historyWide-orb strong {
-  font-family: Syne, Inter, system-ui, sans-serif;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
   font-size: 54px;
   letter-spacing: -0.08em;
+  color: #10182B;
 }
 
 .historyWide-orb span,
 .historyWide-heroPanel span {
-  color: rgba(247,243,238,0.54);
+  color: #5F6472;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -174,7 +174,7 @@
 
 .historyWide-heroPanel p {
   margin: 0;
-  color: #ffad91;
+  color: #B5663C;
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -183,9 +183,11 @@
 
 .historyWide-heroPanel h2 {
   margin: 9px 0 5px;
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 29px;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
+  font-size: 31px;
   letter-spacing: -0.06em;
+  color: #10182B;
 }
 
 .historyWide-stats {
@@ -203,7 +205,7 @@
 .historyWide-stat p,
 .historyWide-stat span {
   margin: 0;
-  color: rgba(247,243,238,0.56);
+  color: #5F6472;
   font-size: 12px;
 }
 
@@ -216,9 +218,11 @@
 .historyWide-stat strong {
   display: block;
   margin: 10px 0 4px;
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 36px;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
+  font-size: 38px;
   letter-spacing: -0.07em;
+  color: #10182B;
 }
 
 .historyWide-insights {
@@ -236,9 +240,11 @@
 .historyWide-card h2,
 .historyWide-sectionHead h2 {
   margin: 8px 0 0;
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 30px;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
+  font-size: 32px;
   letter-spacing: -0.06em;
+  color: #10182B;
 }
 
 .historyWide-chartBox {
@@ -259,7 +265,7 @@
 }
 
 .historyWide-progressLine span {
-  color: rgba(247,243,238,0.62);
+  color: #5F6472;
   font-size: 13px;
 }
 
@@ -272,7 +278,7 @@
   height: 9px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(16,24,43,0.10);
 }
 
 .historyWide-progressLine i {
@@ -293,7 +299,7 @@
 
 .historyWide-sectionHead p:not(.historyWide-kicker) {
   margin: 8px 0 0;
-  color: rgba(247,243,238,0.58);
+  color: #5F6472;
   font-size: 13px;
 }
 
@@ -312,12 +318,12 @@
   gap: 9px;
   padding: 0 15px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(16,24,43,0.12);
 }
 
 .historyWide-search span {
-  color: rgba(247,243,238,0.42);
+  color: rgba(95,100,114,0.72);
   font-size: 18px;
 }
 
@@ -326,9 +332,13 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--text-primary);
+  color: #10182B;
   font: inherit;
   font-size: 13px;
+}
+
+.historyWide-search input::placeholder {
+  color: rgba(95,100,114,0.72);
 }
 
 .historyWide-filterGroup {
@@ -336,25 +346,25 @@
   gap: 6px;
   padding: 5px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(16,24,43,0.12);
 }
 
 .historyWide-filterGroup button,
 .historyWide-sortBtn {
   border: 0;
-  color: rgba(247,243,238,0.62);
+  color: #5F6472;
   background: transparent;
 }
 
 .historyWide-filterGroup button.is-active {
-  color: #151515;
-  background: linear-gradient(135deg, #ff8a64, #ffc46b);
+  color: #FAF7F1;
+  background: #10182B;
 }
 
 .historyWide-sortBtn {
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(16,24,43,0.12);
+  background: rgba(255,255,255,0.62);
 }
 
 .historyWide-grid {
@@ -373,8 +383,8 @@
 
 .historyWide-item:hover {
   transform: translateY(-3px);
-  border-color: rgba(255,122,85,0.34);
-  background: rgba(255,255,255,0.055);
+  border-color: rgba(181,102,60,0.34);
+  background: rgba(255,253,248,0.96);
 }
 
 .historyWide-itemTop {
@@ -392,42 +402,44 @@
   place-items: center;
   border-radius: 999px;
   border: 2px solid currentColor;
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 950;
-  background: rgba(255,255,255,0.035);
+  font-family: Georgia, Newsreader, serif;
+  font-size: 15px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.58);
 }
 
 .historyWide-delete {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
-  color: rgba(247,243,238,0.42);
+  border: 1px solid rgba(16,24,43,0.12);
+  background: rgba(255,255,255,0.52);
+  color: rgba(95,100,114,0.72);
   font-size: 20px;
   cursor: pointer;
 }
 
 .historyWide-delete:hover {
-  color: #ff6b6b;
-  border-color: rgba(255,107,107,0.30);
+  color: #B85C55;
+  border-color: rgba(184,92,85,0.30);
 }
 
 .historyWide-item h3 {
   margin: 0;
   min-height: 42px;
-  color: var(--text-primary);
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 17px;
-  line-height: 1.18;
+  color: #10182B;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
+  font-size: 19px;
+  line-height: 1.16;
   letter-spacing: -0.04em;
 }
 
 .historyWide-company {
   margin: 8px 0 0;
-  color: #ffad91;
+  color: #B5663C;
   font-size: 12px;
+  font-weight: 750;
 }
 
 .historyWide-meta {
@@ -455,9 +467,9 @@
 }
 
 .historyWide-meta em {
-  color: rgba(247,243,238,0.52);
-  background: rgba(255,255,255,0.045);
-  border: 1px solid rgba(255,255,255,0.07);
+  color: #5F6472;
+  background: rgba(255,255,255,0.56);
+  border: 1px solid rgba(16,24,43,0.10);
 }
 
 .historyWide-status {
@@ -468,8 +480,8 @@
   padding: 58px 22px;
   text-align: center;
   border-radius: 26px;
-  background: rgba(0,0,0,0.16);
-  border: 1px dashed rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.52);
+  border: 1px dashed rgba(16,24,43,0.18);
 }
 
 .historyWide-empty div {
@@ -479,22 +491,24 @@
 
 .historyWide-empty h3 {
   margin: 0;
-  font-family: Syne, Inter, system-ui, sans-serif;
-  font-size: 26px;
+  font-family: Georgia, Newsreader, serif;
+  font-weight: 500;
+  color: #10182B;
+  font-size: 28px;
   letter-spacing: -0.05em;
 }
 
 .historyWide-empty p {
   max-width: 540px;
   margin: 10px auto 22px;
-  color: rgba(247,243,238,0.58);
+  color: #5F6472;
   line-height: 1.6;
 }
 
 .historyWide-skeleton {
   height: 220px;
   border-radius: 26px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+  background: linear-gradient(90deg, rgba(16,24,43,0.04), rgba(16,24,43,0.10), rgba(16,24,43,0.04));
   background-size: 200% 100%;
   animation: historyWide-shimmer 1.35s infinite;
 }
