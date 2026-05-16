@@ -103,6 +103,8 @@ export async function runScannerAction(_prevState: ScannerState, formData: FormD
 
   const cvVersionId = getString(formData, 'cvVersionId')
   const jobDescription = getString(formData, 'jobDescription')
+  const jobUrl = getString(formData, 'jobUrl') || null
+  const jobTitle = getString(formData, 'jobTitle') || null
   const language = getString(formData, 'language') === 'fr' ? 'fr' : 'en'
 
   if (!cvVersionId) return { error: 'Choose a CV version first.' }
@@ -123,6 +125,8 @@ export async function runScannerAction(_prevState: ScannerState, formData: FormD
   const { error: insertError } = await supabase.from('ats_analyses').insert({
     user_id: user.id,
     cv_version_id: cvVersionId,
+    job_url: jobUrl,
+    job_title: jobTitle,
     result_json: result
   })
 
