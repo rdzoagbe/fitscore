@@ -83,7 +83,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   }
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
   const blockedJobBoard = detectBlockedJobBoard(jobUrl)
-  const canAnalyzeUrl = isValidUrl(jobUrl) && !blockedJobBoard
+  const canAnalyzeUrl = isValidUrl(jobUrl)
   const canAnalyzePaste = jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
@@ -211,7 +211,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                     {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title="Link not recognized yet" body="Paste a job URL, or paste the full job description and Joblytics will switch to Paste mode automatically." />}
                     {blockedJobBoard && (
                       <>
-                        <TipCard type="warning" title={`${blockedJobBoard} blocks automated reading`} body="For this job board, copy the job description text and paste it directly. This avoids failed server requests and gives a more accurate analysis." />
+                        <TipCard type="warning" title={`${blockedJobBoard} blocks automated reading`} body="Click Analyze Match to switch to Paste mode, then paste the job description text for an accurate analysis." />
                         <button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>
                           Switch to Paste mode
                         </button>
@@ -316,10 +316,10 @@ export default function App() {
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
       <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
-      <AppShellBar />
       <main className="appShellContent">
         {renderPage()}
       </main>
+      <AppShellBar />
     </div>
   )
 }
