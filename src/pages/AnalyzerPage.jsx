@@ -8,6 +8,7 @@ import Confetti from '../components/Confetti'
 import PWAInstallPrompt from '../components/PWAInstallPrompt'
 import CvPanel from '../components/CvPanel'
 import TipCard from '../components/TipCard'
+import UpgradePrompt from '../components/UpgradePrompt'
 import './AnalyzerPage.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
@@ -31,6 +32,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [showConfetti, setShowConfetti] = useState(false)
 
   const LOADING_MSGS = LOADING_MSGS_KEY.map(k => t(k))
+  const isLimitError = status === 'error' && /limit|upgrade/i.test(String(error || ''))
   const normalizeJobUrl = value => {
     const withoutHiddenChars = String(value || '').replace(/[\u200B-\u200D\uFEFF]/g, '')
     const trimmed = withoutHiddenChars.trim()
@@ -72,36 +74,17 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
 
-  const switchToPasteMode = () => {
-    setShowTextPaste(true)
-    setUserToggledMode(true)
-    setJobText('')
-  }
-
+  const switchToPasteMode = () => { setShowTextPaste(true); setUserToggledMode(true); setJobText('') }
   const handleUrlChange = e => {
     const value = e.target.value
-    if (isLikelyJobDescription(value)) {
-      setJobText(value)
-      setJobUrl('')
-      setShowTextPaste(true)
-      setUserToggledMode(false)
-      return
-    }
+    if (isLikelyJobDescription(value)) { setJobText(value); setJobUrl(''); setShowTextPaste(true); setUserToggledMode(false); return }
     setJobUrl(value)
   }
-
   const handlePasteTextChange = e => {
     const value = e.target.value
-    if (isValidUrl(value)) {
-      setJobUrl(normalizeJobUrl(value))
-      setJobText('')
-      setShowTextPaste(false)
-      setUserToggledMode(false)
-      return
-    }
+    if (isValidUrl(value)) { setJobUrl(normalizeJobUrl(value)); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); return }
     setJobText(value)
   }
-
   const handleAnalyze = async () => {
     if (!cvFile) return
     setViewingAnalysis(null)
@@ -111,31 +94,12 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
-
   const handleReset = useCallback(() => {
-    reset()
-    setViewingAnalysis(null)
-    setJobUrl('')
-    setJobText('')
-    setShowTextPaste(false)
-    setUserToggledMode(false)
-    setMsgIdx(0)
-    onClearPrefill?.()
+    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); onClearPrefill?.()
   }, [reset, onClearPrefill])
 
-  useEffect(() => {
-    if (prefillAnalysis) {
-      setViewingAnalysis(prefillAnalysis)
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
-    }
-  }, [prefillAnalysis])
-
-  useEffect(() => {
-    if (status === 'done' && data?.display_score >= 70) {
-      setShowConfetti(true)
-      setTimeout(() => setShowConfetti(false), 2600)
-    }
-  }, [status, data])
+  useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
+  useEffect(() => { if (status === 'done' && data?.display_score >= 70) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2600) } }, [status, data])
 
   const displayData = viewingAnalysis?.result || data
   const displayStatus = viewingAnalysis ? 'done' : status
@@ -162,7 +126,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                 <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
                 {jobText.trim().length > 0 && !canAnalyzePaste && <TipCard type="warning" title={t('analyzer_add_more_title')} body={t('analyzer_add_more_body', { min: MIN_JOB_TEXT_LENGTH, progress: pasteProgress })} />}
               </>}
-              {status === 'error' && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
+              {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
+              {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
               {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
               <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze} style={{ width: '100%', marginTop: 14 }}>{status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
             </div>
