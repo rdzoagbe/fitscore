@@ -10,6 +10,7 @@ import CareerDashboardPage from './pages/CareerDashboardPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CvCoachPage from './pages/CvCoachPage'
+import CvBuilderPage from './pages/CvBuilderPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -17,10 +18,10 @@ import PWAInstallPrompt from './components/PWAInstallPrompt'
 import EmailVerifyGate from './components/EmailVerifyGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
-import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import TipCard from './components/TipCard'
 import './pages/AnalyzerPage.css'
+import './pages/CvBuilderPage.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 
@@ -35,9 +36,8 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const [uploadTrigger, setUploadTrigger] = useState(0)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
-  const { user } = useAuth()
   const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
-  const { cvFile, clearCv } = useCvPersist()
+  const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -223,6 +223,8 @@ export default function App() {
         return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach':
         return <CvCoachPage />
+      case 'cv-builder':
+        return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
       default:
         return <CareerDashboardPage setPage={setPage} />
     }
