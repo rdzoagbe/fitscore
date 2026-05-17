@@ -1,3 +1,6 @@
+import { createClient } from '@supabase/supabase-js'
+import { getUsageGate, recordUsageEvent, USAGE_ACTIONS } from '../server/_usageEvents.js'
+
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
 const MAX = {
   headline: 220,
@@ -385,6 +388,30 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' })
 
   try {
+    // Auth + rate limiting (mirrors analyze.js pattern)
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    const supabaseClient = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+
+    let authUser = null
+    if (supabaseClient) {
+      const header = req.headers.authorization || req.headers.Authorization || ''
+      const token = header.match(/^Bearer\s+(.+)$/i)?.[1]
+      if (token) {
+        const { data } = await supabaseClient.auth.getUser(token)
+        authUser = data?.user || null
+      }
+    }
+
+    if (!authUser) {
+      return res.status(401).json({ success: false, error: 'Please sign in to use the LinkedIn optimizer.' })
+    }
+
+    if (supabaseClient) {
+      const gate = await getUsageGate(supabaseClient, authUser, USAGE_ACTIONS.LINKEDIN_OPTIMIZE)
+      if (!gate.allowed) return res.status(429).json({ success: false, ...gate.payload })
+    }
+
     const body = parseBody(req)
     const lang = isAllowedLang(body.lang) ? body.lang : 'en'
     const targetRole = asString(body.targetRole, MAX.targetRole)
@@ -435,6 +462,10 @@ export default async function handler(req, res) {
         lang,
         warning: `AI provider failed: ${error.message}. Returned local rule-based result so you can keep testing.`
       })
+    }
+
+    if (supabaseClient && authUser) {
+      await recordUsageEvent(supabaseClient, authUser, USAGE_ACTIONS.LINKEDIN_OPTIMIZE, { sourceUsed, lang })
     }
 
     return res.status(200).json({
