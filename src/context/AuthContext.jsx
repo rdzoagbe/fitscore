@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { legalAcceptancePayload } from '../lib/legal'
 
 const AuthContext = createContext({})
 
@@ -21,23 +22,40 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = (email, password) => supabase.auth.signUp({ email, password })
-  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
-  const signInWithGoogle = () => supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: window.location.origin }
+  const signUp = (email, password, legalSource = 'signup_email') => supabase.auth.signUp({
+    email,
+    password,
+    options: { data: legalAcceptancePayload(legalSource) }
   })
 
-  const signInWithLinkedIn = () => supabase.auth.signInWithOAuth({
-    provider: 'linkedin_oidc',
+  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
+
+  const signInWithGoogle = (legalSource = 'signup_google') => supabase.auth.signInWithOAuth({
+    provider: 'google',
     options: {
-      redirectTo: window.location.origin
+      redirectTo: window.location.origin,
+      data: legalAcceptancePayload(legalSource)
     }
   })
+
+  const signInWithLinkedIn = (legalSource = 'signup_linkedin') => supabase.auth.signInWithOAuth({
+    provider: 'linkedin_oidc',
+    options: {
+      redirectTo: window.location.origin,
+      data: legalAcceptancePayload(legalSource)
+    }
+  })
+
+  const acceptCurrentTerms = async (source = 'terms_gate') => {
+    const { data, error } = await supabase.auth.updateUser({ data: legalAcceptancePayload(source) })
+    if (!error && data?.user) setUser(data.user)
+    return { data, error }
+  }
+
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithLinkedIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithLinkedIn, acceptCurrentTerms, signOut }}>
       {children}
     </AuthContext.Provider>
   )
