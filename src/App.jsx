@@ -168,9 +168,9 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
           <div className="analyzePro-layout">
             <section className="analyzePro-card">
               <div className="analyzePro-formHero">
-                <p>ATS analysis</p>
-                <h1>Check your CV against this job.</h1>
-                <p>Paste a job description or add a job link, select your CV, and generate a practical application report.</p>
+                <p>{t('analyzer_kicker')}</p>
+                <h1>{t('analyzer_title')}</h1>
+                <p>{t('analyzer_subtitle')}</p>
               </div>
 
               <CvPanel uploadTrigger={uploadTrigger} />
@@ -178,65 +178,65 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
               <div className="card" style={{ marginTop: 14 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                   <button type="button" className="btn-primary" onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }} style={{ opacity: !showTextPaste ? 1 : 0.72 }}>
-                    URL mode
+                    {t('analyzer_url_mode')}
                   </button>
                   <button type="button" onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)', background: showTextPaste ? 'var(--accent-bg)' : 'var(--bg-input)', color: showTextPaste ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 800, cursor: 'pointer' }}>
-                    Paste mode
+                    {t('analyzer_paste_mode')}
                   </button>
                 </div>
 
                 {!showTextPaste ? (
                   <>
-                    <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder="Paste a job link, or paste the full job description here" />
-                    {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title="Link not recognized yet" body="Paste a valid job URL, or switch to Paste mode and paste the job description text." />}
+                    <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
+                    {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title={t('analyzer_link_invalid_title')} body={t('analyzer_link_invalid_body')} />}
                     {restrictedJobBoard && (
                       <>
-                        <TipCard type="warning" title={`${restrictedJobBoard} link detected`} body="URL mode will try to read this link. If the job board blocks access, keep Paste mode available and paste the job description text instead." />
+                        <TipCard type="warning" title={t('analyzer_restricted_title', { board: restrictedJobBoard })} body={t('analyzer_restricted_body')} />
                         <button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>
-                          Use Paste mode instead
+                          {t('analyzer_use_paste')}
                         </button>
                       </>
                     )}
                     {urlHistory.length > 0 && (
                       <div style={{ marginTop: 10 }}>
-                        <button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Recent job links</button>
+                        <button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>{t('analyzer_recent_links')}</button>
                         {showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => { setJobUrl(normalizeJobUrl(url)); setJobText(''); setShowTextPaste(false); setShowHistory(false) }} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}
                       </div>
                     )}
                   </>
                 ) : (
                   <>
-                    <textarea value={jobText} onChange={handlePasteTextChange} placeholder="Paste the full job description here. If you paste a URL instead, Joblytics will switch back to URL mode." rows={10} />
+                    <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
                     {jobText.trim().length > 0 && !canAnalyzePaste && (
-                      <TipCard type="warning" title="Add a little more job text" body={`Paste at least ${MIN_JOB_TEXT_LENGTH} characters from the job offer. Current progress: ${pasteProgress}%.`} />
+                      <TipCard type="warning" title={t('analyzer_add_more_title')} body={t('analyzer_add_more_body', { min: MIN_JOB_TEXT_LENGTH, progress: pasteProgress })} />
                     )}
                   </>
                 )}
 
-                {status === 'error' && <TipCard type="error" title="Analysis failed" body={error} />}
+                {status === 'error' && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
                 {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
 
                 <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze} style={{ width: '100%', marginTop: 14 }}>
-                  {status === 'loading' ? 'Analyzing...' : 'Analyze match'}
+                  {status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}
                 </button>
               </div>
             </section>
 
             <aside className="analyzePro-side">
               <div className="analyzePro-sideCard">
-                <p className="analyzePro-kicker">Workflow</p>
-                <h3>Three steps to a sharper application</h3>
+                <p className="analyzePro-kicker">{t('analyzer_workflow')}</p>
+                <h3>{t('analyzer_workflow_title')}</h3>
                 <div className="analyzePro-steps">
-                  <div className="analyzePro-step"><span>1</span><div><strong>Add your CV</strong><small>Upload or reuse the current CV.</small></div></div>
-                  <div className="analyzePro-step"><span>2</span><div><strong>Add the job</strong><small>Use URL mode when the page can be read, or Paste mode for restricted boards.</small></div></div>
-                  <div className="analyzePro-step"><span>3</span><div><strong>Review the report</strong><small>Use gaps, keywords and next steps before applying.</small></div></div>
+                  <div className="analyzePro-step"><span>1</span><div><strong>{t('analyzer_step1_title')}</strong><small>{t('analyzer_step1_body')}</small></div></div>
+                  <div className="analyzePro-step"><span>2</span><div><strong>{t('analyzer_step2_title')}</strong><small>{t('analyzer_step2_body')}</small></div></div>
+                  <div className="analyzePro-step"><span>3</span><div><strong>{t('analyzer_step3_title')}</strong><small>{t('analyzer_step3_body')}</small></div></div>
                 </div>
               </div>
 
               <div className="analyzePro-sideCard">
-                <p className="analyzePro-kicker">Pro tip</p>
-                <h3>Keep both options available</h3>
-                <p>URL mode works for readable job pages. Paste mode gives the most reliable result for LinkedIn, Indeed, Welcome to the Jungle, Built In and similar boards.</p>
+                <p className="analyzePro-kicker">{t('analyzer_tip')}</p>
+                <h3>{t('analyzer_tip_title')}</h3>
+                <p>{t('analyzer_tip_body')}</p>
               </div>
             </aside>
           </div>
