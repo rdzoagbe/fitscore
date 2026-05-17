@@ -3,9 +3,10 @@ import { useLang } from '../context/LangContext'
 import { TERMS_VERSION } from '../lib/legal'
 import './BillingPage.css'
 
-function PlanCard({ name, price, description, features, badge, current, t, legalAccepted, onToggleLegal, onBlockedCheckout }) {
+function PlanCard({ name, price, description, features, badge, current, t, legalAccepted, withdrawalAccepted, onToggleLegal, onToggleWithdrawal, onBlockedCheckout }) {
   const paid = !current
-  const buttonText = current ? t('billing_free_plan') : legalAccepted ? t('billing_coming_soon') : t('billing_accept_to_continue')
+  const canCheckout = legalAccepted && withdrawalAccepted
+  const buttonText = current ? t('billing_free_plan') : canCheckout ? t('billing_coming_soon') : t('billing_accept_to_continue')
 
   return (
     <article className={`billing-card ${badge ? 'is-highlighted' : ''}`}>
@@ -29,13 +30,19 @@ function PlanCard({ name, price, description, features, badge, current, t, legal
       </ul>
 
       {paid && (
-        <label className="billing-legalCheck">
-          <input type="checkbox" checked={legalAccepted} onChange={event => onToggleLegal(event.target.checked)} />
-          <span>{t('billing_legal_checkbox')} <a href="/terms" target="_blank" rel="noreferrer">{t('terms_of_use')}</a> · <a href="/privacy" target="_blank" rel="noreferrer">{t('privacy_policy_full')}</a></span>
-        </label>
+        <div className="billing-legalStack">
+          <label className="billing-legalCheck">
+            <input type="checkbox" checked={legalAccepted} onChange={event => onToggleLegal(event.target.checked)} />
+            <span>{t('billing_legal_checkbox')} <a href="/terms" target="_blank" rel="noreferrer">{t('terms_of_use')}</a> · <a href="/privacy" target="_blank" rel="noreferrer">{t('privacy_policy_full')}</a> · <a href="/legal" target="_blank" rel="noreferrer">{t('legal_notice')}</a></span>
+          </label>
+          <label className="billing-legalCheck">
+            <input type="checkbox" checked={withdrawalAccepted} onChange={event => onToggleWithdrawal(event.target.checked)} />
+            <span>{t('billing_withdrawal_checkbox')}</span>
+          </label>
+        </div>
       )}
 
-      <button type="button" className="billing-button" disabled={current} onClick={paid && !legalAccepted ? onBlockedCheckout : undefined}>
+      <button type="button" className="billing-button" disabled={current} onClick={paid && !canCheckout ? onBlockedCheckout : undefined}>
         {buttonText}
       </button>
     </article>
@@ -45,14 +52,23 @@ function PlanCard({ name, price, description, features, badge, current, t, legal
 export default function BillingPage() {
   const { t } = useLang()
   const [legalAccepted, setLegalAccepted] = useState(false)
+  const [withdrawalAccepted, setWithdrawalAccepted] = useState(false)
   const [legalError, setLegalError] = useState('')
 
   const onToggleLegal = value => {
     setLegalAccepted(value)
-    if (value) setLegalError('')
+    if (value && withdrawalAccepted) setLegalError('')
   }
 
-  const onBlockedCheckout = () => setLegalError(t('billing_legal_required'))
+  const onToggleWithdrawal = value => {
+    setWithdrawalAccepted(value)
+    if (value && legalAccepted) setLegalError('')
+  }
+
+  const onBlockedCheckout = () => {
+    if (!legalAccepted) setLegalError(t('billing_legal_required'))
+    else if (!withdrawalAccepted) setLegalError(t('billing_withdrawal_required'))
+  }
 
   const plans = [
     {
@@ -104,7 +120,7 @@ export default function BillingPage() {
         {legalError && <p className="billing-error">⚠ {legalError}</p>}
 
         <section className="billing-grid">
-          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} onToggleLegal={onToggleLegal} onBlockedCheckout={onBlockedCheckout} />)}
+          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} withdrawalAccepted={withdrawalAccepted} onToggleLegal={onToggleLegal} onToggleWithdrawal={onToggleWithdrawal} onBlockedCheckout={onBlockedCheckout} />)}
         </section>
 
         <section className="billing-infoGrid">
