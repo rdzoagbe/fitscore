@@ -67,257 +67,121 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   }
 
   const autoSwitchedForErrorRef = useRef(null)
-  // Watch for blocking errors and auto-switch to paste mode (only ONCE per error)
   useEffect(() => {
     if (status !== 'error' || !error) {
       autoSwitchedForErrorRef.current = null
       return
     }
-    if (userToggledMode) return  // Respect user's manual choice
-    if (autoSwitchedForErrorRef.current === error) return  // Already switched for this exact error
+    if (userToggledMode) return
+    if (autoSwitchedForErrorRef.current === error) return
     const lower = error.toLowerCase()
     const isBlocked = lower.includes('blocked') || lower.includes('blocking') || lower.includes('paste') || lower.includes('authwall')
     if (isBlocked && !showTextPaste) {
       autoSwitchedForErrorRef.current = error
-      const timer = setTimeout(() => {
-        setShowTextPaste(true)
-        setTimeout(() => {
-          const ta = document.querySelector('textarea[placeholder*="job description" i], textarea[placeholder*="description" i]')
-          ta?.focus()
-        }, 100)
-      }, 800)
-      return () => clearTimeout(timer)
+      setShowTextPaste(true)
     }
-  }, [status, error, userToggledMode, showTextPaste])
+  }, [status, error, showTextPaste, userToggledMode])
+
+  const handleReset = useCallback(() => {
+    reset()
+    setViewingAnalysis(null)
+    setJobUrl('')
+    setJobText('')
+    setShowTextPaste(false)
+    setUserToggledMode(false)
+    setMsgIdx(0)
+    onClearPrefill?.()
+  }, [reset, onClearPrefill])
 
   useEffect(() => {
-    if (data?.display_score >= 80) {
-      setShowConfetti(true)
-      setTimeout(() => setShowConfetti(false), 3000)
+    if (prefillAnalysis) {
+      setViewingAnalysis(prefillAnalysis)
+      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     }
-  }, [data])
+  }, [prefillAnalysis])
 
-  const handleReset = () => {
-    reset(); setJobUrl(''); setJobText(''); setMsgIdx(0)
-    setViewingAnalysis(null); onClearPrefill?.()
-    setUserToggledMode(false); setShowTextPaste(false)
-  }
+  useEffect(() => {
+    if (status === 'done' && data?.display_score >= 70) {
+      setShowConfetti(true)
+      setTimeout(() => setShowConfetti(false), 2600)
+    }
+  }, [status, data])
 
-  const canAnalyze = cvFile !== null && (
-    (showTextPaste && jobText.trim().length > 100) ||
-    (!showTextPaste && isValidUrl(jobUrl))
-  )
   const displayData = viewingAnalysis?.result || data
   const displayStatus = viewingAnalysis ? 'done' : status
 
   return (
     <div className="analyzePro-page">
-      <Confetti active={showConfetti} />
-
+      {showConfetti && <Confetti />}
       <main className="analyzePro-shell">
-
         {displayStatus !== 'done' && (
-          <div className="analyzePro-layout"><section className="analyzePro-card">
-            {status === 'idle' && (
+          <div className="analyzePro-layout">
+            <section className="analyzePro-card">
               <div className="analyzePro-formHero">
-                <p>ATS ANALYZER</p>
-                <h1>Analyze a job match</h1>
-                <p>
-                  Paste a job URL or job description, upload your CV, and get your ATS match score with improvement suggestions.
-                </p>
+                <p>ATS analysis</p>
+                <h1>Check your CV against this job.</h1>
+                <p>Paste a job description or add a job link, select your CV, and generate a practical application report.</p>
               </div>
-            )}
 
-            {/* Job URL */}
-            <div style={{ marginBottom: 6 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{t('job_url_label')}</label>
-                {urlHistory.length > 0 && !showTextPaste && (
-                  <button onClick={() => setShowHistory(s => !s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, cursor: 'pointer', padding: 0, fontWeight: 500 }}>
-                    {showHistory ? t('hide_recent') : t('recent_jobs')}
+              <CvPanel uploadTrigger={uploadTrigger} />
+
+              <div className="card" style={{ marginTop: 14 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn-primary" onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }} style={{ opacity: !showTextPaste ? 1 : 0.72 }}>
+                    URL mode
                   </button>
-                )}
-              </div>
+                  <button type="button" onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)', background: showTextPaste ? 'var(--accent-bg)' : 'var(--bg-input)', color: showTextPaste ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 800, cursor: 'pointer' }}>
+                    Paste mode
+                  </button>
+                </div>
 
-              {!showTextPaste && (
-                <>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: 'var(--text-muted)' }}>🔗</span>
-                    <input type="url" value={jobUrl} onChange={e => { setJobUrl(e.target.value); if (status === 'error') reset() }}
-                      placeholder={t('job_url_placeholder')} disabled={status === 'loading'}
-                      style={{ paddingLeft: 40, borderColor: isValidUrl(jobUrl) ? 'var(--accent)' : undefined }}
-                    />
-                  </div>
-                  {jobUrl && !isValidUrl(jobUrl) && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 5 }}>{t('job_url_invalid')}</p>}
-                  {riskyDomain ? (
-                    <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>💡</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 12, color: '#f5a623', fontWeight: 600, marginBottom: 2 }}>
-                          {t(`risky_${riskyDomain}_title`) || `${riskyDomain.charAt(0).toUpperCase() + riskyDomain.slice(1)} often blocks automated reading`}
-                        </p>
-                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 6 }}>
-                          {t('risky_hint_desc') || 'For best results, copy the job description directly from the page and paste it below.'}
-                        </p>
-                        <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ background: 'none', border: 'none', color: '#f5a623', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-                          {t('switch_to_paste') || 'Switch to paste mode →'}
-                        </button>
+                {!showTextPaste ? (
+                  <>
+                    <input type="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)} placeholder="https://company.com/job-posting" />
+                    {riskyDomain && <TipCard type="warning" title="This site may block reading" body="Use paste mode if the analysis fails." />}
+                    {urlHistory.length > 0 && (
+                      <div style={{ marginTop: 10 }}>
+                        <button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Recent job links</button>
+                        {showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => setJobUrl(url)} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}
                       </div>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 5 }}>{t('job_url_hint')}</p>
-                  )}
+                    )}
+                  </>
+                ) : (
+                  <textarea value={jobText} onChange={e => setJobText(e.target.value)} placeholder="Paste the job description here..." rows={10} />
+                )}
 
-                  {showHistory && urlHistory.length > 0 && (
-                    <div style={{ marginTop: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 6, maxHeight: 200, overflowY: 'auto' }}>
-                      {urlHistory.map((h, i) => {
-                        const color = h.score >= 70 ? '#4caf7d' : h.score >= 50 ? '#f5a623' : '#ff6b6b'
-                        return (
-                          <button key={i} onClick={() => { setJobUrl(h.job_url); setShowHistory(false) }}
-                            style={{ width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-input)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color, minWidth: 32 }}>{h.score}%</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: 12, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {h.result?.job_context?.title || h.job_title || 'Job'}
-                              </p>
-                              {h.result?.job_context?.company && h.result.job_context.company !== 'Not specified' && (
-                                <p style={{ fontSize: 10, color: 'var(--text-muted)' }}>@ {h.result.job_context.company}</p>
-                              )}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
+                {status === 'error' && <TipCard type="error" title="Analysis failed" body={error} />}
+                {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
 
-              {showTextPaste && (
-                <div style={{ animation: 'fadeUp 0.2s ease' }}>
-                  {status === 'error' && error && (error.toLowerCase().includes('blocked') || error.toLowerCase().includes('blocking') || error.toLowerCase().includes('paste')) && (
-                    <div style={{ marginBottom: 12, padding: '11px 14px', background: 'rgba(76,175,125,0.08)', border: '1px solid rgba(76,175,125,0.3)', borderRadius: 12, animation: 'fadeUp 0.3s ease' }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: '#4caf7d', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        ✨ {t('auto_switched_title') || 'Switched to paste mode for you'}
-                      </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                        {t('auto_switched_desc') || 'Copy the job description text from the page and paste it below — we\'ll do the rest.'}
-                      </p>
-                    </div>
-                  )}
-                  <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
-                    {t('paste_job_label') || 'Job description text'}
-                  </label>
-                  <textarea value={jobText} onChange={e => { setJobText(e.target.value); if (status === 'error') reset() }}
-                    placeholder={t('paste_job_placeholder') || 'Paste the full job description here...'}
-                    rows={7} maxLength={8000} disabled={status === 'loading'}
-                    style={{ borderColor: jobText.length > 100 ? 'var(--accent)' : undefined }}
-                  />
-                  <p style={{ fontSize: 11, color: 'var(--text-hint)', marginTop: 4, textAlign: 'right' }}>
-                    {jobText.length}/8000
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* OR toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              <button onClick={() => { setShowTextPaste(s => !s); setUserToggledMode(true); reset() }} style={{ fontSize: 12, color: 'var(--accent)', background: 'var(--accent-bg)', border: '1px solid var(--accent)', cursor: 'pointer', padding: '6px 14px', whiteSpace: 'nowrap', fontWeight: 600, borderRadius: 20, fontFamily: 'inherit' }}>
-                {showTextPaste ? `↑ ${t('use_url') || 'Use URL instead'}` : (t('or_paste_text') || '✏️ OR paste job description')}
-              </button>
-              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            </div>
-
-            {/* CV Panel */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>{t('your_cv')}</label>
-              <CvPanel key={uploadTrigger} />
-            </div>
-
-            {status === 'loading' && (
-              <div style={{ textAlign: 'center', padding: '16px 0 8px' }}>
-                <div style={{ width: 36, height: 36, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 14px' }} />
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)', animation: 'pulse 1.8s ease infinite' }}>{LOADING_MSGS[msgIdx]}</p>
-              </div>
-            )}
-
-            {/* Hide red error if we've already switched to paste mode (green banner shows there instead) */}
-            {status === 'error' && !showTextPaste && (
-              <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: '13px 16px', marginBottom: 14 }}>
-                <p style={{ fontSize: 13, color: '#ff6b6b', lineHeight: 1.5 }}>⚠ {error}</p>
-                <button onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0 0', display: 'block' }}>
-                  {t('try_paste_instead') || '→ Try pasting the job description instead'}
+                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !cvFile || (!showTextPaste && !isValidUrl(jobUrl)) || (showTextPaste && jobText.trim().length < 100)} style={{ width: '100%', marginTop: 14 }}>
+                  {status === 'loading' ? 'Analyzing...' : 'Analyze match'}
                 </button>
               </div>
-            )}
+            </section>
 
-            {status !== 'loading' && (
-              <>
-                <button onClick={handleAnalyze} disabled={!canAnalyze} className="btn-primary" style={{ width: '100%', marginBottom: 8 }}>
-                  {t('run_ats')}
-                </button>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {t('processing_time') || 'Processing takes ~15 seconds'}
-                </p>
-              </>
-            )}
-
-            {status === 'idle' && (
-              <TipCard onGoCoach={() => setPage('coach')} onGoHistory={() => setPage('history')} />
-            )}
-          </section>
-
-          <aside className="analyzePro-side">
-            <div className="analyzePro-sideCard">
-              <p className="analyzePro-kicker">How it works</p>
-              <h3>Three steps to a stronger application</h3>
-              <div className="analyzePro-steps">
-                <div className="analyzePro-step">
-                  <span>1</span>
-                  <div>
-                    <strong>Add the job</strong>
-                    <small>Use a URL or paste the full job description.</small>
-                  </div>
-                </div>
-                <div className="analyzePro-step">
-                  <span>2</span>
-                  <div>
-                    <strong>Upload your CV</strong>
-                    <small>We compare your CV against the role requirements.</small>
-                  </div>
-                </div>
-                <div className="analyzePro-step">
-                  <span>3</span>
-                  <div>
-                    <strong>Improve your match</strong>
-                    <small>Get score, missing keywords, gaps, and quick wins.</small>
-                  </div>
+            <aside className="analyzePro-side">
+              <div className="analyzePro-sideCard">
+                <p className="analyzePro-kicker">Workflow</p>
+                <h3>Three steps to a sharper application</h3>
+                <div className="analyzePro-steps">
+                  <div className="analyzePro-step"><span>1</span><div><strong>Add your CV</strong><small>Upload or reuse the current CV.</small></div></div>
+                  <div className="analyzePro-step"><span>2</span><div><strong>Add the job</strong><small>Paste the description for reliable extraction.</small></div></div>
+                  <div className="analyzePro-step"><span>3</span><div><strong>Review the report</strong><small>Use gaps, keywords and next steps before applying.</small></div></div>
                 </div>
               </div>
-            </div>
 
-            <div className="analyzePro-sideCard">
-              <p className="analyzePro-kicker">Pro tip</p>
-              <h3>Paste mode is more reliable</h3>
-              <p>
-                LinkedIn, Indeed, and some job boards block automated reading. For best results, paste the job description text directly.
-              </p>
-            </div>
-          </aside>
+              <div className="analyzePro-sideCard">
+                <p className="analyzePro-kicker">Pro tip</p>
+                <h3>Paste mode is more reliable</h3>
+                <p>LinkedIn, Indeed, and some job boards block automated reading. For best results, paste the job description text directly.</p>
+              </div>
+            </aside>
           </div>
         )}
 
         {displayStatus === 'done' && displayData && (
           <div ref={resultRef} className="page-enter">
-            <ResultsView
-              data={displayData}
-              savedRow={viewingAnalysis ? viewingAnalysis : savedRow}
-              rateLimit={rateLimit}
-              onReset={handleReset}
-              onGoCoach={() => setPage('coach')}
-            />
+            <ResultsView data={displayData} savedRow={viewingAnalysis ? viewingAnalysis : savedRow} rateLimit={rateLimit} onReset={handleReset} onGoCoach={() => setPage('coach')} />
           </div>
         )}
 
@@ -355,28 +219,22 @@ export default function App() {
       case 'dashboard':
         return <CareerDashboardPage setPage={setPage} />
       case 'analyzer':
-        return <AnalyzerPage
-          setPage={setPage}
-          prefillAnalysis={selectedAnalysis}
-          onClearPrefill={() => setSelectedAnalysis(null)}
-        />
+        return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history':
-        return <Dashboard
-          onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }}
-          onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }}
-        />
+        return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach':
         return <CvCoachPage />
-default:
+      default:
         return <CareerDashboardPage setPage={setPage} />
     }
   }
 
   return (
-    <>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
       <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
       {renderPage()}
-    </>
+      <Footer />
+    </div>
   )
 }
