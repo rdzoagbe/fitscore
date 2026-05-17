@@ -43,10 +43,21 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const [showConfetti, setShowConfetti] = useState(false)
 
   const LOADING_MSGS = LOADING_MSGS_KEY.map(k => t(k))
-  const isValidUrl = str => { try { new URL(str); return true } catch { return false } }
+  const normalizeJobUrl = value => {
+    const trimmed = String(value || '').trim()
+    if (!trimmed) return ''
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
+    if (trimmed.includes('.') && !trimmed.includes(' ')) return `https://${trimmed}`
+    return trimmed
+  }
+  const isValidUrl = str => { try { const u = new URL(normalizeJobUrl(str)); return u.protocol === 'http:' || u.protocol === 'https:' } catch { return false } }
+  const normalizedJobUrl = normalizeJobUrl(jobUrl)
+  const canAnalyzeUrl = isValidUrl(jobUrl)
+  const canAnalyzePaste = jobText.trim().length >= 100
+  const canAnalyze = status !== 'loading' && !!cvFile && (showTextPaste ? canAnalyzePaste : canAnalyzeUrl)
   const detectRiskyDomain = url => {
     if (!isValidUrl(url)) return null
-    const lower = url.toLowerCase()
+    const lower = normalizeJobUrl(url).toLowerCase()
     if (lower.includes('linkedin.com')) return 'linkedin'
     if (lower.includes('indeed.')) return 'indeed'
     if (lower.includes('glassdoor.')) return 'glassdoor'
@@ -58,10 +69,10 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     if (!cvFile) return
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i+1) % LOADING_MSGS.length), 1800)
-    if (showTextPaste && jobText.trim().length > 100) {
+    if (showTextPaste && canAnalyzePaste) {
       await analyze(null, cvFile, jobText.trim())
-    } else if (isValidUrl(jobUrl)) {
-      await analyze(jobUrl.trim(), cvFile)
+    } else if (canAnalyzeUrl) {
+      await analyze(normalizedJobUrl, cvFile)
     }
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
@@ -138,12 +149,13 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
                 {!showTextPaste ? (
                   <>
-                    <input type="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)} placeholder="https://company.com/job-posting" />
+                    <input type="text" inputMode="url" value={jobUrl} onChange={e => setJobUrl(e.target.value)} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder="https://company.com/job-posting" />
+                    {jobUrl.trim() && !canAnalyzeUrl && <TipCard type="warning" title="Link not recognized yet" body="Paste a full job URL. If the job board blocks links, use Paste mode." />}
                     {riskyDomain && <TipCard type="warning" title="This site may block reading" body="Use paste mode if the analysis fails." />}
                     {urlHistory.length > 0 && (
                       <div style={{ marginTop: 10 }}>
                         <button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Recent job links</button>
-                        {showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => setJobUrl(url)} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}
+                        {showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => setJobUrl(normalizeJobUrl(url))} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}
                       </div>
                     )}
                   </>
@@ -154,7 +166,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                 {status === 'error' && <TipCard type="error" title="Analysis failed" body={error} />}
                 {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
 
-                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !cvFile || (!showTextPaste && !isValidUrl(jobUrl)) || (showTextPaste && jobText.trim().length < 100)} style={{ width: '100%', marginTop: 14 }}>
+                <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze} style={{ width: '100%', marginTop: 14 }}>
                   {status === 'loading' ? 'Analyzing...' : 'Analyze match'}
                 </button>
               </div>
