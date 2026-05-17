@@ -9,8 +9,7 @@ const navItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'cv-builder', icon: '🧩', labelKey: 'nav_cv_builder', fallback: 'CV Builder' }
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' }
 ]
 
 function getDisplayName(user) {
@@ -109,7 +108,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
       </header>
 
       <nav className="jobNav-mobile" aria-label="Mobile navigation">
-        {navItems.slice(0, 4).map(item => (
+        {navItems.map(item => (
           <button key={item.id} type="button" className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
             <span>{item.icon}</span>
             <em>{label(item.labelKey, item.fallback)}</em>
