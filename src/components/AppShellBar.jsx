@@ -2,6 +2,7 @@ import React from 'react'
 import { useAuth } from '../context/AuthContext'
 import LangSelector from './LangSelector'
 import ThemeToggle from './ThemeToggle'
+import './AppShellBar.css'
 
 function getDisplayName(user) {
   return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')?.[0] || 'User'
@@ -15,12 +16,6 @@ export default function AppShellBar() {
   const { user, signOut } = useAuth()
   const displayName = getDisplayName(user)
   const initials = getInitials(displayName)
-
-  const baseLink = {
-    color: 'var(--text-secondary)',
-    textDecoration: 'none',
-    fontWeight: 750
-  }
 
   return (
     <>
@@ -55,9 +50,9 @@ export default function AppShellBar() {
         <div className="appShellFooter-inner">
           <span>© {new Date().getFullYear()} Joblytics · Made in France</span>
           <span className="appShellFooter-links">
-            <a href="/privacy" style={baseLink}>Privacy</a>
-            <a href="/terms" style={baseLink}>Terms</a>
-            <a href="mailto:rolanddzoagbe@gmail.com" style={baseLink}>Contact</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="mailto:rolanddzoagbe@gmail.com">Contact</a>
           </span>
         </div>
       </footer>
