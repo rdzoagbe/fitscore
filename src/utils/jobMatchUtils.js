@@ -1,5 +1,6 @@
 const ROLE_TARGETS = [
   {
+    key: 'it_support',
     title: 'IT Support Manager',
     category: 'Support leadership',
     level: 'Manager',
@@ -9,6 +10,7 @@ const ROLE_TARGETS = [
     searchQuery: 'IT Support Manager'
   },
   {
+    key: 'endpoint',
     title: 'Workplace / Modern Endpoint Manager',
     category: 'Microsoft endpoint',
     level: 'Senior IC / Manager',
@@ -18,6 +20,7 @@ const ROLE_TARGETS = [
     searchQuery: 'Modern Workplace Endpoint Manager Intune'
   },
   {
+    key: 'cloud',
     title: 'Infrastructure & Cloud Manager',
     category: 'Infrastructure / Cloud',
     level: 'Manager',
@@ -27,6 +30,7 @@ const ROLE_TARGETS = [
     searchQuery: 'Infrastructure Cloud Manager Azure'
   },
   {
+    key: 'apps',
     title: 'Business Applications Manager',
     category: 'Business systems',
     level: 'Manager',
@@ -36,6 +40,7 @@ const ROLE_TARGETS = [
     searchQuery: 'Business Applications Manager'
   },
   {
+    key: 'delivery',
     title: 'Service Delivery Manager',
     category: 'IT service management',
     level: 'Manager',
@@ -45,6 +50,7 @@ const ROLE_TARGETS = [
     searchQuery: 'IT Service Delivery Manager'
   },
   {
+    key: 'ops',
     title: 'IT Operations Manager',
     category: 'Operations',
     level: 'Manager',
