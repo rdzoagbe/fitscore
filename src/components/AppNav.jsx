@@ -13,6 +13,11 @@ const navItems = [
   { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
 ]
 
+const workspaceItems = [
+  ...navItems,
+  { id: 'billing', icon: '💳', labelKey: 'nav_billing', fallback: 'Billing' }
+]
+
 const mobileNavItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
@@ -35,10 +40,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
   const accountMenuRef = useRef(null)
   const displayName = getDisplayName(user)
   const initials = getInitials(displayName)
-  const label = (key, fallback) => {
-    const value = t(key)
-    return value && value !== key ? value : fallback
-  }
+  const label = (key, fallback) => t(key, fallback)
 
   const closeMenu = () => {
     if (accountMenuRef.current) accountMenuRef.current.open = false
@@ -86,7 +88,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
 
           <details className="jobNav-account" ref={accountMenuRef}>
             <summary className="jobNav-menuButton">
-              <span>Menu</span>
+              <span>{t('menu_label', 'Menu')}</span>
               <strong>{initials}</strong>
             </summary>
 
@@ -97,7 +99,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               </div>
 
               <div className="jobNav-menuSection">
-                <p>Preferences</p>
+                <p>{t('preferences', 'Preferences')}</p>
                 <div className="jobNav-menuControls">
                   <LangSelector />
                   <ThemeToggle />
@@ -105,8 +107,8 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               </div>
 
               <div className="jobNav-menuSection">
-                <p>Workspace</p>
-                {navItems.map(item => (
+                <p>{t('workspace', 'Workspace')}</p>
+                {workspaceItems.map(item => (
                   <button key={item.id} type="button" onClick={() => goTo(item.id)} className={page === item.id ? 'is-active' : ''}>
                     <span>{item.icon}</span>
                     {label(item.labelKey, item.fallback)}
@@ -115,13 +117,13 @@ export default function AppNav({ page, setPage, onLogoClick }) {
               </div>
 
               <div className="jobNav-menuSection">
-                <p>Legal & support</p>
-                <a href="/privacy" onClick={closeMenu}>Privacy policy</a>
-                <a href="/terms" onClick={closeMenu}>Terms of use</a>
-                <a href="mailto:rolanddzoagbe@gmail.com" onClick={closeMenu}>Contact support</a>
+                <p>{t('legal_support', 'Legal & support')}</p>
+                <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
+                <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
+                <a href="mailto:rolanddzoagbe@gmail.com" onClick={closeMenu}>{t('contact_support', 'Contact support')}</a>
               </div>
 
-              <button type="button" className="jobNav-signOut" onClick={handleSignOut}>Sign out</button>
+              <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
             </div>
           </details>
         </div>
