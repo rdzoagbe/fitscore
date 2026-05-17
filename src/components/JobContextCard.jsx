@@ -17,13 +17,13 @@ function Detail({ icon, label, value, hint }) {
   )
 }
 
-const workModeLabel = { remote: '🏠 Remote', hybrid: '🔁 Hybrid', onsite: '🏢 On-site' }
-const contractLabel = { CDI: 'CDI', CDD: 'CDD', freelance: 'Freelance', internship: 'Internship', apprenticeship: 'Apprenticeship', temp: 'Temp' }
-
 export default function JobContextCard({ context, summary, jobUrl, redFlags, salary }) {
   const { t } = useLang()
   const [copied, setCopied] = useState(false)
   if (!context) return null
+
+  const workModeLabel = { remote: `🏠 ${t('work_remote')}`, hybrid: `🔁 ${t('work_hybrid')}`, onsite: `🏢 ${t('work_onsite')}` }
+  const contractLabel = { CDI: 'CDI', CDD: 'CDD', freelance: 'Freelance', internship: t('contract_internship'), apprenticeship: t('contract_apprenticeship'), temp: t('contract_temp') }
 
   const copyUrl = (e) => {
     e.preventDefault()
@@ -34,9 +34,9 @@ export default function JobContextCard({ context, summary, jobUrl, redFlags, sal
   }
 
   const hasRedFlags = redFlags?.length > 0
-  const salaryHint = salary?.assessment === 'below_market' ? '⚠ below market' :
-                     salary?.assessment === 'above_market' ? '✓ above market' :
-                     salary?.assessment === 'market' ? '✓ market' : null
+  const salaryHint = salary?.assessment === 'below_market' ? `⚠ ${t('salary_below_market')}` :
+                     salary?.assessment === 'above_market' ? `✓ ${t('salary_above_market')}` :
+                     salary?.assessment === 'market' ? `✓ ${t('salary_market')}` : null
 
   return (
     <div className="card" style={{ marginBottom: 10, position: 'relative' }}>
@@ -45,7 +45,7 @@ export default function JobContextCard({ context, summary, jobUrl, redFlags, sal
           {t('job_offer')}
         </p>
         <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(16px,4vw,20px)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: 4, letterSpacing: '-0.01em' }}>
-          {context.title || 'Untitled position'}
+          {context.title || t('untitled_position')}
         </h2>
         {context.company && context.company !== 'Not specified' && (
           <p style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 500 }}>
