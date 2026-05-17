@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
+import LangSelector from '../components/LangSelector'
+import ThemeToggle from '../components/ThemeToggle'
+import Footer from '../components/Footer'
 import './CareerDashboardPage.css'
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -37,6 +40,16 @@ function PathCard({ icon, title, text, progress, onClick }) {
   )
 }
 
+function DashboardPreferences() {
+  return (
+    <div className="careerDash-preferences" aria-label="Dashboard preferences">
+      <span>Preferences</span>
+      <LangSelector />
+      <ThemeToggle />
+    </div>
+  )
+}
+
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
   const { challenge, progress, completedToday, completeChallenge } = useDailyChallenge()
@@ -53,6 +66,8 @@ export default function CareerDashboardPage({ setPage }) {
       <div className="careerDash-bg careerDash-bgTwo" />
 
       <main className="careerDash-shell">
+        <DashboardPreferences />
+
         <section className="careerDash-hero">
           <div className="careerDash-heroText">
             <div className="careerDash-pill">
@@ -141,12 +156,7 @@ export default function CareerDashboardPage({ setPage }) {
                   {openChallenge ? 'Hide example' : 'Show example'}
                 </button>
 
-                <button
-                  type="button"
-                  className="careerDash-btn careerDash-btnPrimary"
-                  onClick={completeChallenge}
-                  disabled={completedToday}
-                >
+                <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={completeChallenge} disabled={completedToday}>
                   {completedToday ? 'Completed today ✓' : 'Mark as complete'}
                 </button>
               </div>
@@ -161,27 +171,9 @@ export default function CareerDashboardPage({ setPage }) {
               </div>
 
               <div className="careerDash-pathGrid">
-                <PathCard
-                  icon="CV"
-                  title="Improve my CV"
-                  text="Fix ATS blockers, sharpen your summary, and rewrite weak bullets."
-                  progress={42}
-                  onClick={() => setPage?.('coach')}
-                />
-                <PathCard
-                  icon="INT"
-                  title="Prepare interviews"
-                  text="Build your pitch, STAR examples, and confident answers."
-                  progress={18}
-                  onClick={() => setPage?.('coach')}
-                />
-                <PathCard
-                  icon="JOB"
-                  title="Apply smarter"
-                  text="Match keywords, target better jobs, and track applications."
-                  progress={56}
-                  onClick={() => setPage?.('analyzer')}
-                />
+                <PathCard icon="CV" title="Improve my CV" text="Fix ATS blockers, sharpen your summary, and rewrite weak bullets." progress={42} onClick={() => setPage?.('coach')} />
+                <PathCard icon="INT" title="Prepare interviews" text="Build your pitch, STAR examples, and confident answers." progress={18} onClick={() => setPage?.('coach')} />
+                <PathCard icon="JOB" title="Apply smarter" text="Match keywords, target better jobs, and track applications." progress={56} onClick={() => setPage?.('analyzer')} />
               </div>
             </article>
 
@@ -264,6 +256,8 @@ export default function CareerDashboardPage({ setPage }) {
             </article>
           </aside>
         </section>
+
+        <Footer compact />
       </main>
     </div>
   )
