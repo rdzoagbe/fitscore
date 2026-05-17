@@ -10,6 +10,7 @@ import InterviewPrepCard from './InterviewPrepCard'
 import QuickWinsCard from './QuickWinsCard'
 import CvCoachPreview from './CvCoachPreview'
 import CvPreview from './CvPreview'
+import CvBuilderCard from './CvBuilderCard'
 import StatusPill from './StatusPill'
 import WaitlistBanner from './WaitlistBanner'
 import { useAuth } from '../context/AuthContext'
@@ -70,6 +71,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
   }, [serverSavedRow])
 
   const handleStatusUpdate = (updated) => setAnalysisRow(updated)
+  const selectedForRebuilder = analysisRow?.result ? analysisRow : { ...(analysisRow || {}), result: data, score, id: analysisRow?.id || data.id || 'current-analysis' }
 
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
@@ -199,6 +201,11 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       </div>
 
       <QuickWinsCard wins={data.quick_wins} />
+
+      <div style={{ marginTop: 18, marginBottom: 18 }}>
+        <CvBuilderCard selected={selectedForRebuilder} />
+      </div>
+
       {onGoCoach && <CvCoachPreview data={data} onGoCoach={onGoCoach} />}
 
       {data.format_warnings?.filter(w => w?.length > 5).length > 0 && (
