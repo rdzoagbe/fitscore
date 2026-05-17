@@ -25,6 +25,10 @@ export default function AppNav({ page, setPage, onLogoClick }) {
   const { t } = useLang()
   const displayName = getDisplayName(user)
   const initials = getInitials(displayName)
+  const label = (key, fallback) => {
+    const value = t(key)
+    return value && value !== key ? value : fallback
+  }
 
   const goTo = id => {
     if (id === 'dashboard') {
@@ -42,7 +46,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
           <span className="jobNav-brandMark">J</span>
           <span>
             <strong>Joblytics</strong>
-            <small>{t('career_workspace') || 'Career growth workspace'}</small>
+            <small>{label('career_workspace', 'Career growth workspace')}</small>
           </span>
         </button>
 
@@ -50,7 +54,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
           {navItems.map(item => (
             <button key={item.id} type="button" className={`jobNav-link ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
               <span>{item.icon}</span>
-              {t(item.labelKey) || item.fallback}
+              {label(item.labelKey, item.fallback)}
             </button>
           ))}
         </nav>
@@ -62,7 +66,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
           </div>
 
           <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>
-            {t('new_check') || 'New check'}
+            {label('new_check', 'New check')}
           </button>
 
           <div className="jobNav-user" title={displayName}>
@@ -76,7 +80,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         {navItems.map(item => (
           <button key={item.id} type="button" className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
             <span>{item.icon}</span>
-            <em>{t(item.labelKey) || item.fallback}</em>
+            <em>{label(item.labelKey, item.fallback)}</em>
           </button>
         ))}
       </nav>
