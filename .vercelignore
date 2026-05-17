@@ -1,0 +1,8 @@
+# Keep Vercel Hobby deployments under the 12 Serverless Functions limit.
+# The app currently needs only these production API routes:
+# - /api/analyze
+# - /api/profile-optimize
+
+api/**
+!api/analyze.js
+!api/profile-optimize.js
