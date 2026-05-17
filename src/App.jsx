@@ -71,22 +71,28 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     if (isValidUrl(text)) return false
     return /\s/.test(text)
   }
+  const detectBlockedJobBoard = url => {
+    if (!isValidUrl(url)) return null
+    const lower = normalizeJobUrl(url).toLowerCase()
+    if (lower.includes('linkedin.com')) return 'LinkedIn'
+    if (lower.includes('indeed.')) return 'Indeed'
+    if (lower.includes('glassdoor.')) return 'Glassdoor'
+    if (lower.includes('welcometothejungle.com')) return 'Welcome to the Jungle'
+    if (lower.includes('builtin.com') || lower.includes('built-in.com')) return 'Built In'
+    return null
+  }
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
-  const canAnalyzeUrl = isValidUrl(jobUrl)
+  const blockedJobBoard = detectBlockedJobBoard(jobUrl)
+  const canAnalyzeUrl = isValidUrl(jobUrl) && !blockedJobBoard
   const canAnalyzePaste = jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
-  const detectRiskyDomain = url => {
-    if (!isValidUrl(url)) return null
-    const lower = normalizeJobUrl(url).toLowerCase()
-    if (lower.includes('linkedin.com')) return 'linkedin'
-    if (lower.includes('indeed.')) return 'indeed'
-    if (lower.includes('glassdoor.')) return 'glassdoor'
-    if (lower.includes('welcometothejungle.com')) return 'welcometothejungle'
-    if (lower.includes('builtin.com') || lower.includes('built-in.com')) return 'builtin'
-    return null
+
+  const switchToPasteMode = () => {
+    setShowTextPaste(true)
+    setUserToggledMode(true)
+    setJobText('')
   }
-  const riskyDomain = detectRiskyDomain(jobUrl)
 
   const handleUrlChange = e => {
     const value = e.target.value
@@ -114,6 +120,11 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
   const handleAnalyze = async () => {
     if (!cvFile) return
+    if (blockedJobBoard && !canAnalyzePaste) {
+      setShowTextPaste(true)
+      setUserToggledMode(true)
+      return
+    }
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i+1) % LOADING_MSGS.length), 1800)
     if (canAnalyzePaste) {
@@ -197,8 +208,15 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                 {!showTextPaste ? (
                   <>
                     <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder="Paste a job link, or paste the full job description here" />
-                    {jobUrl.trim() && !canAnalyzeUrl && <TipCard type="warning" title="Link not recognized yet" body="Paste a job URL, or paste the full job description and Joblytics will switch to Paste mode automatically." />}
-                    {riskyDomain && <TipCard type="warning" title="This site may block reading" body="If URL analysis fails, paste the job description text directly. LinkedIn, Indeed, Welcome to the Jungle and similar boards often block automated reading." />}
+                    {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title="Link not recognized yet" body="Paste a job URL, or paste the full job description and Joblytics will switch to Paste mode automatically." />}
+                    {blockedJobBoard && (
+                      <>
+                        <TipCard type="warning" title={`${blockedJobBoard} blocks automated reading`} body="For this job board, copy the job description text and paste it directly. This avoids failed server requests and gives a more accurate analysis." />
+                        <button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>
+                          Switch to Paste mode
+                        </button>
+                      </>
+                    )}
                     {urlHistory.length > 0 && (
                       <div style={{ marginTop: 10 }}>
                         <button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>Recent job links</button>
