@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { translations, LANGUAGES } from '../i18n/translations'
 import { extraTranslations } from '../i18n/appTranslations'
 import { billingTranslations } from '../i18n/billingTranslations'
+import { coachTranslations } from '../i18n/coachTranslations'
 
 const LangContext = createContext({})
 
@@ -15,7 +16,7 @@ function mergeTranslations(base, ...packs) {
   return merged
 }
 
-const allTranslations = mergeTranslations(translations, extraTranslations, billingTranslations)
+const allTranslations = mergeTranslations(translations, extraTranslations, billingTranslations, coachTranslations)
 
 function formatTemplate(value, params = {}) {
   if (typeof value !== 'string') return value
