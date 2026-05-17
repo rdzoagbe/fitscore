@@ -143,10 +143,26 @@ For salary_intelligence:
 - confidence: 'high' for common roles in major European cities, 'low' for unusual roles where market data is thin
 - This is GUIDANCE not market data — numbers may be off by ±20%.`
 
+function getBlockedBoardName(url = '') {
+  const lower = String(url).toLowerCase()
+  if (lower.includes('linkedin.')) return 'LinkedIn'
+  if (lower.includes('indeed.')) return 'Indeed'
+  if (lower.includes('glassdoor.')) return 'Glassdoor'
+  if (lower.includes('welcometothejungle.com')) return 'Welcome to the Jungle'
+  if (lower.includes('builtin.com') || lower.includes('built-in.com')) return 'Built In'
+  return null
+}
+
+function pasteModeError(boardName = 'This job board') {
+  const err = new Error(`${boardName} blocks automated reading. Please copy the job description text and paste it into Paste mode instead.`)
+  err.statusCode = 400
+  err.code = 'PASTE_REQUIRED'
+  return err
+}
+
 async function fetchJobText(url) {
-  const isLinkedIn = url.includes('linkedin.')
-  const isIndeed = url.includes('indeed.')
-  const isGlassdoor = url.includes('glassdoor.')
+  const blockedBoard = getBlockedBoardName(url)
+  if (blockedBoard) throw pasteModeError(blockedBoard)
 
   let res
   try {
@@ -163,10 +179,9 @@ async function fetchJobText(url) {
   }
 
   if (!res.ok) {
-    if (isLinkedIn) throw new Error('LinkedIn requires login to view this job. Please copy the job description text and paste it instead.')
-    if (isIndeed) throw new Error('Indeed blocked this fetch. Please copy the job description text and paste it instead.')
-    if (isGlassdoor) throw new Error('Glassdoor blocked this fetch. Please copy the job description text and paste it instead.')
-    throw new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
+    const err = new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
+    err.statusCode = 400
+    throw err
   }
 
   const html = await res.text()
@@ -180,7 +195,9 @@ async function fetchJobText(url) {
     .replace(/\s{2,}/g, ' ').trim()
 
   if (text.length < 200) {
-    throw new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
+    const err = new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
+    err.statusCode = 400
+    throw err
   }
   return text.slice(0, 6000)
 }
@@ -418,6 +435,7 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('Handler error:', e.message)
-    return res.status(500).json({ error: e.message || 'Analysis failed' })
+    const statusCode = e.statusCode || (e.code === 'PASTE_REQUIRED' ? 400 : 500)
+    return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED' })
   }
 }
