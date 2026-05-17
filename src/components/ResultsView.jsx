@@ -76,10 +76,10 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
       <div style={{ marginBottom: 20, padding: '22px 24px', borderRadius: 28, background: premium.paper, border: `1px solid ${premium.line}`, boxShadow: '0 20px 55px rgba(16,24,43,0.07)' }}>
-        <p style={{ margin: 0, color: premium.copper, fontSize: 11, fontWeight: 950, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Analysis report</p>
-        <h2 style={{ margin: '8px 0 0', color: premium.navy, fontFamily: 'Georgia, Newsreader, serif', fontSize: 'clamp(34px,5vw,56px)', lineHeight: 0.96, letterSpacing: '-0.07em', fontWeight: 500 }}>Your application fit</h2>
+        <p style={{ margin: 0, color: premium.copper, fontSize: 11, fontWeight: 950, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{t('analysis_report')}</p>
+        <h2 style={{ margin: '8px 0 0', color: premium.navy, fontFamily: 'Georgia, Newsreader, serif', fontSize: 'clamp(34px,5vw,56px)', lineHeight: 0.96, letterSpacing: '-0.07em', fontWeight: 500 }}>{t('application_fit')}</h2>
         <p style={{ maxWidth: 720, margin: '12px 0 0', color: premium.muted, fontSize: 14, lineHeight: 1.7 }}>
-          Review the score, missing keywords, quick wins, and next steps before you send this application.
+          {t('results_intro')}
         </p>
       </div>
 
@@ -99,11 +99,11 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
           {autoSaveStatus === 'saving' && (
             <span style={{ fontSize: 11, color: premium.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, border: `1.5px solid ${premium.line}`, borderTop: `1.5px solid ${premium.muted}`, borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-              {t('auto_saving') || 'saving...'}
+              {t('auto_saving')}
             </span>
           )}
           {autoSaveStatus === 'saved' && (
-            <span style={{ fontSize: 11, color: premium.muted, fontWeight: 800 }}>✓ {t('saved_to_history') || 'Saved'}</span>
+            <span style={{ fontSize: 11, color: premium.muted, fontWeight: 800 }}>✓ {t('saved_to_history')}</span>
           )}
           {autoSaveStatus === 'saved' && analysisRow && (
             <StatusPill analysis={analysisRow} onUpdate={handleStatusUpdate} compact />
@@ -120,7 +120,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
         onMouseEnter={e => { e.currentTarget.style.borderColor = premium.copper; e.currentTarget.style.color = premium.copper }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = premium.line; e.currentTarget.style.color = premium.muted }}
         >
-          ↻ {t('run_another') || 'Run another'}
+          ↻ {t('run_another')}
         </button>
       </div>
 
@@ -223,10 +223,10 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       <SmartApplyBtn context={data.job_context} jobUrl={jobUrl} verdict={data.overall_verdict} />
 
       <div className="btn-row">
-        <button onClick={onReset} className="btn-primary" style={{ width: '100%', background: premium.navy, color: premium.ivory }}>↻ {t('run_another') || 'Run another'}</button>
+        <button onClick={onReset} className="btn-primary" style={{ width: '100%', background: premium.navy, color: premium.ivory }}>↻ {t('run_another')}</button>
         {onGoCoach && (
           <button onClick={onGoCoach} style={{ padding: '14px', borderRadius: 14, background: premium.paper, color: premium.muted, border: `1px solid ${premium.line}`, fontFamily: 'Georgia, Newsreader, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            🎤 {t('nav_coach') || 'CV Coach'}
+            🎤 {t('nav_coach')}
           </button>
         )}
       </div>
