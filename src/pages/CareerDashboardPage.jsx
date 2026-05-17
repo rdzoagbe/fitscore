@@ -1,16 +1,25 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LangContext'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import { getMatchedJobs } from '../utils/jobMatchUtils'
 import './CareerDashboardPage.css'
 
-function getTimeGreeting() {
+function getTimeGreeting(t) {
   const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
+  if (hour < 12) return t('greet_morning', 'Good morning')
+  if (hour < 18) return t('greet_afternoon', 'Good afternoon')
+  return t('greet_evening', 'Good evening')
+}
+
+function challengeKey(id, field) {
+  return `challenge_${String(id || '').replace(/-/g, '_')}_${field}`
+}
+
+function getChallengeText(t, challenge, field, fallback) {
+  return t(challengeKey(challenge.id, field), fallback)
 }
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -45,19 +54,20 @@ function PathCard({ icon, title, text, progress, onClick }) {
   )
 }
 
-function MatchedJobCard({ job, onAnalyze }) {
+function MatchedJobCard({ job, onAnalyze, t }) {
+  const prefix = `jobmatch_${job.key}`
   return (
     <article className="careerDash-matchCard">
       <div className="careerDash-matchTop">
         <div>
-          <p>{job.category}</p>
-          <h3>{job.title}</h3>
-          <span>{job.level}</span>
+          <p>{t(`${prefix}_category`, job.category)}</p>
+          <h3>{t(`${prefix}_title`, job.title)}</h3>
+          <span>{t(job.level.includes('Senior') ? 'jobmatch_level_senior_manager' : 'jobmatch_level_manager', job.level)}</span>
         </div>
         <strong>{job.score}%</strong>
       </div>
 
-      <p className="careerDash-matchReason">{job.reasons[0]}</p>
+      <p className="careerDash-matchReason">{t(`${prefix}_reason`, job.reasons[0])}</p>
 
       <div className="careerDash-matchKeywords">
         {(job.matchedKeywords.length ? job.matchedKeywords : job.keywords.slice(0, 4)).map(keyword => (
@@ -66,8 +76,8 @@ function MatchedJobCard({ job, onAnalyze }) {
       </div>
 
       <div className="careerDash-matchActions">
-        <a href={job.searchUrl} target="_blank" rel="noreferrer">Find roles</a>
-        <button type="button" onClick={onAnalyze}>Analyze a job</button>
+        <a href={job.searchUrl} target="_blank" rel="noreferrer">{t('dash_find_roles')}</a>
+        <button type="button" onClick={onAnalyze}>{t('dash_analyze_job')}</button>
       </div>
     </article>
   )
@@ -75,16 +85,17 @@ function MatchedJobCard({ job, onAnalyze }) {
 
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
+  const { t } = useLang()
   const { challenge, progress, completedToday, completeChallenge } = useDailyChallenge()
   const metrics = useProgressMetrics(progress)
   const [openChallenge, setOpenChallenge] = useState(true)
 
   const name = getUserDisplayName(user)
-  const greeting = getTimeGreeting()
+  const greeting = getTimeGreeting(t)
   const weeklyPercent = Math.round(((metrics.weeklyCompleted || 0) / (metrics.weeklyTarget || 5)) * 100)
   const recent = metrics.analyses.slice(0, 4)
   const matchedJobs = getMatchedJobs(metrics.analyses)
-  const matchSourceLabel = matchedJobs[0]?.isProfileBased ? 'Based on your saved analyses' : 'Starter recommendations'
+  const matchSourceLabel = matchedJobs[0]?.isProfileBased ? t('dash_based_saved') : t('dash_starter_recs')
 
   return (
     <div className="careerDash-page">
@@ -95,7 +106,7 @@ export default function CareerDashboardPage({ setPage }) {
         <section className="careerDash-hero">
           <div className="careerDash-heroText">
             <div className="careerDash-pill">
-              <span /> Career growth dashboard
+              <span /> {t('dash_pill')}
             </div>
 
             <h1>
@@ -103,17 +114,14 @@ export default function CareerDashboardPage({ setPage }) {
               <em>{name}</em>
             </h1>
 
-            <p>
-              Your personal workspace to improve your CV, prepare stronger interviews,
-              track progress, and build a daily job-search rhythm.
-            </p>
+            <p>{t('dash_intro')}</p>
 
             <div className="careerDash-actions">
               <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>
-                Run ATS Check
+                {t('dash_run_ats')}
               </button>
               <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('coach')}>
-                Open CV Coach
+                {t('dash_open_coach')}
               </button>
             </div>
           </div>
@@ -121,41 +129,39 @@ export default function CareerDashboardPage({ setPage }) {
           <aside className="careerDash-heroPanel">
             <div className="careerDash-scoreCircle">
               <span>{metrics.bestScore || 0}</span>
-              <small>best score</small>
+              <small>{t('best_score')}</small>
             </div>
 
             <div>
-              <p className="careerDash-panelLabel">Next recommended action</p>
-              <h2>Complete today’s challenge</h2>
-              <p>
-                Small daily improvements compound into a stronger profile and better applications.
-              </p>
+              <p className="careerDash-panelLabel">{t('dash_next_action')}</p>
+              <h2>{t('dash_complete_challenge')}</h2>
+              <p>{t('dash_compound')}</p>
             </div>
           </aside>
         </section>
 
         <section className="careerDash-stats">
-          <ScoreCard label="ATS checks" value={metrics.analysesCount || 0} helper="total analyses" />
-          <ScoreCard label="Average score" value={metrics.averageScore ? `${metrics.averageScore}%` : '—'} helper="across checks" />
-          <ScoreCard label="Best score" value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper="highest match" tone="accent" />
-          <ScoreCard label="Current streak" value={`${metrics.currentStreak || 0}d`} helper="career actions" tone="warm" />
+          <ScoreCard label={t('dash_ats_checks')} value={metrics.analysesCount || 0} helper={t('dash_total_analyses')} />
+          <ScoreCard label={t('dash_average_score')} value={metrics.averageScore ? `${metrics.averageScore}%` : '—'} helper={t('dash_across_checks')} />
+          <ScoreCard label={t('dash_best_score')} value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper={t('dash_highest_match')} tone="accent" />
+          <ScoreCard label={t('dash_current_streak')} value={`${metrics.currentStreak || 0}d`} helper={t('dash_career_actions')} tone="warm" />
         </section>
 
         <section className="careerDash-card careerDash-matchedJobs">
           <div className="careerDash-cardHeader">
             <div>
-              <p className="careerDash-kicker">Matched jobs · {matchSourceLabel}</p>
-              <h2>Roles aligned to your profile</h2>
-              <p>Use these role targets to discover opportunities, then run an ATS check before applying.</p>
+              <p className="careerDash-kicker">{t('dash_matched_jobs')} · {matchSourceLabel}</p>
+              <h2>{t('dash_roles_aligned')}</h2>
+              <p>{t('dash_roles_desc')}</p>
             </div>
             <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('analyzer')}>
-              Analyze job
+              {t('dash_analyze_job')}
             </button>
           </div>
 
           <div className="careerDash-matchGrid">
             {matchedJobs.map(job => (
-              <MatchedJobCard key={job.title} job={job} onAnalyze={() => setPage?.('analyzer')} />
+              <MatchedJobCard key={job.title} job={job} t={t} onAnalyze={() => setPage?.('analyzer')} />
             ))}
           </div>
         </section>
@@ -165,30 +171,30 @@ export default function CareerDashboardPage({ setPage }) {
             <article className="careerDash-card careerDash-challenge">
               <div className="careerDash-cardHeader">
                 <div>
-                  <p className="careerDash-kicker">Today’s challenge · {challenge.estimatedMinutes} min</p>
-                  <h2>{challenge.title}</h2>
-                  <p>{challenge.description}</p>
+                  <p className="careerDash-kicker">{t('this_week', 'Today')} · {challenge.estimatedMinutes} min</p>
+                  <h2>{getChallengeText(t, challenge, 'title', challenge.title)}</h2>
+                  <p>{getChallengeText(t, challenge, 'desc', challenge.description)}</p>
                 </div>
                 <span className="careerDash-tag">{challenge.category}</span>
               </div>
 
               <div className="careerDash-why">
-                <strong>Why it matters</strong>
-                <span>{challenge.why}</span>
+                <strong>{t('dash_why_matters')}</strong>
+                <span>{getChallengeText(t, challenge, 'why', challenge.why)}</span>
               </div>
 
               {openChallenge && (
                 <div className="careerDash-challengeBody">
-                  <p>{challenge.task}</p>
+                  <p>{getChallengeText(t, challenge, 'task', challenge.task)}</p>
 
                   <div className="careerDash-examples">
                     <div>
-                      <span>Before</span>
-                      <p>{challenge.exampleBefore}</p>
+                      <span>{t('dash_before')}</span>
+                      <p>{getChallengeText(t, challenge, 'before', challenge.exampleBefore)}</p>
                     </div>
                     <div>
-                      <span>After</span>
-                      <p>{challenge.exampleAfter}</p>
+                      <span>{t('dash_after')}</span>
+                      <p>{getChallengeText(t, challenge, 'after', challenge.exampleAfter)}</p>
                     </div>
                   </div>
                 </div>
@@ -196,11 +202,11 @@ export default function CareerDashboardPage({ setPage }) {
 
               <div className="careerDash-cardActions">
                 <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setOpenChallenge(value => !value)}>
-                  {openChallenge ? 'Hide example' : 'Show example'}
+                  {openChallenge ? t('dash_hide_example') : t('dash_show_example')}
                 </button>
 
                 <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={completeChallenge} disabled={completedToday}>
-                  {completedToday ? 'Completed today ✓' : 'Mark as complete'}
+                  {completedToday ? t('dash_completed_today') : t('dash_mark_complete')}
                 </button>
               </div>
             </article>
@@ -208,26 +214,26 @@ export default function CareerDashboardPage({ setPage }) {
             <article className="careerDash-card">
               <div className="careerDash-cardHeader">
                 <div>
-                  <p className="careerDash-kicker">Guided career paths</p>
-                  <h2>Choose your next move</h2>
+                  <p className="careerDash-kicker">{t('dash_guided_paths')}</p>
+                  <h2>{t('dash_choose_move')}</h2>
                 </div>
               </div>
 
               <div className="careerDash-pathGrid">
-                <PathCard icon="CV" title="Improve my CV" text="Fix ATS blockers, sharpen your summary, and rewrite weak bullets." progress={42} onClick={() => setPage?.('coach')} />
-                <PathCard icon="INT" title="Prepare interviews" text="Build your pitch, STAR examples, and confident answers." progress={18} onClick={() => setPage?.('coach')} />
-                <PathCard icon="JOB" title="Apply smarter" text="Match keywords, target better jobs, and track applications." progress={56} onClick={() => setPage?.('analyzer')} />
+                <PathCard icon="CV" title={t('dash_path_cv')} text={t('dash_path_cv_desc')} progress={42} onClick={() => setPage?.('coach')} />
+                <PathCard icon="INT" title={t('dash_path_interview')} text={t('dash_path_interview_desc')} progress={18} onClick={() => setPage?.('coach')} />
+                <PathCard icon="JOB" title={t('dash_path_apply')} text={t('dash_path_apply_desc')} progress={56} onClick={() => setPage?.('analyzer')} />
               </div>
             </article>
 
             <article className="careerDash-card">
               <div className="careerDash-cardHeader">
                 <div>
-                  <p className="careerDash-kicker">Recent activity</p>
-                  <h2>Your latest analyses</h2>
+                  <p className="careerDash-kicker">{t('dash_recent_activity')}</p>
+                  <h2>{t('dash_latest_analyses')}</h2>
                 </div>
                 <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('history')}>
-                  View history
+                  {t('dash_view_history')}
                 </button>
               </div>
 
@@ -235,8 +241,8 @@ export default function CareerDashboardPage({ setPage }) {
                 <div className="careerDash-recentList">
                   {recent.map((item, index) => {
                     const score = extractScore(item)
-                    const title = item?.jobTitle || item?.title || item?.role || item?.result?.job_context?.title || `Analysis ${index + 1}`
-                    const company = item?.company || item?.result?.job_context?.company || 'Recent check'
+                    const title = item?.jobTitle || item?.title || item?.role || item?.result?.job_context?.title || `${t('dash_analysis')} ${index + 1}`
+                    const company = item?.company || item?.result?.job_context?.company || t('dash_recent_check')
 
                     return (
                       <button key={`${title}-${index}`} type="button" className="careerDash-recentRow" onClick={() => setPage?.('history')}>
@@ -251,10 +257,10 @@ export default function CareerDashboardPage({ setPage }) {
                 </div>
               ) : (
                 <div className="careerDash-empty">
-                  <h3>No analyses yet</h3>
-                  <p>Run your first ATS check to start building your score history.</p>
+                  <h3>{t('no_analyses')}</h3>
+                  <p>{t('dash_no_analyses_desc2')}</p>
                   <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>
-                    Run first check
+                    {t('dash_run_first')}
                   </button>
                 </div>
               )}
@@ -263,37 +269,35 @@ export default function CareerDashboardPage({ setPage }) {
 
           <aside className="careerDash-side">
             <article className="careerDash-card careerDash-sideCard">
-              <p className="careerDash-kicker">Weekly goal</p>
+              <p className="careerDash-kicker">{t('dash_weekly_goal')}</p>
               <div className="careerDash-weeklyTop">
                 <strong>{metrics.weeklyCompleted || 0}/{metrics.weeklyTarget || 5}</strong>
                 <span>{weeklyPercent}%</span>
               </div>
               <ProgressLine value={weeklyPercent} />
-              <p>Complete five meaningful career actions this week.</p>
+              <p>{t('dash_weekly_desc')}</p>
             </article>
 
             <article className="careerDash-card careerDash-sideCard">
-              <p className="careerDash-kicker">Momentum</p>
+              <p className="careerDash-kicker">{t('dash_momentum')}</p>
               <div className="careerDash-momentum">
                 <div>
                   <strong>{metrics.currentStreak || 0}</strong>
-                  <span>current streak</span>
+                  <span>{t('dash_current_streak_short')}</span>
                 </div>
                 <div>
                   <strong>{metrics.bestStreak || 0}</strong>
-                  <span>best streak</span>
+                  <span>{t('dash_best_streak')}</span>
                 </div>
               </div>
             </article>
 
             <article className="careerDash-card careerDash-sideCard careerDash-coachCard">
-              <p className="careerDash-kicker">LinkedIn profile import</p>
-              <h3>Coming next: profile enrichment.</h3>
-              <p>
-                The safest first version will let users upload a LinkedIn profile PDF or paste their LinkedIn About/Experience text, then use it to improve job matching.
-              </p>
-              <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('coach')}>
-                Improve my profile
+              <p className="careerDash-kicker">{t('dash_profile_import')}</p>
+              <h3>{t('dash_profile_next')}</h3>
+              <p>{t('dash_profile_desc')}</p>
+              <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('profile')}>
+                {t('dash_improve_profile')}
               </button>
             </article>
           </aside>
