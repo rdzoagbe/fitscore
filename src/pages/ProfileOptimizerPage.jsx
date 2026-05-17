@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { getDeviceId } from '../utils/deviceId'
 import './ProfileOptimizerPage.css'
 
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim()
@@ -33,10 +35,12 @@ function CopyButton({ value, label = 'Copy' }) {
 }
 
 export default function ProfileOptimizerPage() {
+  const { session } = useAuth()
   const [text, setText] = useState('')
   const [targetRole, setTargetRole] = useState('')
   const [profileUrl, setProfileUrl] = useState('')
   const [result, setResult] = useState(null)
+  const [usage, setUsage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
@@ -68,6 +72,7 @@ export default function ProfileOptimizerPage() {
     setError('')
     setChecklist(null)
     setResult(null)
+    setUsage(null)
 
     if (!validProfileUrl) {
       setError('Add a valid LinkedIn profile link, for example https://www.linkedin.com/in/your-name.')
@@ -78,7 +83,11 @@ export default function ProfileOptimizerPage() {
     try {
       const res = await fetch('/api/profile-optimize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          'X-Joblytics-Device-Id': getDeviceId()
+        },
         body: JSON.stringify({ profileText: text, targetRole, profileUrl: normalizeProfileUrl(profileUrl) })
       })
       const data = await res.json().catch(() => ({}))
@@ -88,8 +97,10 @@ export default function ProfileOptimizerPage() {
           setResult({ profile_url: data.profileUrl || normalizeProfileUrl(profileUrl), target_role: clean(targetRole) || 'Target role not specified' })
           return
         }
+        if (data?.usage) setUsage(data.usage)
         throw new Error(data?.error || `Server error ${res.status}`)
       }
+      setUsage(data.usage || null)
       setResult(data.analysis)
     } catch (e) {
       setError(e.message || 'Profile optimization failed. Please try again.')
@@ -118,6 +129,7 @@ export default function ProfileOptimizerPage() {
             <label>Profile text<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder="Paste your LinkedIn headline, About section, Experience and Skills here..." /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">Paste at least 120 characters, or use the LinkedIn profile link field as a reference.</p>}
             {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">Profile link detected. AI analysis needs pasted profile text because LinkedIn pages cannot reliably be read from a link alone.</p>}
+            {usage && <p className="profileOpt-warning">{usage.planLabel} usage: {usage.used}/{usage.limit} this month · {usage.remaining} remaining.</p>}
             {error && <p className="profileOpt-warning">{error}</p>}
             <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading} onClick={runAnalysis}>{loading ? 'Analyzing with AI...' : hasEnoughProfileText ? 'Analyze profile with AI' : 'Check profile link'}</button>
           </article>
