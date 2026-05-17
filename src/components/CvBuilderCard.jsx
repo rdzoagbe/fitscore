@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useCvPersist } from '../hooks/useCvPersist'
+import { downloadCvBuilderDocx, downloadCvBuilderPdf } from '../utils/cvBuilderExports'
 
 function safeText(value, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
@@ -72,6 +73,7 @@ export default function CvBuilderCard({ selected }) {
   const [jobUrl, setJobUrl] = useState('')
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState('')
+  const [exporting, setExporting] = useState('')
 
   const canBuild = !!cvFile && (!!selected?.result || jobText.trim().length > 80 || jobUrl.trim().length > 10)
   const job = useMemo(() => getJobContext(selected, jobText, jobUrl), [selected, jobText, jobUrl])
@@ -87,6 +89,30 @@ export default function CvBuilderCard({ selected }) {
       return
     }
     setPreview(makePreview(selected, jobText, jobUrl, cvFile))
+  }
+
+  const handleExportDocx = async () => {
+    if (!preview) return
+    setError('')
+    setExporting('docx')
+    try {
+      await downloadCvBuilderDocx(preview)
+    } catch (e) {
+      setError(e.message || 'Could not export Word document.')
+    }
+    setExporting('')
+  }
+
+  const handleExportPdf = () => {
+    if (!preview) return
+    setError('')
+    setExporting('pdf')
+    try {
+      downloadCvBuilderPdf(preview)
+    } catch (e) {
+      setError(e.message || 'Could not export PDF document.')
+    }
+    setExporting('')
   }
 
   return (
@@ -148,13 +174,23 @@ export default function CvBuilderCard({ selected }) {
               <p>Preview diff</p>
               <h3>What the full CV rewrite will change</h3>
             </div>
-            <span>Exports in next batch</span>
+            <span>Word + PDF ready</span>
           </div>
           <DiffRow title="Header positioning" before={preview.header.before} after={preview.header.after} />
           <DiffRow title="Professional summary" before={preview.summary.before} after={preview.summary.after} />
           <DiffRow title="Keyword alignment" before={preview.keywords.before} after={preview.keywords.after} />
           <DiffRow title="Achievement framing" before={preview.achievements.before} after={preview.achievements.after} />
-          <p className="cvBuilder-note">Next batch connects this workflow to real AI generation, then Word/PDF export and Supabase save.</p>
+
+          <div className="cvBuilder-exportActions">
+            <button type="button" onClick={handleExportDocx} disabled={!!exporting}>
+              {exporting === 'docx' ? 'Preparing Word...' : 'Download Word'}
+            </button>
+            <button type="button" onClick={handleExportPdf} disabled={!!exporting}>
+              {exporting === 'pdf' ? 'Preparing PDF...' : 'Download PDF'}
+            </button>
+          </div>
+
+          <p className="cvBuilder-note">This export is a structured rewrite preview. Next step is connecting the builder to the real AI regeneration endpoint and saving generated CV versions to Supabase.</p>
         </div>
       )}
     </section>
