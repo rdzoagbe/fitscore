@@ -24,12 +24,10 @@ export default function CvPreview({ preview, truncated }) {
           <span style={{ fontSize: 14 }}>{isShort ? '⚠️' : '🔍'}</span>
           <div style={{ minWidth: 0 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: isShort ? '#f5a623' : 'var(--text-primary)', marginBottom: 1 }}>
-              {isShort ? (t('cv_preview_warn') || 'Verify your CV was read correctly') : (t('cv_preview_title') || 'What we read from your CV')}
+              {isShort ? t('cv_preview_warn') : t('cv_preview_title')}
             </p>
             <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {isShort
-                ? (t('cv_preview_warn_desc') || 'Less text than expected — your PDF may not be parsing correctly')
-                : (t('cv_preview_desc') || 'Tap to verify our AI read your CV correctly')}
+              {isShort ? t('cv_preview_warn_desc') : t('cv_preview_desc')}
             </p>
           </div>
         </div>
@@ -39,7 +37,7 @@ export default function CvPreview({ preview, truncated }) {
       {open && (
         <div style={{ marginTop: 8, padding: '12px 14px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, animation: 'fadeUp 0.2s ease' }}>
           <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            {t('extracted_text') || 'Extracted text'}
+            {t('extracted_text')}
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7, fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 240, overflowY: 'auto', padding: '8px 10px', background: 'var(--bg-input)', borderRadius: 8 }}>
             {preview}
@@ -47,7 +45,7 @@ export default function CvPreview({ preview, truncated }) {
           </p>
           {isShort && (
             <p style={{ fontSize: 11, color: '#f5a623', marginTop: 8, lineHeight: 1.5 }}>
-              💡 {t('cv_preview_fix_hint') || 'If this looks wrong, your CV may be a scanned image or use unusual formatting (columns, icons). Try saving it as a fresh PDF from a Word document.'}
+              💡 {t('cv_preview_fix_hint')}
             </p>
           )}
         </div>
