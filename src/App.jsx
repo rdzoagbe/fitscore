@@ -11,6 +11,7 @@ import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
 import CvCoachPage from './pages/CvCoachPage'
 import CvBuilderPage from './pages/CvBuilderPage'
+import ProfileOptimizerPage from './pages/ProfileOptimizerPage'
 import ResultsView from './components/ResultsView'
 import Onboarding from './components/Onboarding'
 import Confetti from './components/Confetti'
@@ -284,6 +285,8 @@ export default function App() {
         return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
       case 'coach':
         return <CvCoachPage />
+      case 'profile':
+        return <ProfileOptimizerPage />
       case 'cv-builder':
         return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
       default:
