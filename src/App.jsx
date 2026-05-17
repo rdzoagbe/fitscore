@@ -16,6 +16,7 @@ import Confetti from './components/Confetti'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import EmailVerifyGate from './components/EmailVerifyGate'
 import AppNav from './components/AppNav'
+import AppShellBar from './components/AppShellBar'
 import Footer from './components/Footer'
 import CvPanel from './components/CvPanel'
 import TipCard from './components/TipCard'
@@ -184,8 +185,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
             <ResultsView data={displayData} savedRow={viewingAnalysis ? viewingAnalysis : savedRow} rateLimit={rateLimit} onReset={handleReset} onGoCoach={() => setPage('coach')} />
           </div>
         )}
-
-        <Footer compact />
       </main>
       <PWAInstallPrompt />
     </div>
@@ -233,8 +232,10 @@ export default function App() {
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>
       {showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}
       <AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} />
-      {renderPage()}
-      <Footer />
+      <AppShellBar />
+      <main className="appShellContent">
+        {renderPage()}
+      </main>
     </div>
   )
 }
