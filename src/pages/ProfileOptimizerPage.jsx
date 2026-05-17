@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useLang } from '../context/LangContext'
 import { getDeviceId } from '../utils/deviceId'
 import './ProfileOptimizerPage.css'
 
@@ -29,13 +30,14 @@ function looksLikeLinkedInUrl(value) {
   return isValidProfileUrl(value) && normalizeProfileUrl(value).includes('linkedin.com/')
 }
 
-function CopyButton({ value, label = 'Copy' }) {
+function CopyButton({ value, label, copiedLabel }) {
   const [copied, setCopied] = useState(false)
-  return <button type="button" className="profileOpt-copy" onClick={() => { navigator.clipboard.writeText(value || ''); setCopied(true); setTimeout(() => setCopied(false), 1200) }}>{copied ? 'Copied ✓' : label}</button>
+  return <button type="button" className="profileOpt-copy" onClick={() => { navigator.clipboard.writeText(value || ''); setCopied(true); setTimeout(() => setCopied(false), 1200) }}>{copied ? copiedLabel : label}</button>
 }
 
 export default function ProfileOptimizerPage() {
   const { session } = useAuth()
+  const { t } = useLang()
   const [text, setText] = useState('')
   const [targetRole, setTargetRole] = useState('')
   const [profileUrl, setProfileUrl] = useState('')
@@ -49,8 +51,8 @@ export default function ProfileOptimizerPage() {
   const hasProfileUrl = normalizeProfileUrl(profileUrl).includes('linkedin.com/')
   const canAnalyze = hasEnoughProfileText || hasProfileUrl
   const validProfileUrl = isValidProfileUrl(profileUrl)
-  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : hasProfileUrl && !hasEnoughProfileText ? 'Ready' : 'Profile'
-  const scoreCaption = loading ? 'analyzing profile' : result?.score !== undefined ? 'optimization score' : hasProfileUrl && !hasEnoughProfileText ? 'link saved' : 'AI optimizer'
+  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : hasProfileUrl && !hasEnoughProfileText ? t('profile_ready') : t('profile_score_label', 'Profile')
+  const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : hasProfileUrl && !hasEnoughProfileText ? t('profile_link_saved') : t('profile_ai_optimizer')
 
   const handleProfileTextChange = e => {
     const value = e.target.value
@@ -75,7 +77,7 @@ export default function ProfileOptimizerPage() {
     setUsage(null)
 
     if (!validProfileUrl) {
-      setError('Add a valid LinkedIn profile link, for example https://www.linkedin.com/in/your-name.')
+      setError(t('profile_invalid_link'))
       return
     }
 
@@ -109,52 +111,55 @@ export default function ProfileOptimizerPage() {
     }
   }
 
+  const copyLabel = t('profile_copy')
+  const copiedLabel = t('profile_copied')
+
   return (
     <div className="profileOpt-page">
       <main className="profileOpt-shell">
         <section className="profileOpt-hero">
           <div>
-            <p className="profileOpt-kicker">LinkedIn Profile</p>
-            <h1>Improve your profile for recruiters.</h1>
-            <p>Paste your LinkedIn profile text and target role. Joblytics AI will analyze your positioning and generate stronger copy based on your real experience.</p>
+            <p className="profileOpt-kicker">{t('profile_kicker')}</p>
+            <h1>{t('profile_title')}</h1>
+            <p>{t('profile_subtitle')}</p>
           </div>
           <div className="profileOpt-score"><strong>{scoreLabel}</strong><span>{scoreCaption}</span></div>
         </section>
 
         <section className="profileOpt-grid">
           <article className="profileOpt-card">
-            <label>LinkedIn profile link<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setResult(null); setChecklist(null); setError('') }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder="https://www.linkedin.com/in/your-profile" /></label>
-            {profileUrl.trim() && !validProfileUrl && <p className="profileOpt-warning">Add a valid LinkedIn profile link, for example https://www.linkedin.com/in/your-name.</p>}
-            <label>Target role<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder="Example: IT Support Manager" /></label>
-            <label>Profile text<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder="Paste your LinkedIn headline, About section, Experience and Skills here..." /></label>
-            {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">Paste at least 120 characters, or use the LinkedIn profile link field as a reference.</p>}
-            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">Profile link detected. AI analysis needs pasted profile text because LinkedIn pages cannot reliably be read from a link alone.</p>}
-            {usage && <p className="profileOpt-warning">{usage.planLabel} usage: {usage.used}/{usage.limit} this month · {usage.remaining} remaining.</p>}
+            <label>{t('profile_link_label')}<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setResult(null); setChecklist(null); setError('') }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder={t('profile_link_placeholder')} /></label>
+            {profileUrl.trim() && !validProfileUrl && <p className="profileOpt-warning">{t('profile_invalid_link')}</p>}
+            <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
+            <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder')} /></label>
+            {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
+            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_link_detected')}</p>}
+            {usage && <p className="profileOpt-warning">{t('profile_usage', { plan: usage.planLabel, used: usage.used, limit: usage.limit, remaining: usage.remaining })}</p>}
             {error && <p className="profileOpt-warning">{error}</p>}
-            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading} onClick={runAnalysis}>{loading ? 'Analyzing with AI...' : hasEnoughProfileText ? 'Analyze profile with AI' : 'Check profile link'}</button>
+            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading} onClick={runAnalysis}>{loading ? t('profile_analyzing') : hasEnoughProfileText ? t('profile_analyze_ai') : t('profile_check_link')}</button>
           </article>
 
           <aside className="profileOpt-card profileOpt-help">
-            <p className="profileOpt-kicker">What it improves</p>
-            <h2>Profile sections</h2>
-            <ul><li>Role positioning</li><li>Headline</li><li>About section</li><li>Experience bullets</li><li>Recruiter keywords</li><li>Evidence gaps</li></ul>
-            <p>The link is a reference. The AI uses the pasted profile text to avoid inventing experience or reading inaccessible profile content.</p>
+            <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
+            <h2>{t('profile_sections')}</h2>
+            <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
+            <p>{t('profile_help_desc')}</p>
           </aside>
         </section>
 
         {result && <section className="profileOpt-results">
-          {result.profile_url && <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Profile link</p><h2>LinkedIn reference saved</h2></div><CopyButton value={result.profile_url} /></div><p className="profileOpt-block">{result.profile_url}</p></article>}
+          {result.profile_url && <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">{t('profile_link_ref')}</p><h2>{t('profile_link_ref_saved')}</h2></div><CopyButton value={result.profile_url} label={copyLabel} copiedLabel={copiedLabel} /></div><p className="profileOpt-block">{result.profile_url}</p></article>}
 
-          {checklist && <article className="profileOpt-card"><p className="profileOpt-kicker">Next step</p><h2>Paste profile text to run AI analysis</h2><p className="profileOpt-block">A LinkedIn link alone cannot expose the full profile content. Paste the sections below so the AI can improve the profile based on real experience.</p><div className="profileOpt-bullets">{checklist.map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>}
+          {checklist && <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_next_step')}</p><h2>{t('profile_paste_text_title')}</h2><p className="profileOpt-block">{t('profile_paste_text_desc')}</p><div className="profileOpt-bullets">{checklist.map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>}
 
           {!checklist && <>
-            <article className="profileOpt-card"><p className="profileOpt-kicker">Positioning</p><h2>Role alignment</h2><p className="profileOpt-block">{result.role_alignment}</p><p className="profileOpt-block">{result.current_positioning}</p></article>
-            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Headline</p><h2>AI-improved headline</h2></div><CopyButton value={result.improved_headline} /></div><p className="profileOpt-block">{result.improved_headline}</p></article>
-            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">About</p><h2>AI-improved About section</h2></div><CopyButton value={result.improved_about} /></div><p className="profileOpt-block">{result.improved_about}</p></article>
-            <article className="profileOpt-card"><p className="profileOpt-kicker">Keywords</p><h2>Recruiter keywords to add</h2><div className="profileOpt-tags">{(result.keyword_gaps || []).map(word => <span key={word}>{word}</span>)}</div></article>
-            <article className="profileOpt-card"><p className="profileOpt-kicker">Experience</p><h2>AI bullet upgrades</h2><div className="profileOpt-bullets">{(result.experience_bullets || []).map((bullet, index) => <div key={bullet} className="profileOpt-bullet"><span>{index + 1}</span><p>{bullet}</p><CopyButton value={bullet} label="Copy" /></div>)}</div></article>
-            <article className="profileOpt-card"><p className="profileOpt-kicker">Priority fixes</p><h2>What to improve first</h2><div className="profileOpt-bullets">{(result.priority_fixes || []).map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>
-            <article className="profileOpt-card"><p className="profileOpt-kicker">Proof needed</p><h2>Evidence to add</h2><div className="profileOpt-bullets">{(result.proof_needed || []).map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_positioning')}</p><h2>{t('profile_role_alignment')}</h2><p className="profileOpt-block">{result.role_alignment}</p><p className="profileOpt-block">{result.current_positioning}</p></article>
+            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">{t('profile_headline')}</p><h2>{t('profile_ai_headline')}</h2></div><CopyButton value={result.improved_headline} label={copyLabel} copiedLabel={copiedLabel} /></div><p className="profileOpt-block">{result.improved_headline}</p></article>
+            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">{t('profile_about')}</p><h2>{t('profile_ai_about')}</h2></div><CopyButton value={result.improved_about} label={copyLabel} copiedLabel={copiedLabel} /></div><p className="profileOpt-block">{result.improved_about}</p></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_keywords')}</p><h2>{t('profile_recruiter_keywords')}</h2><div className="profileOpt-tags">{(result.keyword_gaps || []).map(word => <span key={word}>{word}</span>)}</div></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_experience')}</p><h2>{t('profile_ai_bullets')}</h2><div className="profileOpt-bullets">{(result.experience_bullets || []).map((bullet, index) => <div key={bullet} className="profileOpt-bullet"><span>{index + 1}</span><p>{bullet}</p><CopyButton value={bullet} label={copyLabel} copiedLabel={copiedLabel} /></div>)}</div></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_priority')}</p><h2>{t('profile_priority_title')}</h2><div className="profileOpt-bullets">{(result.priority_fixes || []).map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">{t('profile_proof')}</p><h2>{t('profile_proof_title')}</h2><div className="profileOpt-bullets">{(result.proof_needed || []).map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>
           </>}
         </section>}
       </main>
