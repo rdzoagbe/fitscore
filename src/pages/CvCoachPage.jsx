@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useUserProfile } from '../hooks/useUserProfile'
 import OptimizeCvCard from '../components/OptimizeCvCard'
@@ -138,6 +138,278 @@ function AnalysisCoach({ analysis, t }) {
           </InsightSection>
         )}
       </div>
+    </article>
+  )
+}
+
+function downloadTextFile(text, filename) {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+function buildCvText(rewritten) {
+  const c = rewritten.header?.contact || {}
+  const lines = []
+  lines.push(rewritten.header?.full_name || '')
+  if (rewritten.header?.title) lines.push(rewritten.header.title)
+  const contacts = [c.email, c.phone, c.location, c.linkedin].filter(Boolean)
+  if (contacts.length) lines.push(contacts.join(' · '))
+  lines.push('')
+  if (rewritten.summary) {
+    lines.push('PROFESSIONAL SUMMARY')
+    lines.push('─'.repeat(40))
+    lines.push(rewritten.summary)
+    lines.push('')
+  }
+  if (rewritten.experience?.length) {
+    lines.push('EXPERIENCE')
+    lines.push('─'.repeat(40))
+    rewritten.experience.forEach(exp => {
+      lines.push(`${exp.title} — ${exp.company}${exp.location ? `, ${exp.location}` : ''}`)
+      if (exp.dates) lines.push(exp.dates)
+      ;(exp.bullets || []).forEach(b => lines.push(`• ${b}`))
+      lines.push('')
+    })
+  }
+  if (rewritten.skills) {
+    lines.push('SKILLS')
+    lines.push('─'.repeat(40))
+    if (rewritten.skills.technical?.length) lines.push(`Technical: ${rewritten.skills.technical.join(', ')}`)
+    if (rewritten.skills.soft?.length) lines.push(`Soft skills: ${rewritten.skills.soft.join(', ')}`)
+    if (rewritten.skills.languages?.length) lines.push(`Languages: ${rewritten.skills.languages.join(', ')}`)
+    lines.push('')
+  }
+  if (rewritten.education?.length) {
+    lines.push('EDUCATION')
+    lines.push('─'.repeat(40))
+    rewritten.education.forEach(edu => {
+      lines.push(`${edu.degree} — ${edu.institution}${edu.location ? `, ${edu.location}` : ''}`)
+      if (edu.dates) lines.push(edu.dates)
+    })
+    lines.push('')
+  }
+  if (rewritten.certifications?.length) {
+    lines.push('CERTIFICATIONS')
+    lines.push('─'.repeat(40))
+    rewritten.certifications.forEach(cert => lines.push(`• ${cert}`))
+    lines.push('')
+  }
+  lines.push('─'.repeat(40))
+  lines.push(rewritten.disclaimer || '')
+  return lines.join('\n')
+}
+
+function CvRewriteCard({ t, lang, user }) {
+  const [jobDesc, setJobDesc] = useState('')
+  const [cvFile, setCvFile] = useState(null)
+  const [cvName, setCvName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState(null)
+  const [activeTab, setActiveTab] = useState('cv')
+  const fileRef = useRef(null)
+
+  const handleFile = e => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    if (!allowed.includes(file.type)) {
+      setError('Please upload a PDF or Word document (.pdf, .doc, .docx)')
+      return
+    }
+    setCvFile(file)
+    setCvName(file.name)
+    setError('')
+  }
+
+  const handleRewrite = async () => {
+    if (!cvFile) { setError('Please upload your CV first.'); return }
+    if (jobDesc.trim().length < 80) { setError('Please paste a full job description (at least 80 characters).'); return }
+
+    setLoading(true)
+    setError('')
+    setResult(null)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Please sign in again.')
+
+      const reader = new FileReader()
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(cvFile)
+      })
+
+      const response = await fetch('/api/cv-rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cvBase64: base64, cvMimeType: cvFile.type, jobDescription: jobDesc, lang })
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.success) throw new Error(data.error || 'Rewrite failed. Please try again.')
+      setResult(data.rewritten)
+      setActiveTab('cv')
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.')
+    }
+    setLoading(false)
+  }
+
+  const handleDownload = () => {
+    if (!result) return
+    const text = buildCvText(result)
+    const name = (result.header?.full_name || 'cv').replace(/\s+/g, '-').toLowerCase()
+    downloadTextFile(text, `${name}-rewritten-${Date.now()}.txt`)
+  }
+
+  return (
+    <article className="coachPro-card" style={{ marginTop: 32 }}>
+      <header className="coachPro-cardHeader">
+        <div>
+          <p className="coachPro-kicker">AI Full Rewrite</p>
+          <h2>CV Tailored to Job</h2>
+          <p>Upload your CV + paste a job description → get a fully rewritten CV targeted to that role.</p>
+        </div>
+      </header>
+
+      {!result ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="coachPro-field">
+            <div className="coachPro-fieldLabel"><span>Your CV</span></div>
+            <button type="button" className={`coachPro-nameBox ${cvName ? 'has-value' : ''}`} onClick={() => fileRef.current?.click()}>
+              {cvName || 'Click to upload CV (PDF or Word)'}
+            </button>
+            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style={{ display: 'none' }} onChange={handleFile} />
+          </div>
+          <div className="coachPro-field">
+            <div className="coachPro-fieldLabel"><span>Job Description</span></div>
+            <textarea
+              value={jobDesc}
+              onChange={e => setJobDesc(e.target.value)}
+              placeholder="Paste the full job description here…"
+              rows={8}
+              style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 13, resize: 'vertical', lineHeight: 1.6 }}
+            />
+          </div>
+          {error && <p className="coachPro-error">⚠ {error}</p>}
+          <button type="button" className="coachPro-generateBtn" onClick={handleRewrite} disabled={loading}>
+            {loading ? 'Rewriting CV…' : 'Rewrite CV for this job →'}
+          </button>
+          {loading && (
+            <div className="coachPro-generating">
+              <div />
+              <p>AI is fully rewriting your CV — this takes 20-30 seconds…</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            {['cv', 'changes', 'keywords'].map(tab => (
+              <button key={tab} type="button" onClick={() => setActiveTab(tab)} style={{
+                padding: '6px 16px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12,
+                background: activeTab === tab ? 'var(--accent)' : 'var(--bg-input)',
+                color: activeTab === tab ? '#0f172a' : 'var(--text-muted)', fontFamily: 'inherit'
+              }}>
+                {tab === 'cv' ? 'Rewritten CV' : tab === 'changes' ? 'What Changed' : 'Keywords Added'}
+              </button>
+            ))}
+            <button type="button" onClick={handleDownload} style={{ marginLeft: 'auto', padding: '6px 16px', borderRadius: 20, border: '1px solid var(--accent)', cursor: 'pointer', fontSize: 12, background: 'var(--accent-bg)', color: 'var(--accent)', fontFamily: 'inherit' }}>
+              ⬇ Download .txt
+            </button>
+            <button type="button" onClick={() => { setResult(null); setError('') }} style={{ padding: '6px 16px', borderRadius: 20, border: '1px solid var(--border)', cursor: 'pointer', fontSize: 12, background: 'var(--bg-input)', color: 'var(--text-muted)', fontFamily: 'inherit' }}>
+              ↺ Rewrite again
+            </button>
+          </div>
+
+          {activeTab === 'cv' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ background: 'var(--bg-input)', borderRadius: 12, padding: '20px 24px' }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: 22, color: 'var(--text-primary)' }}>{result.header?.full_name}</h3>
+                <p style={{ margin: '0 0 8px', color: 'var(--accent)', fontSize: 14, fontWeight: 500 }}>{result.header?.title}</p>
+                {[result.header?.contact?.email, result.header?.contact?.phone, result.header?.contact?.location, result.header?.contact?.linkedin].filter(Boolean).map((v, i) => (
+                  <span key={i} style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 12 }}>{v}</span>
+                ))}
+              </div>
+              {result.summary && (
+                <section>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 }}>Professional Summary</p>
+                  <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text-primary)' }}>{result.summary}</p>
+                </section>
+              )}
+              {result.experience?.length > 0 && (
+                <section>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>Experience</p>
+                  {result.experience.map((exp, i) => (
+                    <div key={i} style={{ marginBottom: 16, paddingLeft: 12, borderLeft: '2px solid var(--border)' }}>
+                      <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{exp.title}</p>
+                      <p style={{ margin: '2px 0 6px', fontSize: 12, color: 'var(--text-muted)' }}>{exp.company}{exp.location ? ` · ${exp.location}` : ''} {exp.dates ? `· ${exp.dates}` : ''}</p>
+                      {(exp.bullets || []).map((b, j) => (
+                        <p key={j} style={{ margin: '4px 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>• {b}</p>
+                      ))}
+                    </div>
+                  ))}
+                </section>
+              )}
+              {(result.skills?.technical?.length > 0 || result.skills?.soft?.length > 0) && (
+                <section>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 }}>Skills</p>
+                  {result.skills.technical?.length > 0 && <p style={{ fontSize: 13, margin: '4px 0', color: 'var(--text-secondary)' }}><strong>Technical:</strong> {result.skills.technical.join(', ')}</p>}
+                  {result.skills.soft?.length > 0 && <p style={{ fontSize: 13, margin: '4px 0', color: 'var(--text-secondary)' }}><strong>Soft skills:</strong> {result.skills.soft.join(', ')}</p>}
+                  {result.skills.languages?.length > 0 && <p style={{ fontSize: 13, margin: '4px 0', color: 'var(--text-secondary)' }}><strong>Languages:</strong> {result.skills.languages.join(', ')}</p>}
+                </section>
+              )}
+              {result.education?.length > 0 && (
+                <section>
+                  <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8 }}>Education</p>
+                  {result.education.map((edu, i) => (
+                    <p key={i} style={{ margin: '4px 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      <strong>{edu.degree}</strong> — {edu.institution}{edu.location ? `, ${edu.location}` : ''} {edu.dates ? `(${edu.dates})` : ''}
+                    </p>
+                  ))}
+                </section>
+              )}
+              <p style={{ fontSize: 11, color: 'var(--text-hint)', fontStyle: 'italic', marginTop: 8, padding: '12px 16px', background: 'var(--bg-input)', borderRadius: 8 }}>
+                ℹ {result.disclaimer}
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'changes' && (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Key edits the AI made to tailor your CV to this specific role:</p>
+              {(result.changes_summary || []).map((change, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12, padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 10 }}>
+                  <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 14, minWidth: 20 }}>{i + 1}</span>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{change}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'keywords' && (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Job description keywords naturally integrated into the rewritten CV:</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(result.keywords_added || []).map((kw, i) => (
+                  <span key={i} style={{ padding: '4px 12px', borderRadius: 20, background: 'var(--accent-bg)', color: 'var(--accent)', fontSize: 12, fontWeight: 500 }}>{kw}</span>
+                ))}
+                {!result.keywords_added?.length && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No specific keywords listed.</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </article>
   )
 }
@@ -484,6 +756,8 @@ export default function CvCoachPage() {
             <div className="coachPro-optimizeWrap"><OptimizeCvCard selected={selected} /></div>
           </div>
         </section>
+
+        <CvRewriteCard t={t} lang={lang} user={user} />
       </main>
     </div>
   )

@@ -3,6 +3,8 @@ import { useLang } from '../context/LangContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import UserMenu from './UserMenu'
+import ThemeToggle from './ThemeToggle'
+import LangSelector from './LangSelector'
 import './AppNav.css'
 
 const navItems = [
@@ -121,6 +123,10 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         <div className="jobNav-right">
           <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>New analysis</button>
           <a className="jobNav-textLink" href="/pricing">Plan</a>
+          <div className="jobNav-controls">
+            <LangSelector />
+            <ThemeToggle />
+          </div>
           <div className="jobNav-menuWrap"><span>Account</span><UserMenu onViewDashboard={() => goTo('history')} /></div>
         </div>
       </header>
