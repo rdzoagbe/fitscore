@@ -1,12 +1,18 @@
 import React, { useState } from 'react'
 import { useLang } from '../context/LangContext'
-import { TERMS_VERSION } from '../lib/legal'
+import { TERMS_VERSION, billingLegalAcceptancePayload, storePendingBillingLegalAcceptance } from '../lib/legal'
 import './BillingPage.css'
 
-function PlanCard({ name, price, description, features, badge, current, t, legalAccepted, withdrawalAccepted, onToggleLegal, onToggleWithdrawal, onBlockedCheckout }) {
+function PlanCard({ planId, name, price, description, features, badge, current, t, legalAccepted, withdrawalAccepted, onToggleLegal, onToggleWithdrawal, onBlockedCheckout, onReadyCheckout }) {
   const paid = !current
   const canCheckout = legalAccepted && withdrawalAccepted
   const buttonText = current ? t('billing_free_plan') : canCheckout ? t('billing_coming_soon') : t('billing_accept_to_continue')
+
+  const handleClick = () => {
+    if (!paid) return
+    if (!canCheckout) return onBlockedCheckout()
+    onReadyCheckout({ planId, planName: name })
+  }
 
   return (
     <article className={`billing-card ${badge ? 'is-highlighted' : ''}`}>
@@ -42,7 +48,7 @@ function PlanCard({ name, price, description, features, badge, current, t, legal
         </div>
       )}
 
-      <button type="button" className="billing-button" disabled={current} onClick={paid && !canCheckout ? onBlockedCheckout : undefined}>
+      <button type="button" className="billing-button" disabled={current} onClick={handleClick}>
         {buttonText}
       </button>
     </article>
@@ -54,24 +60,36 @@ export default function BillingPage() {
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [withdrawalAccepted, setWithdrawalAccepted] = useState(false)
   const [legalError, setLegalError] = useState('')
+  const [readyMessage, setReadyMessage] = useState('')
 
   const onToggleLegal = value => {
     setLegalAccepted(value)
+    setReadyMessage('')
     if (value && withdrawalAccepted) setLegalError('')
   }
 
   const onToggleWithdrawal = value => {
     setWithdrawalAccepted(value)
+    setReadyMessage('')
     if (value && legalAccepted) setLegalError('')
   }
 
   const onBlockedCheckout = () => {
+    setReadyMessage('')
     if (!legalAccepted) setLegalError(t('billing_legal_required'))
     else if (!withdrawalAccepted) setLegalError(t('billing_withdrawal_required'))
   }
 
+  const onReadyCheckout = ({ planId, planName }) => {
+    setLegalError('')
+    const payload = billingLegalAcceptancePayload({ planId, planName, source: 'billing_page_pre_stripe' })
+    storePendingBillingLegalAcceptance(payload)
+    setReadyMessage(t('billing_metadata_ready', { plan: planName }, `Legal acceptance saved for ${planName}. Stripe checkout can now use this metadata.`))
+  }
+
   const plans = [
     {
+      planId: 'free',
       name: t('billing_free_plan'),
       price: t('billing_free_price'),
       description: t('billing_free_desc'),
@@ -79,6 +97,7 @@ export default function BillingPage() {
       features: [t('billing_feature_ats_3'), t('billing_feature_profile_1'), t('billing_feature_history'), t('billing_feature_cv_builder_locked')]
     },
     {
+      planId: 'starter',
       name: t('billing_starter_name'),
       price: t('billing_starter_price'),
       description: t('billing_starter_desc'),
@@ -86,6 +105,7 @@ export default function BillingPage() {
       features: [t('billing_feature_ats_40'), t('billing_feature_profile_10'), t('billing_feature_cv_builder'), t('billing_feature_priority')]
     },
     {
+      planId: 'pro',
       name: t('billing_pro_name'),
       price: t('billing_pro_price'),
       description: t('billing_pro_desc'),
@@ -118,9 +138,10 @@ export default function BillingPage() {
         </section>
 
         {legalError && <p className="billing-error">⚠ {legalError}</p>}
+        {readyMessage && <p className="billing-ready">✓ {readyMessage}</p>}
 
         <section className="billing-grid">
-          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} withdrawalAccepted={withdrawalAccepted} onToggleLegal={onToggleLegal} onToggleWithdrawal={onToggleWithdrawal} onBlockedCheckout={onBlockedCheckout} />)}
+          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} withdrawalAccepted={withdrawalAccepted} onToggleLegal={onToggleLegal} onToggleWithdrawal={onToggleWithdrawal} onBlockedCheckout={onBlockedCheckout} onReadyCheckout={onReadyCheckout} />)}
         </section>
 
         <section className="billing-infoGrid">
