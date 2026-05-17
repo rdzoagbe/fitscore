@@ -1,6 +1,45 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 
+function friendlyAnalyzeError(error, responseStatus, serverMessage) {
+  if (responseStatus === 504 || responseStatus === 524) {
+    return 'The analysis took too long. Paste a shorter version of the job offer, ideally the mission, requirements, and skills sections only.'
+  }
+
+  if (responseStatus === 429) {
+    return serverMessage || "You've reached today's analysis limit. Try again tomorrow or join the waitlist for more access."
+  }
+
+  if (responseStatus >= 500) {
+    return 'The analysis service is temporarily unavailable. Try again in a moment, or switch to Paste mode with a shorter job description.'
+  }
+
+  if (responseStatus >= 400) {
+    return serverMessage || 'The job or CV could not be analyzed. Check the file and job text, then try again.'
+  }
+
+  if (error?.name === 'AbortError') {
+    return 'The analysis timed out. Paste a shorter job description and try again.'
+  }
+
+  const raw = error?.message || ''
+  const lower = raw.toLowerCase()
+
+  if (lower.includes('failed to read file')) {
+    return 'The CV file could not be read. Try uploading a PDF or Word document again.'
+  }
+
+  if (lower.includes('invalid response')) {
+    return 'The server returned an incomplete result. Try again, or use Paste mode with a shorter job description.'
+  }
+
+  if (lower.includes('failed to fetch') || lower.includes('network')) {
+    return 'Network connection failed. Check your internet connection and try again.'
+  }
+
+  return raw || 'Analysis failed. Please try again.'
+}
+
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
   const { user } = useAuth()
@@ -45,15 +84,7 @@ export function useAnalyze() {
       }
 
       if (!res.ok) {
-        // Specific error for timeout
-        if (res.status === 504 || res.status === 524) {
-          throw new Error('The analysis took too long and timed out. This usually happens with very long job descriptions. Try a shorter version (just the key requirements section).')
-        }
-        // Specific error for rate limit
-        if (res.status === 429) {
-          throw new Error(data?.error || "You've reached your daily limit. Try again tomorrow or join the waitlist for unlimited access.")
-        }
-        throw new Error(data?.error || `Server error (${res.status}). Please try again in a moment.`)
+        throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
       }
 
       if (!data || !data.analysis) {
@@ -69,10 +100,7 @@ export function useAnalyze() {
       })
     } catch (e) {
       clearTimeout(timeoutId)
-      const msg = e.name === 'AbortError'
-        ? 'The analysis timed out. Try a shorter job description.'
-        : (e.message || 'Analysis failed. Please try again.')
-      setState({ status: 'error', data: null, error: msg, savedRow: null, rateLimit: null })
+      setState({ status: 'error', data: null, error: friendlyAnalyzeError(e), savedRow: null, rateLimit: null })
     }
   }
 
