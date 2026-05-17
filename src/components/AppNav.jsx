@@ -81,6 +81,11 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         </nav>
 
         <div className="jobNav-right">
+          <div className="jobNav-preferences" aria-label="Language and theme preferences">
+            <LangSelector />
+            <ThemeToggle />
+          </div>
+
           <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>
             {label('new_check', 'New check')}
           </button>
@@ -98,7 +103,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
                   <span>{user?.email}</span>
                 </div>
 
-                <div className="jobNav-menuSection">
+                <div className="jobNav-menuSection jobNav-menuSectionMobileOnly">
                   <p>Preferences</p>
                   <div className="jobNav-menuControls">
                     <LangSelector />
