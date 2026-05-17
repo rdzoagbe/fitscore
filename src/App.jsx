@@ -71,7 +71,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     if (isValidUrl(text)) return false
     return /\s/.test(text)
   }
-  const detectBlockedJobBoard = url => {
+  const detectRestrictedJobBoard = url => {
     if (!isValidUrl(url)) return null
     const lower = normalizeJobUrl(url).toLowerCase()
     if (lower.includes('linkedin.com')) return 'LinkedIn'
@@ -82,7 +82,7 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     return null
   }
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
-  const blockedJobBoard = detectBlockedJobBoard(jobUrl)
+  const restrictedJobBoard = detectRestrictedJobBoard(jobUrl)
   const canAnalyzeUrl = isValidUrl(jobUrl)
   const canAnalyzePaste = jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
@@ -120,11 +120,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
 
   const handleAnalyze = async () => {
     if (!cvFile) return
-    if (blockedJobBoard && !canAnalyzePaste) {
-      setShowTextPaste(true)
-      setUserToggledMode(true)
-      return
-    }
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i+1) % LOADING_MSGS.length), 1800)
     if (canAnalyzePaste) {
@@ -135,22 +130,6 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
-
-  const autoSwitchedForErrorRef = useRef(null)
-  useEffect(() => {
-    if (status !== 'error' || !error) {
-      autoSwitchedForErrorRef.current = null
-      return
-    }
-    if (userToggledMode) return
-    if (autoSwitchedForErrorRef.current === error) return
-    const lower = error.toLowerCase()
-    const isBlocked = lower.includes('blocked') || lower.includes('blocking') || lower.includes('paste') || lower.includes('authwall')
-    if (isBlocked && !showTextPaste) {
-      autoSwitchedForErrorRef.current = error
-      setShowTextPaste(true)
-    }
-  }, [status, error, showTextPaste, userToggledMode])
 
   const handleReset = useCallback(() => {
     reset()
@@ -208,12 +187,12 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                 {!showTextPaste ? (
                   <>
                     <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder="Paste a job link, or paste the full job description here" />
-                    {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title="Link not recognized yet" body="Paste a job URL, or paste the full job description and Joblytics will switch to Paste mode automatically." />}
-                    {blockedJobBoard && (
+                    {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title="Link not recognized yet" body="Paste a valid job URL, or switch to Paste mode and paste the job description text." />}
+                    {restrictedJobBoard && (
                       <>
-                        <TipCard type="warning" title={`${blockedJobBoard} blocks automated reading`} body="Click Analyze Match to switch to Paste mode, then paste the job description text for an accurate analysis." />
+                        <TipCard type="warning" title={`${restrictedJobBoard} link detected`} body="URL mode will try to read this link. If the job board blocks access, keep Paste mode available and paste the job description text instead." />
                         <button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>
-                          Switch to Paste mode
+                          Use Paste mode instead
                         </button>
                       </>
                     )}
@@ -248,15 +227,15 @@ function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
                 <h3>Three steps to a sharper application</h3>
                 <div className="analyzePro-steps">
                   <div className="analyzePro-step"><span>1</span><div><strong>Add your CV</strong><small>Upload or reuse the current CV.</small></div></div>
-                  <div className="analyzePro-step"><span>2</span><div><strong>Add the job</strong><small>Paste the description for reliable extraction.</small></div></div>
+                  <div className="analyzePro-step"><span>2</span><div><strong>Add the job</strong><small>Use URL mode when the page can be read, or Paste mode for restricted boards.</small></div></div>
                   <div className="analyzePro-step"><span>3</span><div><strong>Review the report</strong><small>Use gaps, keywords and next steps before applying.</small></div></div>
                 </div>
               </div>
 
               <div className="analyzePro-sideCard">
                 <p className="analyzePro-kicker">Pro tip</p>
-                <h3>Paste mode is more reliable</h3>
-                <p>LinkedIn, Indeed, Welcome to the Jungle, Built In and some job boards block automated reading. For best results, paste the job description text directly.</p>
+                <h3>Keep both options available</h3>
+                <p>URL mode works for readable job pages. Paste mode gives the most reliable result for LinkedIn, Indeed, Welcome to the Jungle, Built In and similar boards.</p>
               </div>
             </aside>
           </div>
