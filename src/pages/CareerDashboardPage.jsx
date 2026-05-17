@@ -3,9 +3,6 @@ import { useAuth } from '../context/AuthContext'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
-import LangSelector from '../components/LangSelector'
-import ThemeToggle from '../components/ThemeToggle'
-import Footer from '../components/Footer'
 import './CareerDashboardPage.css'
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -40,16 +37,6 @@ function PathCard({ icon, title, text, progress, onClick }) {
   )
 }
 
-function DashboardPreferences() {
-  return (
-    <div className="careerDash-preferences" aria-label="Dashboard preferences">
-      <span>Preferences</span>
-      <LangSelector />
-      <ThemeToggle />
-    </div>
-  )
-}
-
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
   const { challenge, progress, completedToday, completeChallenge } = useDailyChallenge()
@@ -66,8 +53,6 @@ export default function CareerDashboardPage({ setPage }) {
       <div className="careerDash-bg careerDash-bgTwo" />
 
       <main className="careerDash-shell">
-        <DashboardPreferences />
-
         <section className="careerDash-hero">
           <div className="careerDash-heroText">
             <div className="careerDash-pill">
@@ -256,8 +241,6 @@ export default function CareerDashboardPage({ setPage }) {
             </article>
           </aside>
         </section>
-
-        <Footer compact />
       </main>
     </div>
   )
