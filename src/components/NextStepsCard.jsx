@@ -1,22 +1,20 @@
 import React from 'react'
 import { useLang } from '../context/LangContext'
 
-// Score-aware action card guiding users on what to do next
 export default function NextStepsCard({ score, onGoCoach, onReset, jobUrl, easyApply }) {
   const { t } = useLang()
 
-  // Determine the right narrative based on score
   let variant
   if (score >= 75) {
     variant = {
       kind: 'success',
       icon: '🎉',
-      kicker: t('next_steps_success_kicker') || 'STRONG MATCH',
-      title: t('next_steps_success_title') || 'Great fit! Time to apply.',
-      desc: t('next_steps_success_desc') || 'Your CV is well-aligned with this role. Generate a tailored cover letter to make a strong first impression.',
-      primaryCta: t('next_steps_success_cta') || '✉️ Generate cover letter',
+      kicker: t('next_steps_success_kicker'),
+      title: t('next_steps_success_title'),
+      desc: t('next_steps_success_desc'),
+      primaryCta: t('next_steps_success_cta'),
       primaryAction: onGoCoach,
-      secondaryCta: t('next_steps_apply') || 'Apply now →',
+      secondaryCta: t('next_steps_apply'),
       secondaryAction: jobUrl ? () => window.open(jobUrl, '_blank') : null,
       color: '#4caf7d',
       bg: 'rgba(76,175,125,0.08)',
@@ -26,12 +24,12 @@ export default function NextStepsCard({ score, onGoCoach, onReset, jobUrl, easyA
     variant = {
       kind: 'medium',
       icon: '💪',
-      kicker: t('next_steps_medium_kicker') || 'CLOSE MATCH',
-      title: t('next_steps_medium_title') || "You're close — let's polish",
-      desc: t('next_steps_medium_desc') || 'A few targeted improvements could push your score over 75. Open CV Coach to see exactly what to fix.',
-      primaryCta: t('next_steps_medium_cta') || '🎤 Open CV Coach',
+      kicker: t('next_steps_medium_kicker'),
+      title: t('next_steps_medium_title'),
+      desc: t('next_steps_medium_desc'),
+      primaryCta: t('next_steps_medium_cta'),
       primaryAction: onGoCoach,
-      secondaryCta: t('next_steps_run_another') || '↻ Try another job',
+      secondaryCta: t('next_steps_run_another'),
       secondaryAction: onReset,
       color: '#f5a623',
       bg: 'rgba(245,166,35,0.08)',
@@ -41,12 +39,12 @@ export default function NextStepsCard({ score, onGoCoach, onReset, jobUrl, easyA
     variant = {
       kind: 'low',
       icon: '🛠',
-      kicker: t('next_steps_low_kicker') || 'NEEDS WORK',
-      title: t('next_steps_low_title') || 'Your CV needs significant tuning for this role',
-      desc: t('next_steps_low_desc') || "Don't apply yet — most candidates improve their score by 20+ points after rewriting with CV Coach. It's worth the 10 minutes.",
-      primaryCta: t('next_steps_low_cta') || '🛠 Fix my CV with Coach',
+      kicker: t('next_steps_low_kicker'),
+      title: t('next_steps_low_title'),
+      desc: t('next_steps_low_desc'),
+      primaryCta: t('next_steps_low_cta'),
       primaryAction: onGoCoach,
-      secondaryCta: t('next_steps_run_another') || '↻ Try another job',
+      secondaryCta: t('next_steps_run_another'),
       secondaryAction: onReset,
       color: '#ff8e6b',
       bg: 'rgba(255,142,107,0.08)',
