@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from './context/AuthContext'
+import { hasAcceptedCurrentTerms } from './lib/legal'
 import LandingPage from './pages/LandingPage'
 import Dashboard from './pages/Dashboard'
 import CareerDashboardPage from './pages/CareerDashboardPage'
@@ -12,6 +13,7 @@ import BillingPage from './pages/BillingPage'
 import AnalyzerPage from './pages/AnalyzerPage'
 import Onboarding from './components/Onboarding'
 import EmailVerifyGate from './components/EmailVerifyGate'
+import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
 import './pages/CvBuilderPage.css'
@@ -23,7 +25,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
-    if (user && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
+    if (user && hasAcceptedCurrentTerms(user) && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
   }, [user])
 
   if (loading) return (
@@ -37,6 +39,7 @@ export default function App() {
   if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
+  if (!hasAcceptedCurrentTerms(user)) return <TermsGate />
 
   const renderPage = () => {
     switch(page) {
