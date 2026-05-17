@@ -8,6 +8,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [acceptedLegal, setAcceptedLegal] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,14 +20,24 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
     return () => { document.removeEventListener('keydown', handler); document.body.style.overflow = '' }
   }, [onClose])
 
+  const requireLegalForSignup = () => {
+    if (mode === 'signup' && !acceptedLegal) {
+      setError(t('legal_required_signup'))
+      return false
+    }
+    return true
+  }
+
   const handleSubmit = async () => {
-    setError(''); setSuccess(''); setLoading(true)
+    setError(''); setSuccess('')
+    if (!requireLegalForSignup()) return
+    setLoading(true)
     try {
       if (mode === 'signin') {
         const { error } = await signIn(email, password)
         if (error) throw error
       } else {
-        const { error } = await signUp(email, password)
+        const { error } = await signUp(email, password, 'signup_email_checkbox')
         if (error) throw error
         setSuccess(t('account_created'))
       }
@@ -36,7 +47,22 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
 
   const handleGoogle = async () => {
     setError('')
-    const { error } = await signInWithGoogle()
+    if (mode === 'signup' && !acceptedLegal) {
+      setError(t('legal_required_oauth'))
+      return
+    }
+    const { error } = await signInWithGoogle(mode === 'signup' ? 'signup_google_checkbox' : 'signin_google')
+    if (error) setError(error.message)
+  }
+
+  const handleLinkedIn = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (mode === 'signup' && !acceptedLegal) {
+      setError(t('legal_required_oauth'))
+      return
+    }
+    const { error } = await signInWithLinkedIn(mode === 'signup' ? 'signup_linkedin_checkbox' : 'signin_linkedin')
     if (error) setError(error.message)
   }
 
@@ -66,6 +92,20 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
           ))}
         </div>
 
+        {mode === 'signup' && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 13px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={acceptedLegal} onChange={e => setAcceptedLegal(e.target.checked)} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                {t('legal_signup_checkbox')}{' '}
+                <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 800 }}>{t('terms_of_use')}</a>{' · '}
+                <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', fontWeight: 800 }}>{t('privacy_policy_full')}</a>
+              </span>
+            </label>
+            <p style={{ fontSize: 10, color: 'var(--text-hint)', marginTop: 7, lineHeight: 1.5 }}>{t('legal_signup_notice')}</p>
+          </div>
+        )}
+
         <button onClick={handleGoogle} style={{ width:'100%', padding:'12px', borderRadius:12, background:'var(--bg-input)', border:'1px solid var(--border)', color:'var(--text-primary)', fontSize:14, cursor:'pointer', marginBottom:14, display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -76,46 +116,10 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
           {t('continue_google')}
         </button>
 
-        <button
-          type="button"
-          onClick={async (e) => {
-            e.preventDefault()
-            const { error } = await signInWithLinkedIn()
-            if (error) alert(error.message)
-          }}
-          style={{
-            width:'100%',
-            padding:'12px',
-            borderRadius:12,
-            background:'#0A66C2',
-            border:'1px solid #0A66C2',
-            color:'#fff',
-            fontSize:14,
-            fontWeight:600,
-            cursor:'pointer',
-            marginBottom:14,
-            display:'flex',
-            alignItems:'center',
-            justifyContent:'center',
-            gap:10
-          }}
-        >
-          <span style={{
-            display:'inline-flex',
-            alignItems:'center',
-            justifyContent:'center',
-            width:20,
-            height:20,
-            borderRadius:4,
-            background:'#fff',
-            color:'#0A66C2',
-            fontWeight:800,
-            fontSize:13,
-            lineHeight:1
-          }}>in</span>
+        <button type="button" onClick={handleLinkedIn} style={{ width:'100%', padding:'12px', borderRadius:12, background:'#0A66C2', border:'1px solid #0A66C2', color:'#fff', fontSize:14, fontWeight:600, cursor:'pointer', marginBottom:14, display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+          <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:4, background:'#fff', color:'#0A66C2', fontWeight:800, fontSize:13, lineHeight:1 }}>in</span>
           Continue with LinkedIn
         </button>
-
 
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, height:'1px', background:'var(--border)' }}/>
@@ -129,12 +133,12 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
         {error && <p style={{ fontSize:13, color:'#ff6b6b', marginBottom:10, padding:'10px 12px', background:'rgba(255,107,107,0.08)', borderRadius:8 }}>{error}</p>}
         {success && <p style={{ fontSize:13, color:'#4caf7d', marginBottom:10, padding:'10px 12px', background:'rgba(76,175,125,0.08)', borderRadius:8 }}>{success}</p>}
 
-        <button onClick={handleSubmit} disabled={loading||!email||!password} className="btn-primary" style={{ width:'100%' }}>
+        <button onClick={handleSubmit} disabled={loading||!email||!password||(mode === 'signup' && !acceptedLegal)} className="btn-primary" style={{ width:'100%' }}>
           {loading ? t('please_wait') : mode==='signin' ? t('sign_in_arrow') : t('create_account')}
         </button>
 
         <p style={{ fontSize:11, color:'var(--text-hint)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>
-          {t('auth_terms')}{' '}
+          {mode === 'signup' ? t('legal_signup_notice') : t('auth_terms')}{' '}
           <a href="/privacy" style={{ color:'var(--text-muted)' }}>{t('privacy_policy')}</a>.
         </p>
       </div>
