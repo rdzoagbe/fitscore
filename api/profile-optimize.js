@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createAdminClient, requireUser, checkUsageLimit, recordUsageEvent, publicUsage } from './_lib/planGate.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -37,7 +38,10 @@ function normalizeProfileUrl(value) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  const supabase = createAdminClient()
+
   try {
+    const user = await requireUser(req, supabase)
     const { profileText, targetRole, profileUrl } = req.body || {}
     const text = clean(profileText)
     const role = clean(targetRole) || 'the user target role'
@@ -56,6 +60,8 @@ export default async function handler(req, res) {
         ]
       })
     }
+
+    const usage = await checkUsageLimit({ supabase, req, user, eventType: 'profile_optimize' })
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -80,8 +86,17 @@ export default async function handler(req, res) {
     const safeArray = value => Array.isArray(value) ? value.map(clean).filter(Boolean) : []
     const score = Number.isFinite(Number(result.score)) ? Math.max(0, Math.min(100, Math.round(Number(result.score)))) : 0
 
+    await recordUsageEvent({
+      supabase,
+      user,
+      eventType: 'profile_optimize',
+      usage,
+      meta: { targetRole: role, profileUrl: url || null }
+    })
+
     return res.status(200).json({
       success: true,
+      usage: publicUsage(usage, 1),
       analysis: {
         score,
         role_alignment: clean(result.role_alignment),
@@ -100,6 +115,10 @@ export default async function handler(req, res) {
     })
   } catch (e) {
     console.error('Profile optimizer error:', e.message)
-    return res.status(500).json({ error: e.message || 'Profile optimization failed', code: 'PROFILE_OPTIMIZE_FAILED' })
+    return res.status(e.statusCode || 500).json({
+      error: e.message || 'Profile optimization failed',
+      code: e.code || 'PROFILE_OPTIMIZE_FAILED',
+      usage: e.usage || null
+    })
   }
 }
