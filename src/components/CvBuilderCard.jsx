@@ -6,60 +6,98 @@ function safeText(value, fallback = '') {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
 
+function normalizeList(values = []) {
+  return values
+    .flat()
+    .map(item => typeof item === 'string' ? item : item?.tip || item?.area || item?.prep_tip || '')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
 function getJobContext(selected, jobText, jobUrl) {
-  const ctx = selected?.result?.job_context || {}
+  const result = selected?.result || {}
+  const ctx = result.job_context || {}
+  const missingRequired = normalizeList(result.keyword_match?.missing_required)
+  const missingNice = normalizeList(result.keyword_match?.missing_nice)
+  const foundKeywords = normalizeList(result.keyword_match?.found || result.keyword_match?.matched)
+  const unmet = normalizeList(result.requirements_check?.unmet)
+  const met = normalizeList(result.requirements_check?.met)
+  const quickWins = normalizeList(result.quick_wins)
+  const edges = normalizeList(result.interview_prep?.your_edges)
+
   return {
     title: safeText(ctx.title, 'Target role'),
     company: safeText(ctx.company, 'Target company'),
     source: jobText?.trim() ? 'Pasted job description' : jobUrl?.trim() ? jobUrl.trim() : 'Selected analysis',
-    keywords: [
-      ...(selected?.result?.keyword_match?.missing_required || []),
-      ...(selected?.result?.keyword_match?.matched || []),
-      ...(selected?.result?.hard_skills || [])
-    ].filter(Boolean).slice(0, 10),
-    edges: selected?.result?.interview_prep?.your_edges || [],
-    quickWins: selected?.result?.quick_wins || []
+    summary: safeText(result.job_summary, ''),
+    missingRequired,
+    missingNice,
+    foundKeywords,
+    unmet,
+    met,
+    quickWins,
+    edges,
+    priorityKeywords: [...missingRequired, ...missingNice, ...foundKeywords].filter(Boolean).slice(0, 14),
+    criticalGaps: normalizeList(result.critical_gaps)
   }
 }
 
-function makePreview(selected, jobText, jobUrl, cvFile) {
+function makeAlignedCvDraft(selected, jobText, jobUrl, cvFile) {
   const job = getJobContext(selected, jobText, jobUrl)
   const cvName = cvFile?.name || 'Selected CV'
-  const primaryKeywords = job.keywords.length ? job.keywords : ['role-specific keywords', 'measurable outcomes', 'business impact']
-  const firstEdge = job.edges?.[0] || 'proven operational impact and stakeholder-facing delivery'
-  const firstWin = typeof job.quickWins?.[0] === 'string' ? job.quickWins[0] : job.quickWins?.[0]?.tip
+  const keywords = job.priorityKeywords.length ? job.priorityKeywords : ['role-specific keywords', 'measurable outcomes', 'business impact']
+  const requirements = job.unmet.length ? job.unmet : job.met.slice(0, 4)
+  const firstEdge = job.edges[0] || 'operational impact, stakeholder support and measurable service delivery'
+  const quickWins = job.quickWins.length ? job.quickWins : ['Add measurable results to the strongest experience bullets', 'Mirror the most important job keywords naturally', 'Clarify the scope of tools, users, teams and business impact']
 
   return {
     header: {
       before: cvName,
       after: `${job.title} · ${job.company}`
     },
+    target: {
+      title: job.title,
+      company: job.company,
+      source: job.source
+    },
     summary: {
-      before: 'Generic professional summary from the current CV.',
-      after: `Reframe the profile for ${job.title}, highlight ${firstEdge}, and align the opening section with ${job.company || 'the target company'} without inventing new experience.`
+      before: 'Original CV summary preserved as the source profile.',
+      after: `Profile aligned for ${job.title}: emphasize ${firstEdge}, then naturally include ${keywords.slice(0, 5).join(', ')} without inventing experience.`
     },
     keywords: {
-      before: 'Keywords may be present but are not clearly aligned to the target job.',
-      after: `Naturally include supported priority keywords: ${primaryKeywords.join(', ')}.`
+      before: 'Missing keywords from the ATS analysis.',
+      after: keywords.join(', ')
+    },
+    requirements: {
+      before: 'Requirements that need clearer evidence in the CV.',
+      after: requirements.length ? requirements.join('; ') : 'No major unmet requirements were detected. Keep the existing CV evidence clear and measurable.'
     },
     achievements: {
-      before: 'Responsibilities-led bullets with limited measurable outcomes.',
-      after: firstWin || 'Rewrite bullets to emphasize scope, measurable delivery, SLA impact, users supported, tooling, and operational outcomes.'
+      before: 'Existing experience remains the source of truth.',
+      after: quickWins.slice(0, 4).join(' | ')
+    },
+    sections: {
+      headline: `${job.title} candidate with relevant delivery, tools and operational impact`,
+      profile: `Job-aligned profile for ${job.title}. Keep the user's real CV experience, but strengthen wording around ${keywords.slice(0, 6).join(', ')}. Highlight ${firstEdge}.`,
+      skills: keywords,
+      requirements,
+      bullets: quickWins.slice(0, 6).map(win => `Update a CV bullet to show: ${win}`),
+      gaps: job.criticalGaps
     }
   }
 }
 
-function DiffRow({ title, before, after }) {
+function DraftRow({ title, before, after }) {
   return (
     <div className="cvBuilder-diffRow">
       <h4>{title}</h4>
       <div className="cvBuilder-diffGrid">
         <div>
-          <span>Before</span>
+          <span>Current CV signal</span>
           <p>{before}</p>
         </div>
         <div>
-          <span>After</span>
+          <span>Job-aligned update</span>
           <p>{after}</p>
         </div>
       </div>
@@ -86,12 +124,12 @@ export default function CvBuilderCard({ selected }) {
       return
     }
     if (!selected?.result && jobText.trim().length < 80 && jobUrl.trim().length < 10) {
-      setError('Select an analysis, paste a job description, or add a job link before creating a CV rewrite plan.')
+      setError('Run or select an analysis first so Joblytics can use the missing keywords and requirements.')
       return
     }
     setRebuilding(true)
     window.setTimeout(() => {
-      setPreview(makePreview(selected, jobText, jobUrl, cvFile))
+      setPreview(makeAlignedCvDraft(selected, jobText, jobUrl, cvFile))
       setRebuilding(false)
     }, 350)
   }
@@ -124,11 +162,11 @@ export default function CvBuilderCard({ selected }) {
     <section className="cvBuilder-card">
       <div className="cvBuilder-head">
         <div>
-          <p>CV Rebuilder · Job-aligned plan</p>
-          <h2>Create a safer CV rewrite plan for this job.</h2>
-          <span>Uses your analysis, missing keywords and quick wins to produce a practical rewrite plan without inventing experience or adding extra server load.</span>
+          <p>CV Rebuilder · Missing keyword adapter</p>
+          <h2>Generate a job-aligned CV draft.</h2>
+          <span>Uses your current CV as the source and adapts it with missing keywords, unmet requirements and quick wins from the ATS analysis.</span>
         </div>
-        <strong>Ready</strong>
+        <strong>Downloadable</strong>
       </div>
 
       <div className="cvBuilder-flow">
@@ -142,15 +180,15 @@ export default function CvBuilderCard({ selected }) {
         <div className="cvBuilder-step">
           <span>2</span>
           <div>
-            <strong>Target job</strong>
-            <p>{job.title} {job.company !== 'Target company' ? `@ ${job.company}` : ''}</p>
+            <strong>Missing keywords</strong>
+            <p>{job.priorityKeywords.length ? `${job.priorityKeywords.length} keywords detected` : 'Run an ATS analysis first'}</p>
           </div>
         </div>
         <div className="cvBuilder-step">
           <span>3</span>
           <div>
-            <strong>Rewrite plan</strong>
-            <p>{preview ? 'Ready to export' : 'Not generated yet'}</p>
+            <strong>Adapted CV draft</strong>
+            <p>{preview ? 'Ready to download' : 'Not generated yet'}</p>
           </div>
         </div>
       </div>
@@ -171,33 +209,34 @@ export default function CvBuilderCard({ selected }) {
       {error && <p className="cvBuilder-error">⚠ {error}</p>}
 
       <button type="button" className="cvBuilder-primary" disabled={!canBuild || rebuilding} onClick={buildPreview}>
-        {rebuilding ? 'Preparing rewrite plan...' : 'Create CV rewrite plan →'}
+        {rebuilding ? 'Adapting CV with missing keywords...' : 'Generate adapted CV draft →'}
       </button>
 
       {preview && (
         <div className="cvBuilder-preview">
           <div className="cvBuilder-previewHead">
             <div>
-              <p>Rewrite plan</p>
-              <h3>What the CV should change</h3>
+              <p>Adapted CV draft</p>
+              <h3>What will be added to the user CV</h3>
             </div>
             <span>Word + PDF export</span>
           </div>
-          <DiffRow title="Header positioning" before={preview.header.before} after={preview.header.after} />
-          <DiffRow title="Professional summary" before={preview.summary.before} after={preview.summary.after} />
-          <DiffRow title="Keyword alignment" before={preview.keywords.before} after={preview.keywords.after} />
-          <DiffRow title="Achievement framing" before={preview.achievements.before} after={preview.achievements.after} />
+          <DraftRow title="CV positioning" before={preview.header.before} after={preview.header.after} />
+          <DraftRow title="Professional summary" before={preview.summary.before} after={preview.summary.after} />
+          <DraftRow title="Missing keywords to add" before={preview.keywords.before} after={preview.keywords.after} />
+          <DraftRow title="Requirements to evidence" before={preview.requirements.before} after={preview.requirements.after} />
+          <DraftRow title="Experience bullet updates" before={preview.achievements.before} after={preview.achievements.after} />
 
           <div className="cvBuilder-exportActions">
             <button type="button" onClick={handleExportDocx} disabled={!!exporting}>
-              {exporting === 'docx' ? 'Preparing Word...' : 'Download Word'}
+              {exporting === 'docx' ? 'Preparing Word...' : 'Download adapted Word CV'}
             </button>
             <button type="button" onClick={handleExportPdf} disabled={!!exporting}>
-              {exporting === 'pdf' ? 'Preparing PDF...' : 'Download PDF'}
+              {exporting === 'pdf' ? 'Preparing PDF...' : 'Download adapted PDF CV'}
             </button>
           </div>
 
-          <p className="cvBuilder-note">This is a guided rewrite plan, not an automatic full-CV replacement. Review the suggestions before sending your application.</p>
+          <p className="cvBuilder-note">This creates an adapted CV draft from the current CV signals and ATS gaps. Review every line before applying and only keep claims you can prove.</p>
         </div>
       )}
     </section>
