@@ -143,7 +143,7 @@ For salary_intelligence:
 - confidence: 'high' for common roles in major European cities, 'low' for unusual roles where market data is thin
 - This is GUIDANCE not market data — numbers may be off by ±20%.`
 
-function getBlockedBoardName(url = '') {
+function getRestrictedBoardName(url = '') {
   const lower = String(url).toLowerCase()
   if (lower.includes('linkedin.')) return 'LinkedIn'
   if (lower.includes('indeed.')) return 'Indeed'
@@ -153,16 +153,8 @@ function getBlockedBoardName(url = '') {
   return null
 }
 
-function pasteModeError(boardName = 'This job board') {
-  const err = new Error(`${boardName} blocks automated reading. Please copy the job description text and paste it into Paste mode instead.`)
-  err.statusCode = 400
-  err.code = 'PASTE_REQUIRED'
-  return err
-}
-
 async function fetchJobText(url) {
-  const blockedBoard = getBlockedBoardName(url)
-  if (blockedBoard) throw pasteModeError(blockedBoard)
+  const restrictedBoard = getRestrictedBoardName(url)
 
   let res
   try {
@@ -175,12 +167,16 @@ async function fetchJobText(url) {
       redirect: 'follow'
     })
   } catch (fetchErr) {
-    throw new Error('Could not reach this page. Please copy the job description text and paste it instead.')
+    const err = new Error(`${restrictedBoard || 'This job page'} could not be reached from URL mode. Paste mode is available as a fallback.`)
+    err.statusCode = 400
+    err.code = 'URL_FETCH_FAILED'
+    throw err
   }
 
   if (!res.ok) {
-    const err = new Error('This page returned ' + res.status + '. Please copy the job description text and paste it instead.')
+    const err = new Error(`${restrictedBoard || 'This job page'} returned ${res.status}. Paste mode is available as a fallback.`)
     err.statusCode = 400
+    err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_FETCH_FAILED'
     throw err
   }
 
@@ -195,8 +191,9 @@ async function fetchJobText(url) {
     .replace(/\s{2,}/g, ' ').trim()
 
   if (text.length < 200) {
-    const err = new Error('Could not extract enough text from this page. Please copy the job description text and paste it instead.')
+    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Paste mode is available as a fallback.`)
     err.statusCode = 400
+    err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_TEXT_TOO_SHORT'
     throw err
   }
   return text.slice(0, 6000)
@@ -362,7 +359,7 @@ export default async function handler(req, res) {
       si.leverage_points = Array.isArray(si.leverage_points) ? si.leverage_points.slice(0, 3) : []
       si.currency = (typeof si.currency === 'string' && si.currency.length === 3) ? si.currency.toUpperCase() : 'EUR'
       si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
-      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
+      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? 'salary_mentioned' : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
       // If we don't have at least target numbers, kill it — better to show nothing than garbage
       if (!si.target_low || !si.target_high) {
         analysis.salary_intelligence = null
