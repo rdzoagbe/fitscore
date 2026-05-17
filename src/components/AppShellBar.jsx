@@ -11,7 +11,8 @@ export default function AppShellBar() {
         <span className="appShellFooter-links">
           <a href="/privacy">{t('app_footer_privacy')}</a>
           <a href="/terms">{t('app_footer_terms')}</a>
-          <a href="mailto:rolanddzoagbe@gmail.com">{t('app_footer_contact')}</a>
+          <a href="/legal">{t('legal_notice', 'Legal notice')}</a>
+          <a href="/privacy">{t('app_footer_contact')}</a>
         </span>
       </div>
     </footer>
