@@ -5,6 +5,13 @@ import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import './CareerDashboardPage.css'
 
+function getTimeGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Good afternoon'
+  return 'Good evening'
+}
+
 function ScoreCard({ label, value, helper, tone = 'default' }) {
   return (
     <article className={`careerDash-stat careerDash-stat--${tone}`}>
@@ -44,6 +51,7 @@ export default function CareerDashboardPage({ setPage }) {
   const [openChallenge, setOpenChallenge] = useState(true)
 
   const name = getUserDisplayName(user)
+  const greeting = getTimeGreeting()
   const weeklyPercent = Math.round(((metrics.weeklyCompleted || 0) / (metrics.weeklyTarget || 5)) * 100)
   const recent = metrics.analyses.slice(0, 4)
 
@@ -60,7 +68,7 @@ export default function CareerDashboardPage({ setPage }) {
             </div>
 
             <h1>
-              Good morning, <br />
+              {greeting}, <br />
               <em>{name}</em>
             </h1>
 
