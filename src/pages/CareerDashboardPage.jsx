@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
+import { getMatchedJobs } from '../utils/jobMatchUtils'
 import './CareerDashboardPage.css'
 
 function getTimeGreeting() {
@@ -44,6 +45,34 @@ function PathCard({ icon, title, text, progress, onClick }) {
   )
 }
 
+function MatchedJobCard({ job, onAnalyze }) {
+  return (
+    <article className="careerDash-matchCard">
+      <div className="careerDash-matchTop">
+        <div>
+          <p>{job.category}</p>
+          <h3>{job.title}</h3>
+          <span>{job.level}</span>
+        </div>
+        <strong>{job.score}%</strong>
+      </div>
+
+      <p className="careerDash-matchReason">{job.reasons[0]}</p>
+
+      <div className="careerDash-matchKeywords">
+        {(job.matchedKeywords.length ? job.matchedKeywords : job.keywords.slice(0, 4)).map(keyword => (
+          <span key={keyword}>{keyword}</span>
+        ))}
+      </div>
+
+      <div className="careerDash-matchActions">
+        <a href={job.searchUrl} target="_blank" rel="noreferrer">Find roles</a>
+        <button type="button" onClick={onAnalyze}>Analyze a job</button>
+      </div>
+    </article>
+  )
+}
+
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
   const { challenge, progress, completedToday, completeChallenge } = useDailyChallenge()
@@ -54,6 +83,8 @@ export default function CareerDashboardPage({ setPage }) {
   const greeting = getTimeGreeting()
   const weeklyPercent = Math.round(((metrics.weeklyCompleted || 0) / (metrics.weeklyTarget || 5)) * 100)
   const recent = metrics.analyses.slice(0, 4)
+  const matchedJobs = getMatchedJobs(metrics.analyses)
+  const matchSourceLabel = matchedJobs[0]?.isProfileBased ? 'Based on your saved analyses' : 'Starter recommendations'
 
   return (
     <div className="careerDash-page">
@@ -108,6 +139,25 @@ export default function CareerDashboardPage({ setPage }) {
           <ScoreCard label="Average score" value={metrics.averageScore ? `${metrics.averageScore}%` : '—'} helper="across checks" />
           <ScoreCard label="Best score" value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper="highest match" tone="accent" />
           <ScoreCard label="Current streak" value={`${metrics.currentStreak || 0}d`} helper="career actions" tone="warm" />
+        </section>
+
+        <section className="careerDash-card careerDash-matchedJobs">
+          <div className="careerDash-cardHeader">
+            <div>
+              <p className="careerDash-kicker">Matched jobs · {matchSourceLabel}</p>
+              <h2>Roles aligned to your profile</h2>
+              <p>Use these role targets to discover opportunities, then run an ATS check before applying.</p>
+            </div>
+            <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('analyzer')}>
+              Analyze job
+            </button>
+          </div>
+
+          <div className="careerDash-matchGrid">
+            {matchedJobs.map(job => (
+              <MatchedJobCard key={job.title} job={job} onAnalyze={() => setPage?.('analyzer')} />
+            ))}
+          </div>
         </section>
 
         <section className="careerDash-grid">
@@ -237,14 +287,13 @@ export default function CareerDashboardPage({ setPage }) {
             </article>
 
             <article className="careerDash-card careerDash-sideCard careerDash-coachCard">
-              <p className="careerDash-kicker">Coach insight</p>
-              <h3>Make your achievements measurable.</h3>
+              <p className="careerDash-kicker">LinkedIn profile import</p>
+              <h3>Coming next: profile enrichment.</h3>
               <p>
-                Replace responsibilities with quantified outcomes. Use team size,
-                ticket volume, users supported, SLA impact, or project scope.
+                The safest first version will let users upload a LinkedIn profile PDF or paste their LinkedIn About/Experience text, then use it to improve job matching.
               </p>
               <button type="button" className="careerDash-btn careerDash-btnGhost" onClick={() => setPage?.('coach')}>
-                Improve my CV
+                Improve my profile
               </button>
             </article>
           </aside>
