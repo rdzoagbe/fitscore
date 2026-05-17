@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { createAdminClient, requireUser, checkUsageLimit, recordUsageEvent, publicUsage } from './_lib/planGate.js'
+import { createAdminClient, requireUser, checkUsageLimit, recordUsageEvent, publicUsage } from '../lib/planGate.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
