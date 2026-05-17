@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import LangSelector from './LangSelector'
@@ -23,6 +23,7 @@ function getInitials(name) {
 export default function AppNav({ page, setPage, onLogoClick }) {
   const { user, signOut } = useAuth()
   const { t } = useLang()
+  const accountMenuRef = useRef(null)
   const displayName = getDisplayName(user)
   const initials = getInitials(displayName)
   const label = (key, fallback) => {
@@ -30,13 +31,23 @@ export default function AppNav({ page, setPage, onLogoClick }) {
     return value && value !== key ? value : fallback
   }
 
+  const closeMenu = () => {
+    if (accountMenuRef.current) accountMenuRef.current.open = false
+  }
+
   const goTo = id => {
+    closeMenu()
     if (id === 'dashboard') {
       onLogoClick?.()
       setPage('dashboard')
       return
     }
     setPage(id)
+  }
+
+  const handleSignOut = () => {
+    closeMenu()
+    signOut?.()
   }
 
   return (
@@ -64,7 +75,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
             {label('new_check', 'New check')}
           </button>
 
-          <details className="jobNav-account">
+          <details className="jobNav-account" ref={accountMenuRef}>
             <summary className="jobNav-menuButton">
               <span>Menu</span>
               <strong>{initials}</strong>
@@ -96,12 +107,12 @@ export default function AppNav({ page, setPage, onLogoClick }) {
 
               <div className="jobNav-menuSection">
                 <p>Legal & support</p>
-                <a href="/privacy">Privacy policy</a>
-                <a href="/terms">Terms of use</a>
-                <a href="mailto:rolanddzoagbe@gmail.com">Contact support</a>
+                <a href="/privacy" onClick={closeMenu}>Privacy policy</a>
+                <a href="/terms" onClick={closeMenu}>Terms of use</a>
+                <a href="mailto:rolanddzoagbe@gmail.com" onClick={closeMenu}>Contact support</a>
               </div>
 
-              <button type="button" className="jobNav-signOut" onClick={() => signOut?.()}>Sign out</button>
+              <button type="button" className="jobNav-signOut" onClick={handleSignOut}>Sign out</button>
             </div>
           </details>
         </div>
