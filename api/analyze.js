@@ -359,7 +359,7 @@ export default async function handler(req, res) {
       si.leverage_points = Array.isArray(si.leverage_points) ? si.leverage_points.slice(0, 3) : []
       si.currency = (typeof si.currency === 'string' && si.currency.length === 3) ? si.currency.toUpperCase() : 'EUR'
       si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
-      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? 'salary_mentioned' : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
+      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
       // If we don't have at least target numbers, kill it — better to show nothing than garbage
       if (!si.target_low || !si.target_high) {
         analysis.salary_intelligence = null
