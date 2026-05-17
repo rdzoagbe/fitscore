@@ -30,6 +30,10 @@ function isValidProfileUrl(value) {
   }
 }
 
+function looksLikeLinkedInUrl(value) {
+  return isValidProfileUrl(value) && normalizeProfileUrl(value).includes('linkedin.com/')
+}
+
 function detectRole(text) {
   const lower = text.toLowerCase()
   if (lower.includes('intune') || lower.includes('endpoint')) return 'Modern Workplace / Endpoint Manager'
@@ -40,10 +44,11 @@ function detectRole(text) {
 }
 
 function analyze(text, targetRole, profileUrl) {
+  const hasProfileText = text.trim().length >= 120
   const role = clean(targetRole) || detectRole(text)
-  const firstLine = lines(text)[0] || 'No headline detected'
-  const missing = KEYWORDS.filter(word => !has(text, word)).slice(0, 8)
-  let score = 25
+  const firstLine = hasProfileText ? (lines(text)[0] || 'No headline detected') : 'Profile text not pasted yet'
+  const missing = hasProfileText ? KEYWORDS.filter(word => !has(text, word)).slice(0, 8) : KEYWORDS.slice(0, 8)
+  let score = hasProfileText ? 25 : 35
   if (text.length > 500) score += 18
   if (text.length > 1200) score += 10
   if (/\d+/.test(text)) score += 12
@@ -56,14 +61,22 @@ function analyze(text, targetRole, profileUrl) {
     firstLine,
     role,
     profileUrl: normalizeProfileUrl(profileUrl),
+    hasProfileText,
     headline: `${role} | Microsoft 365, Intune, ITIL, SLA/KPI, Endpoint Security & Service Delivery`,
-    about: `I help organizations improve IT operations, workplace services and user support through reliable service delivery, clear processes and measurable outcomes. My experience covers Microsoft 365, endpoint management, support operations, stakeholder coordination and continuous improvement, with a focus on SLA/KPI performance and practical business impact.`,
+    about: hasProfileText
+      ? `I help organizations improve IT operations, workplace services and user support through reliable service delivery, clear processes and measurable outcomes. My experience covers Microsoft 365, endpoint management, support operations, stakeholder coordination and continuous improvement, with a focus on SLA/KPI performance and practical business impact.`
+      : 'Paste your LinkedIn About and Experience text to generate a tailored About section. With only a profile link, Joblytics can prepare the structure but cannot read private LinkedIn content.',
     missing,
-    bullets: [
+    bullets: hasProfileText ? [
       'Led IT support and workplace operations with a focus on service quality, SLA follow-up and user experience.',
       'Managed Microsoft 365, endpoint/device workflows and support processes to improve reliability and operational visibility.',
       'Coordinated stakeholders, vendors and internal teams to resolve incidents, improve processes and deliver business-critical IT services.',
       'Used metrics, ticket trends and feedback loops to identify recurring issues and drive continuous improvement.'
+    ] : [
+      'Paste your current About section so Joblytics can rewrite it with measurable impact.',
+      'Paste 2-3 experience entries so Joblytics can detect weak bullets and missing keywords.',
+      'Add target role to generate a stronger recruiter-facing headline.',
+      'Add numbers such as users supported, devices managed, team size, ticket volume or SLA impact.'
     ]
   }
 }
@@ -79,8 +92,22 @@ export default function ProfileOptimizerPage() {
   const [profileUrl, setProfileUrl] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const result = useMemo(() => submitted ? analyze(text, targetRole, profileUrl) : null, [submitted, text, targetRole, profileUrl])
-  const canAnalyze = text.trim().length >= 120
+  const hasEnoughProfileText = text.trim().length >= 120
+  const hasProfileUrl = normalizeProfileUrl(profileUrl).includes('linkedin.com/')
+  const canAnalyze = hasEnoughProfileText || hasProfileUrl
   const validProfileUrl = isValidProfileUrl(profileUrl)
+
+  const handleProfileTextChange = e => {
+    const value = e.target.value
+    if (looksLikeLinkedInUrl(value) && value.trim().split(/\s+/).length <= 2) {
+      setProfileUrl(normalizeProfileUrl(value))
+      setText('')
+      setSubmitted(false)
+      return
+    }
+    setText(value)
+    setSubmitted(false)
+  }
 
   return (
     <div className="profileOpt-page">
@@ -99,8 +126,9 @@ export default function ProfileOptimizerPage() {
             <label>LinkedIn profile link<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setSubmitted(false) }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder="https://www.linkedin.com/in/your-profile" /></label>
             {profileUrl.trim() && !validProfileUrl && <p className="profileOpt-warning">Add a valid LinkedIn profile link, for example https://www.linkedin.com/in/your-name.</p>}
             <label>Target role<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setSubmitted(false) }} placeholder="Example: IT Support Manager" /></label>
-            <label>Profile text<textarea value={text} onChange={e => { setText(e.target.value); setSubmitted(false) }} rows={14} placeholder="Paste your headline, About section, Experience and Skills here..." /></label>
-            {text.trim().length > 0 && !canAnalyze && <p className="profileOpt-warning">Paste at least 120 characters.</p>}
+            <label>Profile text<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder="Paste your headline, About section, Experience and Skills here..." /></label>
+            {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">Paste at least 120 characters, or use the LinkedIn profile link field above.</p>}
+            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">Profile link detected. Analyze is active, but paste your About and Experience text for deeper recommendations.</p>}
             <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl} onClick={() => setSubmitted(true)}>Analyze profile</button>
           </article>
 
@@ -108,12 +136,13 @@ export default function ProfileOptimizerPage() {
             <p className="profileOpt-kicker">What it improves</p>
             <h2>Profile sections</h2>
             <ul><li>Profile link reference</li><li>Headline</li><li>About section</li><li>Experience bullets</li><li>Recruiter keywords</li></ul>
-            <p>This does not connect to LinkedIn directly. The link is kept as a reference; the pasted text is what Joblytics improves.</p>
+            <p>This does not connect to LinkedIn directly. The link activates a preliminary check; pasted text gives the full optimization.</p>
           </aside>
         </section>
 
         {result && <section className="profileOpt-results">
           {result.profileUrl && <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Profile link</p><h2>LinkedIn reference</h2></div><CopyButton value={result.profileUrl} /></div><p className="profileOpt-block">{result.profileUrl}</p></article>}
+          {!result.hasProfileText && <article className="profileOpt-card"><p className="profileOpt-kicker">Next step</p><h2>Paste profile text for full analysis</h2><p className="profileOpt-block">A LinkedIn link alone cannot expose your full profile content. Paste your headline, About section, Experience and Skills to get precise rewrite suggestions.</p></article>}
           <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Headline</p><h2>Better headline</h2></div><CopyButton value={result.headline} /></div><div className="profileOpt-beforeAfter"><div><span>Current</span><p>{result.firstLine}</p></div><div><span>Improved</span><p>{result.headline}</p></div></div></article>
           <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">About</p><h2>Improved About section</h2></div><CopyButton value={result.about} /></div><p className="profileOpt-block">{result.about}</p></article>
           <article className="profileOpt-card"><p className="profileOpt-kicker">Keywords</p><h2>Missing keywords to add</h2><div className="profileOpt-tags">{result.missing.map(word => <span key={word}>{word}</span>)}</div></article>
