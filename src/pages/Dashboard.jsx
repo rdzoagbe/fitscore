@@ -110,10 +110,10 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
     })
 
   const verdictLabel = value => ({
-    likely_passed: t('likely_passed') || 'Likely passed',
-    borderline: t('borderline') || 'Borderline',
-    likely_filtered: t('likely_filtered') || 'Likely filtered'
-  })[value] || 'Unknown'
+    likely_passed: t('likely_passed', t('history_likely_passed')),
+    borderline: t('borderline', 'Borderline'),
+    likely_filtered: t('likely_filtered', 'Likely filtered')
+  })[value] || t('verdict_unknown')
 
   const stats = useMemo(() => {
     const scores = analyses.map(scoreValue)
@@ -165,10 +165,10 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
   }, [analyses, filter, search, sortBy])
 
   const filters = [
-    { value: 'all', label: t('filter_all') || 'All' },
-    { value: 'likely_passed', label: t('filter_passed') || 'Passed' },
-    { value: 'borderline', label: t('filter_borderline') || 'Borderline' },
-    { value: 'likely_filtered', label: t('filter_filtered') || 'Filtered' }
+    { value: 'all', label: t('history_filter_all') },
+    { value: 'likely_passed', label: t('history_filter_passed') },
+    { value: 'borderline', label: t('history_filter_borderline') },
+    { value: 'likely_filtered', label: t('history_filter_filtered') }
   ]
 
   return (
@@ -179,21 +179,18 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
       <main className="historyWide-shell">
         <section className="historyWide-hero">
           <div>
-            <p className="historyWide-kicker">APPLICATION INTELLIGENCE</p>
-            <h1>History board</h1>
-            <p>
-              A complete view of your job-search performance. Compare ATS scores, review saved analyses,
-              identify strong opportunities, and reopen any role to improve your CV match.
-            </p>
+            <p className="historyWide-kicker">{t('history_kicker')}</p>
+            <h1>{t('history_title')}</h1>
+            <p>{t('history_intro')}</p>
 
             <div className="historyWide-actions">
               <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
-                New ATS check
+                {t('history_new_check')}
               </button>
 
               {analyses.length > 0 && (
                 <button type="button" className="historyWide-dangerBtn" onClick={() => setDeleteAllOpen(true)}>
-                  Delete all
+                  {t('history_delete_all')}
                 </button>
               )}
             </div>
@@ -202,43 +199,43 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
           <aside className="historyWide-heroPanel">
             <div className="historyWide-orb">
               <strong>{stats.avgScore}</strong>
-              <span>avg score</span>
+              <span>{t('history_avg_score_short')}</span>
             </div>
             <div>
-              <p>Current archive</p>
-              <h2>{analyses.length} analyses</h2>
-              <span>{filtered.length} visible after filters</span>
+              <p>{t('history_current_archive')}</p>
+              <h2>{t('history_analyses_count', { count: analyses.length })}</h2>
+              <span>{t('history_visible_count', { count: filtered.length })}</span>
             </div>
           </aside>
         </section>
 
         {!loading && analyses.length > 0 && (
           <section className="historyWide-stats">
-            <StatCard label="Average score" value={`${stats.avgScore}%`} helper="across all checks" />
-            <StatCard label="Best score" value={`${stats.bestScore}%`} helper="highest role match" />
-            <StatCard label="Likely passed" value={`${stats.passedCount}/${analyses.length}`} helper="strong applications" />
-            <StatCard label="Visible results" value={filtered.length} helper="current filtered view" />
+            <StatCard label={t('history_average_score')} value={`${stats.avgScore}%`} helper={t('history_across_checks')} />
+            <StatCard label={t('history_best_score')} value={`${stats.bestScore}%`} helper={t('history_highest_match')} />
+            <StatCard label={t('history_likely_passed')} value={`${stats.passedCount}/${analyses.length}`} helper={t('history_strong_apps')} />
+            <StatCard label={t('history_visible_results')} value={filtered.length} helper={t('history_current_filtered')} />
           </section>
         )}
 
         {!loading && analyses.length >= 2 && (
           <section className="historyWide-insights">
             <article className="historyWide-card historyWide-chartCard">
-              <p className="historyWide-kicker">SCORE TREND</p>
-              <h2>Progress over time</h2>
+              <p className="historyWide-kicker">{t('history_score_trend')}</p>
+              <h2>{t('history_progress_time')}</h2>
               <div className="historyWide-chartBox">
                 <ScoreHistoryChart analyses={analyses} t={t} />
               </div>
             </article>
 
             <article className="historyWide-card">
-              <p className="historyWide-kicker">VERDICT BREAKDOWN</p>
-              <h2>Match quality</h2>
+              <p className="historyWide-kicker">{t('history_verdict_breakdown')}</p>
+              <h2>{t('history_match_quality')}</h2>
 
               <div className="historyWide-progressStack">
-                <ProgressLine label={t('likely_passed') || 'Likely passed'} value={passedPercent} color="#4caf7d" />
-                <ProgressLine label={t('borderline') || 'Borderline'} value={borderlinePercent} color="#f5a623" />
-                <ProgressLine label={t('likely_filtered') || 'Likely filtered'} value={filteredPercent} color="#ff6b6b" />
+                <ProgressLine label={t('likely_passed', t('history_likely_passed'))} value={passedPercent} color="#4caf7d" />
+                <ProgressLine label={t('borderline', 'Borderline')} value={borderlinePercent} color="#f5a623" />
+                <ProgressLine label={t('likely_filtered', 'Likely filtered')} value={filteredPercent} color="#ff6b6b" />
               </div>
             </article>
           </section>
@@ -247,9 +244,9 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
         <section className="historyWide-card historyWide-resultsCard">
           <div className="historyWide-sectionHead">
             <div>
-              <p className="historyWide-kicker">SAVED ANALYSES</p>
-              <h2>{t('saved_analyses_title') || 'Your saved analyses'}</h2>
-              <p>Search, filter, and reopen any job analysis from your archive.</p>
+              <p className="historyWide-kicker">{t('history_saved_analyses')}</p>
+              <h2>{t('history_saved_title')}</h2>
+              <p>{t('history_saved_intro')}</p>
             </div>
           </div>
 
@@ -259,7 +256,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                 <span>⌕</span>
                 <input
                   type="text"
-                  placeholder={t('search_placeholder') || 'Search by job title, company, or URL'}
+                  placeholder={t('history_search_placeholder')}
                   value={search}
                   onChange={event => setSearch(event.target.value)}
                 />
@@ -284,8 +281,8 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                 onClick={() => setSortBy(value => value === 'recent' ? 'priority' : 'recent')}
               >
                 {sortBy === 'priority'
-                  ? `⭐ ${t('sort_priority') || 'Priority'}`
-                  : `🕐 ${t('sort_recent') || 'Recent'}`}
+                  ? `⭐ ${t('history_sort_priority')}`
+                  : `🕐 ${t('history_sort_recent')}`}
               </button>
             </div>
           )}
@@ -301,18 +298,18 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
           {!loading && analyses.length === 0 && (
             <div className="historyWide-empty">
               <div>📋</div>
-              <h3>{t('no_analyses') || 'No analyses yet'}</h3>
-              <p>{t('no_analyses_desc') || 'Run your first ATS check to start building your job-search intelligence.'}</p>
+              <h3>{t('history_no_analyses')}</h3>
+              <p>{t('history_no_analyses_desc')}</p>
               <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
-                {t('start_analyzing') || 'Start analyzing'}
+                {t('history_start_analyzing')}
               </button>
             </div>
           )}
 
           {!loading && analyses.length > 0 && filtered.length === 0 && (
             <div className="historyWide-empty">
-              <h3>{t('no_match_filter') || 'No analyses match this filter.'}</h3>
-              <p>Try another filter or search term.</p>
+              <h3>{t('history_no_filter_match')}</h3>
+              <p>{t('history_try_filter')}</p>
             </div>
           )}
 
@@ -328,7 +325,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                     try {
                       return new URL(analysis.job_url).hostname.replace('www.', '')
                     } catch {
-                      return 'Job analysis'
+                      return t('history_job_analysis')
                     }
                   })()
 
@@ -347,7 +344,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
                         className="historyWide-delete"
                         onClick={event => deleteAnalysis(analysis.id, event)}
                         disabled={deleting === analysis.id}
-                        aria-label="Delete analysis"
+                        aria-label={t('history_delete_analysis')}
                       >
                         ×
                       </button>
