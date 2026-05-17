@@ -39,7 +39,7 @@ function makePreview(selected, jobText, jobUrl, cvFile) {
       after: `Reframe the profile for ${job.title}, highlight ${firstEdge}, and align the opening section with ${job.company || 'the target company'} without inventing new experience.`
     },
     keywords: {
-      before: 'Keywords may be present but are not explicitly aligned to the job description.',
+      before: 'Keywords may be present but are not clearly aligned to the target job.',
       after: `Naturally include supported priority keywords: ${primaryKeywords.join(', ')}.`
     },
     achievements: {
@@ -82,11 +82,11 @@ export default function CvBuilderCard({ selected }) {
   const buildPreview = () => {
     setError('')
     if (!cvFile) {
-      setError('Upload or select a CV first. For now, use the Analyzer upload flow so the builder can reuse your current CV.')
+      setError('Upload or select a CV first. Use the Analyzer upload area so Joblytics can reuse your current CV.')
       return
     }
     if (!selected?.result && jobText.trim().length < 80 && jobUrl.trim().length < 10) {
-      setError('Select an analysis, paste a job description, or add a job link before building a rewritten CV preview.')
+      setError('Select an analysis, paste a job description, or add a job link before creating a CV rewrite plan.')
       return
     }
     setRebuilding(true)
@@ -124,11 +124,11 @@ export default function CvBuilderCard({ selected }) {
     <section className="cvBuilder-card">
       <div className="cvBuilder-head">
         <div>
-          <p>CV Rebuilder · Safe preview</p>
-          <h2>Regenerate a CV plan for this job.</h2>
-          <span>Uses your completed analysis, missing keywords and quick wins to create a faithful job-aligned rewrite plan without calling an extra serverless function.</span>
+          <p>CV Rebuilder · Job-aligned plan</p>
+          <h2>Create a safer CV rewrite plan for this job.</h2>
+          <span>Uses your analysis, missing keywords and quick wins to produce a practical rewrite plan without inventing experience or adding extra server load.</span>
         </div>
-        <strong>Stable</strong>
+        <strong>Ready</strong>
       </div>
 
       <div className="cvBuilder-flow">
@@ -149,8 +149,8 @@ export default function CvBuilderCard({ selected }) {
         <div className="cvBuilder-step">
           <span>3</span>
           <div>
-            <strong>Rewrite preview</strong>
-            <p>{preview ? 'Preview ready' : 'Not generated yet'}</p>
+            <strong>Rewrite plan</strong>
+            <p>{preview ? 'Ready to export' : 'Not generated yet'}</p>
           </div>
         </div>
       </div>
@@ -171,17 +171,17 @@ export default function CvBuilderCard({ selected }) {
       {error && <p className="cvBuilder-error">⚠ {error}</p>}
 
       <button type="button" className="cvBuilder-primary" disabled={!canBuild || rebuilding} onClick={buildPreview}>
-        {rebuilding ? 'Preparing rewrite preview...' : 'Regenerate CV plan for this job →'}
+        {rebuilding ? 'Preparing rewrite plan...' : 'Create CV rewrite plan →'}
       </button>
 
       {preview && (
         <div className="cvBuilder-preview">
           <div className="cvBuilder-previewHead">
             <div>
-              <p>Preview diff</p>
-              <h3>What the CV rewrite should change</h3>
+              <p>Rewrite plan</p>
+              <h3>What the CV should change</h3>
             </div>
-            <span>Word + PDF ready</span>
+            <span>Word + PDF export</span>
           </div>
           <DiffRow title="Header positioning" before={preview.header.before} after={preview.header.after} />
           <DiffRow title="Professional summary" before={preview.summary.before} after={preview.summary.after} />
@@ -197,7 +197,7 @@ export default function CvBuilderCard({ selected }) {
             </button>
           </div>
 
-          <p className="cvBuilder-note">This is the stable rewrite plan. The real AI full-CV rewrite will be merged into the existing analysis API next so Vercel Hobby does not fail from too many functions.</p>
+          <p className="cvBuilder-note">This is a guided rewrite plan, not an automatic full-CV replacement. Review the suggestions before sending your application.</p>
         </div>
       )}
     </section>
