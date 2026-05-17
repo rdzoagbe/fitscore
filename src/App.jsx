@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import CareerDashboardPage from './pages/CareerDashboardPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
+import LegalNoticePage from './pages/LegalNoticePage'
 import CvCoachPage from './pages/CvCoachPage'
 import CvBuilderPage from './pages/CvBuilderPage'
 import ProfileOptimizerPage from './pages/ProfileOptimizerPage'
@@ -37,6 +38,7 @@ export default function App() {
   const path = window.location.pathname
   if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
   if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
+  if (path === '/legal') return <LegalNoticePage onBack={() => window.history.back()} />
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
   if (!hasAcceptedCurrentTerms(user)) return <TermsGate />
