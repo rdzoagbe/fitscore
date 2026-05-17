@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { getDeviceId } from '../utils/deviceId'
 
 function friendlyAnalyzeError(error, responseStatus, serverMessage) {
   if (responseStatus === 504 || responseStatus === 524) {
     return 'The analysis took too long. Paste a shorter version of the job offer, ideally the mission, requirements, and skills sections only.'
   }
 
+  if (responseStatus === 401) {
+    return serverMessage || 'Please sign in again to continue.'
+  }
+
   if (responseStatus === 429) {
-    return serverMessage || "You've reached today's analysis limit. Try again tomorrow or join the waitlist for more access."
+    return serverMessage || "You've reached your plan limit. Upgrade to continue."
   }
 
   if (responseStatus >= 500) {
@@ -42,7 +47,7 @@ function friendlyAnalyzeError(error, responseStatus, serverMessage) {
 
 export function useAnalyze() {
   const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
-  const { user } = useAuth()
+  const { user, session } = useAuth()
 
   // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
@@ -62,7 +67,11 @@ export function useAnalyze() {
 
       const res = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          'X-Joblytics-Device-Id': getDeviceId()
+        },
         body: JSON.stringify({
           jobUrl: jobUrl || null,
           jobText: jobText || null,
