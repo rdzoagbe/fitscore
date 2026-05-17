@@ -9,7 +9,16 @@ const navItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' }
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
+]
+
+const mobileNavItems = [
+  { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
+  { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' },
+  { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' }
 ]
 
 function getDisplayName(user) {
@@ -119,7 +128,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
       </header>
 
       <nav className="jobNav-mobile" aria-label="Mobile navigation">
-        {navItems.map(item => (
+        {mobileNavItems.map(item => (
           <button key={item.id} type="button" className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
             <span>{item.icon}</span>
             <em>{label(item.labelKey, item.fallback)}</em>
