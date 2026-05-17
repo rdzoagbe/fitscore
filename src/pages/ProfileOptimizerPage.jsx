@@ -46,9 +46,27 @@ function detectRole(text) {
 function analyze(text, targetRole, profileUrl) {
   const hasProfileText = text.trim().length >= 120
   const role = clean(targetRole) || detectRole(text)
-  const firstLine = hasProfileText ? (lines(text)[0] || 'No headline detected') : 'Profile text not pasted yet'
-  const missing = hasProfileText ? KEYWORDS.filter(word => !has(text, word)).slice(0, 8) : KEYWORDS.slice(0, 8)
-  let score = hasProfileText ? 25 : 35
+  const normalizedUrl = normalizeProfileUrl(profileUrl)
+
+  if (!hasProfileText) {
+    return {
+      mode: 'link_only',
+      hasProfileText: false,
+      profileUrl: normalizedUrl,
+      role,
+      score: null,
+      checklist: [
+        'Paste your current headline so Joblytics can rewrite it for recruiter search.',
+        'Paste your About section so Joblytics can improve positioning and clarity.',
+        'Paste 2-3 Experience entries so Joblytics can detect weak bullets and missing keywords.',
+        'Paste your Skills section or top tools to identify missing recruiter keywords.'
+      ]
+    }
+  }
+
+  const firstLine = lines(text)[0] || 'No headline detected'
+  const missing = KEYWORDS.filter(word => !has(text, word)).slice(0, 8)
+  let score = 25
   if (text.length > 500) score += 18
   if (text.length > 1200) score += 10
   if (/\d+/.test(text)) score += 12
@@ -57,26 +75,20 @@ function analyze(text, targetRole, profileUrl) {
   score = Math.max(0, Math.min(100, score))
 
   return {
+    mode: 'full_analysis',
     score,
     firstLine,
     role,
-    profileUrl: normalizeProfileUrl(profileUrl),
-    hasProfileText,
+    profileUrl: normalizedUrl,
+    hasProfileText: true,
     headline: `${role} | Microsoft 365, Intune, ITIL, SLA/KPI, Endpoint Security & Service Delivery`,
-    about: hasProfileText
-      ? `I help organizations improve IT operations, workplace services and user support through reliable service delivery, clear processes and measurable outcomes. My experience covers Microsoft 365, endpoint management, support operations, stakeholder coordination and continuous improvement, with a focus on SLA/KPI performance and practical business impact.`
-      : 'Paste your LinkedIn About and Experience text to generate a tailored About section. With only a profile link, Joblytics can prepare the structure but cannot read private LinkedIn content.',
+    about: `I help organizations improve IT operations, workplace services and user support through reliable service delivery, clear processes and measurable outcomes. My experience covers Microsoft 365, endpoint management, support operations, stakeholder coordination and continuous improvement, with a focus on SLA/KPI performance and practical business impact.`,
     missing,
-    bullets: hasProfileText ? [
+    bullets: [
       'Led IT support and workplace operations with a focus on service quality, SLA follow-up and user experience.',
       'Managed Microsoft 365, endpoint/device workflows and support processes to improve reliability and operational visibility.',
       'Coordinated stakeholders, vendors and internal teams to resolve incidents, improve processes and deliver business-critical IT services.',
       'Used metrics, ticket trends and feedback loops to identify recurring issues and drive continuous improvement.'
-    ] : [
-      'Paste your current About section so Joblytics can rewrite it with measurable impact.',
-      'Paste 2-3 experience entries so Joblytics can detect weak bullets and missing keywords.',
-      'Add target role to generate a stronger recruiter-facing headline.',
-      'Add numbers such as users supported, devices managed, team size, ticket volume or SLA impact.'
     ]
   }
 }
@@ -96,6 +108,8 @@ export default function ProfileOptimizerPage() {
   const hasProfileUrl = normalizeProfileUrl(profileUrl).includes('linkedin.com/')
   const canAnalyze = hasEnoughProfileText || hasProfileUrl
   const validProfileUrl = isValidProfileUrl(profileUrl)
+  const scoreLabel = result ? (result.hasProfileText ? `${result.score}%` : 'Ready') : 'Profile'
+  const scoreCaption = result ? (result.hasProfileText ? 'optimization score' : 'link saved') : 'copy-paste optimizer'
 
   const handleProfileTextChange = e => {
     const value = e.target.value
@@ -118,7 +132,7 @@ export default function ProfileOptimizerPage() {
             <h1>Improve your profile for recruiters.</h1>
             <p>Paste your profile link, headline, About section, experience and skills. Joblytics will suggest stronger text you can review and copy back into your profile.</p>
           </div>
-          <div className="profileOpt-score"><strong>{result ? `${result.score}%` : 'Profile'}</strong><span>{result ? 'optimization score' : 'copy-paste optimizer'}</span></div>
+          <div className="profileOpt-score"><strong>{scoreLabel}</strong><span>{scoreCaption}</span></div>
         </section>
 
         <section className="profileOpt-grid">
@@ -128,8 +142,8 @@ export default function ProfileOptimizerPage() {
             <label>Target role<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setSubmitted(false) }} placeholder="Example: IT Support Manager" /></label>
             <label>Profile text<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder="Paste your headline, About section, Experience and Skills here..." /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">Paste at least 120 characters, or use the LinkedIn profile link field above.</p>}
-            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">Profile link detected. Analyze is active, but paste your About and Experience text for deeper recommendations.</p>}
-            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl} onClick={() => setSubmitted(true)}>Analyze profile</button>
+            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">Profile link detected. Analyze is active, but paste your About and Experience text for real optimization results.</p>}
+            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl} onClick={() => setSubmitted(true)}>{hasEnoughProfileText ? 'Analyze profile' : 'Check profile link'}</button>
           </article>
 
           <aside className="profileOpt-card profileOpt-help">
@@ -141,12 +155,16 @@ export default function ProfileOptimizerPage() {
         </section>
 
         {result && <section className="profileOpt-results">
-          {result.profileUrl && <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Profile link</p><h2>LinkedIn reference</h2></div><CopyButton value={result.profileUrl} /></div><p className="profileOpt-block">{result.profileUrl}</p></article>}
-          {!result.hasProfileText && <article className="profileOpt-card"><p className="profileOpt-kicker">Next step</p><h2>Paste profile text for full analysis</h2><p className="profileOpt-block">A LinkedIn link alone cannot expose your full profile content. Paste your headline, About section, Experience and Skills to get precise rewrite suggestions.</p></article>}
-          <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Headline</p><h2>Better headline</h2></div><CopyButton value={result.headline} /></div><div className="profileOpt-beforeAfter"><div><span>Current</span><p>{result.firstLine}</p></div><div><span>Improved</span><p>{result.headline}</p></div></div></article>
-          <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">About</p><h2>Improved About section</h2></div><CopyButton value={result.about} /></div><p className="profileOpt-block">{result.about}</p></article>
-          <article className="profileOpt-card"><p className="profileOpt-kicker">Keywords</p><h2>Missing keywords to add</h2><div className="profileOpt-tags">{result.missing.map(word => <span key={word}>{word}</span>)}</div></article>
-          <article className="profileOpt-card"><p className="profileOpt-kicker">Experience</p><h2>Bullet upgrades</h2><div className="profileOpt-bullets">{result.bullets.map((bullet, index) => <div key={bullet} className="profileOpt-bullet"><span>{index + 1}</span><p>{bullet}</p><CopyButton value={bullet} label="Copy" /></div>)}</div></article>
+          {result.profileUrl && <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Profile link</p><h2>LinkedIn reference saved</h2></div><CopyButton value={result.profileUrl} /></div><p className="profileOpt-block">{result.profileUrl}</p></article>}
+
+          {!result.hasProfileText && <article className="profileOpt-card"><p className="profileOpt-kicker">Next step</p><h2>Paste profile text to unlock full analysis</h2><p className="profileOpt-block">A LinkedIn link alone cannot expose your profile content. Paste your headline, About section, Experience and Skills to get precise rewrite suggestions.</p><div className="profileOpt-bullets">{result.checklist.map((item, index) => <div key={item} className="profileOpt-bullet"><span>{index + 1}</span><p>{item}</p></div>)}</div></article>}
+
+          {result.hasProfileText && <>
+            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">Headline</p><h2>Better headline</h2></div><CopyButton value={result.headline} /></div><div className="profileOpt-beforeAfter"><div><span>Current</span><p>{result.firstLine}</p></div><div><span>Improved</span><p>{result.headline}</p></div></div></article>
+            <article className="profileOpt-card"><div className="profileOpt-head"><div><p className="profileOpt-kicker">About</p><h2>Improved About section</h2></div><CopyButton value={result.about} /></div><p className="profileOpt-block">{result.about}</p></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">Keywords</p><h2>Missing keywords to add</h2><div className="profileOpt-tags">{result.missing.map(word => <span key={word}>{word}</span>)}</div></article>
+            <article className="profileOpt-card"><p className="profileOpt-kicker">Experience</p><h2>Bullet upgrades</h2><div className="profileOpt-bullets">{result.bullets.map((bullet, index) => <div key={bullet} className="profileOpt-bullet"><span>{index + 1}</span><p>{bullet}</p><CopyButton value={bullet} label="Copy" /></div>)}</div></article>
+          </>}
         </section>}
       </main>
     </div>
