@@ -1,18 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { translations, LANGUAGES } from '../i18n/translations'
 import { extraTranslations } from '../i18n/appTranslations'
+import { billingTranslations } from '../i18n/billingTranslations'
 
 const LangContext = createContext({})
 
-function mergeTranslations(base, extra) {
+function mergeTranslations(base, ...packs) {
   const merged = { ...base }
-  Object.keys(extra || {}).forEach(lang => {
-    merged[lang] = { ...(base[lang] || base.en || {}), ...(extra[lang] || {}) }
+  packs.forEach(extra => {
+    Object.keys(extra || {}).forEach(lang => {
+      merged[lang] = { ...(merged[lang] || merged.en || base.en || {}), ...(extra[lang] || {}) }
+    })
   })
   return merged
 }
 
-const allTranslations = mergeTranslations(translations, extraTranslations)
+const allTranslations = mergeTranslations(translations, extraTranslations, billingTranslations)
 
 function formatTemplate(value, params = {}) {
   if (typeof value !== 'string') return value
