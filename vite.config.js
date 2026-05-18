@@ -32,6 +32,21 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('react') || id.includes('react-dom')) return 'vendor-react'
+          if (id.includes('@supabase')) return 'vendor-supabase'
+          if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('docx') || id.includes('file-saver')) return 'vendor-export'
+          if (id.includes('mammoth') || id.includes('pdfjs-dist') || id.includes('pdf-parse')) return 'vendor-parsers'
+          return 'vendor'
+        }
+      }
+    }
+  },
   server: {
     port: parseInt(process.env.PORT) || 5173,
     host: true
