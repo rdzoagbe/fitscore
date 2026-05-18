@@ -1,32 +1,21 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import ThemeToggle from '../components/ThemeToggle'
 import LangSelector from '../components/LangSelector'
+import { supabase } from '../lib/supabase'
 import './ContactPage.css'
 
 const CONTACT_EMAIL = 'admin@joblytics-ai.com'
 
-function encodeMailto({ name, email, category, subject, message }) {
-  const clean = value => String(value || '').trim()
-  const mailSubject = clean(subject) || `Joblytics contact request - ${clean(category) || 'General'}`
-  const body = [
-    'New Joblytics contact request',
-    '',
-    `Name: ${clean(name) || 'Not provided'}`,
-    `Email: ${clean(email) || 'Not provided'}`,
-    `Category: ${clean(category) || 'General'}`,
-    `Page: ${typeof window !== 'undefined' ? window.location.href : 'Joblytics'}`,
-    '',
-    'Message:',
-    clean(message) || 'No message provided'
-  ].join('\n')
-
-  return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(body)}`
+async function getFreshAccessToken(session) {
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || null
 }
 
 export default function ContactPage({ onBack }) {
-  const { user } = useAuth()
+  const { user, session } = useAuth()
   const { t } = useLang()
   const [form, setForm] = useState({
     name: user?.user_metadata?.full_name || user?.user_metadata?.name || '',
@@ -36,10 +25,10 @@ export default function ContactPage({ onBack }) {
     message: ''
   })
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
-  const mailto = useMemo(() => encodeMailto(form), [form])
-  const canSend = form.email.trim().length > 4 && form.message.trim().length >= 10
+  const canSend = form.email.trim().length > 4 && form.message.trim().length >= 10 && !sending
 
   const update = key => event => {
     setForm(current => ({ ...current, [key]: event.target.value }))
@@ -47,14 +36,36 @@ export default function ContactPage({ onBack }) {
     setSent(false)
   }
 
-  const handleSubmit = event => {
+  const handleSubmit = async event => {
     event.preventDefault()
     if (!canSend) {
       setError(t('contact_required_error', 'Please add your email and a message of at least 10 characters.'))
       return
     }
-    setSent(true)
-    window.location.href = mailto
+
+    setSending(true)
+    setError('')
+    setSent(false)
+
+    try {
+      const token = await getFreshAccessToken(session)
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(form)
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Could not send message (${res.status})`)
+      setSent(true)
+      setForm(current => ({ ...current, subject: '', message: '' }))
+    } catch (e) {
+      setError(e.message || t('contact_send_failed', 'Could not send your message. Please try again.'))
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -68,7 +79,7 @@ export default function ContactPage({ onBack }) {
         <section className="contactHero">
           <p>{t('contact_kicker', 'Contact')}</p>
           <h1>{t('contact_title', 'Send your request to Joblytics.')}</h1>
-          <span>{t('contact_subtitle', 'Use this form for support, billing, privacy, legal or product questions. Your message will be prepared for email delivery to the Joblytics owner.')}</span>
+          <span>{t('contact_subtitle_direct', 'Use this form for support, billing, privacy, legal or product questions. Your message is sent directly to Joblytics support and saved in your message area when you are signed in.')}</span>
         </section>
 
         <section className="contactGrid">
@@ -107,18 +118,18 @@ export default function ContactPage({ onBack }) {
             </label>
 
             {error && <p className="contactError">⚠ {error}</p>}
-            {sent && <p className="contactSuccess">✓ {t('contact_opening_mail', 'Your email app should open with the message prepared. Please send it from there.')}</p>}
+            {sent && <p className="contactSuccess">✓ {t('contact_sent_direct', 'Message sent. You can follow this request from your Messages area.')}</p>}
 
-            <button type="submit" disabled={!canSend}>{t('contact_send', 'Send message')}</button>
+            <button type="submit" disabled={!canSend}>{sending ? t('contact_sending', 'Sending...') : t('contact_send', 'Send message')}</button>
           </form>
 
           <aside className="contactSide">
             <p className="contactKicker">{t('contact_destination', 'Destination')}</p>
             <h2>{CONTACT_EMAIL}</h2>
-            <p>{t('contact_mailto_note', 'For now, the Send button opens the user’s email app with the request already filled in. This avoids storing extra messages before an email provider is connected.')}</p>
+            <p>{t('contact_direct_note', 'Messages are sent directly from Joblytics once the email provider is configured. Signed-in users also get a saved conversation record for updates.')}</p>
             <div className="contactNote">
-              <strong>{t('contact_future_title', 'Future improvement')}</strong>
-              <span>{t('contact_future_body', 'Later, connect Resend, Brevo, SendGrid or SMTP so messages are sent directly inside Joblytics without opening the user’s email app.')}</span>
+              <strong>{t('contact_messages_title', 'Message updates')}</strong>
+              <span>{t('contact_messages_body', 'Open Messages from the account menu to see your submitted requests and future support updates.')}</span>
             </div>
           </aside>
         </section>
