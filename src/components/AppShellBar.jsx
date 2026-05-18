@@ -9,6 +9,7 @@ export default function AppShellBar() {
       <div className="appShellFooter-inner">
         <span>© {new Date().getFullYear()} Joblytics · {t('app_footer_made')}</span>
         <span className="appShellFooter-links">
+          <a href="/messages">{t('nav_messages', 'Messages')}</a>
           <a href="/privacy">{t('app_footer_privacy')}</a>
           <a href="/terms">{t('app_footer_terms')}</a>
           <a href="/legal">{t('legal_notice', 'Legal notice')}</a>
