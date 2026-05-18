@@ -84,41 +84,14 @@ export default function ContactPage({ onBack }) {
 
         <section className="contactGrid">
           <form className="contactForm" onSubmit={handleSubmit}>
-            <label>
-              {t('contact_name', 'Name')}
-              <input value={form.name} onChange={update('name')} placeholder="Your name" />
-            </label>
-
-            <label>
-              {t('contact_email', 'Email')}
-              <input type="email" value={form.email} onChange={update('email')} placeholder="you@example.com" required />
-            </label>
-
-            <label>
-              {t('contact_category', 'Category')}
-              <select value={form.category} onChange={update('category')}>
-                <option>Support</option>
-                <option>Billing</option>
-                <option>Privacy / GDPR</option>
-                <option>Legal</option>
-                <option>Bug report</option>
-                <option>Feature request</option>
-                <option>Partnership</option>
-              </select>
-            </label>
-
-            <label>
-              {t('contact_subject', 'Subject')}
-              <input value={form.subject} onChange={update('subject')} placeholder="How can we help?" />
-            </label>
-
-            <label>
-              {t('contact_message', 'Message')}
-              <textarea value={form.message} onChange={update('message')} rows={8} placeholder="Write your request here..." required />
-            </label>
+            <label>{t('contact_name', 'Name')}<input value={form.name} onChange={update('name')} placeholder="Your name" /></label>
+            <label>{t('contact_email', 'Email')}<input type="email" value={form.email} onChange={update('email')} placeholder="you@example.com" required /></label>
+            <label>{t('contact_category', 'Category')}<select value={form.category} onChange={update('category')}><option>Support</option><option>Billing</option><option>Privacy / GDPR</option><option>Legal</option><option>Bug report</option><option>Feature request</option><option>Partnership</option></select></label>
+            <label>{t('contact_subject', 'Subject')}<input value={form.subject} onChange={update('subject')} placeholder="How can we help?" /></label>
+            <label>{t('contact_message', 'Message')}<textarea value={form.message} onChange={update('message')} rows={8} placeholder="Write your request here..." required /></label>
 
             {error && <p className="contactError">⚠ {error}</p>}
-            {sent && <p className="contactSuccess">✓ {t('contact_sent_direct', 'Message sent. You can follow this request from your Messages area.')}</p>}
+            {sent && <div className="contactSuccess"><p>✓ {t('contact_sent_direct', 'Message sent. You can follow this request from your Messages area.')}</p><a href="/messages">{t('contact_view_messages', 'View Messages')}</a></div>}
 
             <button type="submit" disabled={!canSend}>{sending ? t('contact_sending', 'Sending...') : t('contact_send', 'Send message')}</button>
           </form>
@@ -127,10 +100,7 @@ export default function ContactPage({ onBack }) {
             <p className="contactKicker">{t('contact_destination', 'Destination')}</p>
             <h2>{CONTACT_EMAIL}</h2>
             <p>{t('contact_direct_note', 'Messages are sent directly from Joblytics once the email provider is configured. Signed-in users also get a saved conversation record for updates.')}</p>
-            <div className="contactNote">
-              <strong>{t('contact_messages_title', 'Message updates')}</strong>
-              <span>{t('contact_messages_body', 'Open Messages from the account menu to see your submitted requests and future support updates.')}</span>
-            </div>
+            <div className="contactNote"><strong>{t('contact_messages_title', 'Message updates')}</strong><span>{t('contact_messages_body', 'Open Messages from the account menu to see your submitted requests and future support updates.')}</span></div>
           </aside>
         </section>
       </div>
