@@ -7,7 +7,7 @@
 # - /api/contact
 # - /api/support-reply
 # - /api/system-check
-# - /api/create-checkout-session
+# - /api/create-checkout-v2
 # - /api/stripe-webhook
 
 api/**
@@ -18,5 +18,5 @@ api/**
 !api/contact.js
 !api/support-reply.js
 !api/system-check.js
-!api/create-checkout-session.js
+!api/create-checkout-v2.js
 !api/stripe-webhook.js
