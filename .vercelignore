@@ -2,9 +2,11 @@
 # The app currently needs only these production API routes:
 # - /api/analyze
 # - /api/profile-optimize
+# - /api/profile-import
 # - /api/cover-letter
 
 api/**
 !api/analyze.js
 !api/profile-optimize.js
+!api/profile-import.js
 !api/cover-letter.js
