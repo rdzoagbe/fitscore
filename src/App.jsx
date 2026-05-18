@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react'
+import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import { hasAcceptedCurrentTerms } from './lib/legal'
 import LandingPage from './pages/LandingPage'
-import Dashboard from './pages/Dashboard'
-import CareerDashboardPage from './pages/CareerDashboardPage'
-import PrivacyPage from './pages/PrivacyPage'
-import TermsPage from './pages/TermsPage'
-import LegalNoticePage from './pages/LegalNoticePage'
-import ContactPage from './pages/ContactPage'
-import MessagesPage from './pages/MessagesPage'
-import CvCoachPage from './pages/CvCoachPage'
-import CvBuilderPage from './pages/CvBuilderPage'
-import ProfileOptimizerPage from './pages/ProfileOptimizerPage'
-import BillingPage from './pages/BillingPage'
-import AnalyzerPage from './pages/AnalyzerPage'
 import Onboarding from './components/Onboarding'
 import EmailVerifyGate from './components/EmailVerifyGate'
 import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
-import './pages/CvBuilderPage.css'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const LegalNoticePage = lazy(() => import('./pages/LegalNoticePage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
+const CvCoachPage = lazy(() => import('./pages/CvCoachPage'))
+const CvBuilderPage = lazy(() => import('./pages/CvBuilderPage'))
+const ProfileOptimizerPage = lazy(() => import('./pages/ProfileOptimizerPage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
 
 const PAGE_TO_PATH = {
   dashboard: '/dashboard',
@@ -43,6 +43,10 @@ function getPageFromPath() {
   return null
 }
 
+function AppLoading() {
+  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
+}
+
 export default function App() {
   const { user, loading } = useAuth()
   const [page, setPageState] = useState(() => getPageFromPath() || 'dashboard')
@@ -52,9 +56,7 @@ export default function App() {
   const setPage = nextPage => {
     setPageState(nextPage)
     const nextPath = PAGE_TO_PATH[nextPage]
-    if (nextPath && window.location.pathname !== nextPath) {
-      window.history.pushState({ page: nextPage }, '', nextPath)
-    }
+    if (nextPath && window.location.pathname !== nextPath) window.history.pushState({ page: nextPage }, '', nextPath)
   }
 
   useEffect(() => {
@@ -70,12 +72,12 @@ export default function App() {
     if (user && hasAcceptedCurrentTerms(user) && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
   }, [user])
 
-  if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
+  if (loading) return <AppLoading />
 
   const path = window.location.pathname
-  if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
-  if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
-  if (path === '/legal') return <LegalNoticePage onBack={() => window.history.back()} />
+  if (path === '/privacy') return <Suspense fallback={<AppLoading />}><PrivacyPage onBack={() => window.history.back()} /></Suspense>
+  if (path === '/terms') return <Suspense fallback={<AppLoading />}><TermsPage onBack={() => window.history.back()} /></Suspense>
+  if (path === '/legal') return <Suspense fallback={<AppLoading />}><LegalNoticePage onBack={() => window.history.back()} /></Suspense>
 
   const routePage = getPageFromPath()
   if (!routePage && !PUBLIC_PATHS.has(path)) window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
@@ -99,5 +101,5 @@ export default function App() {
     }
   }
 
-  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent">{renderPage()}</main><AppShellBar /></div>
+  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div>
 }
