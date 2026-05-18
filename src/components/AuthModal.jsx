@@ -2,46 +2,71 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
-const passwordWords = ['Atlas', 'Noble', 'Cedar', 'Quartz', 'Signal', 'Harbor', 'Vector', 'Falcon', 'River', 'Orbit', 'Summit', 'Vertex']
+const passwordWords = [
+  'Atlas', 'Noble', 'Cedar', 'Quartz', 'Signal', 'Harbor', 'Vector', 'Falcon',
+  'River', 'Orbit', 'Summit', 'Vertex', 'Anchor', 'Beacon', 'Cipher', 'Meadow',
+  'Forest', 'Copper', 'Marble', 'Rocket', 'Bridge', 'Castle', 'Silver', 'Tundra'
+]
 const passwordSymbols = ['!', '@', '#', '$', '%', '&', '*', '?']
+const weakPasswordWords = ['password', 'passw0rd', 'qwerty', 'azerty', 'admin', 'letmein', 'welcome', 'joblytics', 'summer', 'winter', 'spring', 'autumn', 'football', 'monkey', 'dragon']
+const weakSequences = ['123456', '234567', '345678', 'abcdef', 'qwerty', 'azerty', '987654', '111111', '000000']
+
+function secureRandom(max) {
+  if (globalThis.crypto?.getRandomValues) {
+    const array = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(array)
+    return array[0] % max
+  }
+  return Math.floor(Math.random() * max)
+}
 
 function randomItem(list) {
-  return list[Math.floor(Math.random() * list.length)]
+  return list[secureRandom(list.length)]
 }
 
 function generateStrongPassword() {
-  const words = [randomItem(passwordWords), randomItem(passwordWords), randomItem(passwordWords)]
-  const number = String(Math.floor(100 + Math.random() * 900))
+  const selected = []
+  while (selected.length < 4) {
+    const word = randomItem(passwordWords)
+    if (!selected.includes(word)) selected.push(word)
+  }
+  const number = String(secureRandom(9000) + 1000)
   const symbol = randomItem(passwordSymbols)
-  return `${words[0]}-${number}${symbol}-${words[1]}-${words[2]}`
+  return `${selected[0]}-${selected[1]}-${number}${symbol}-${selected[2]}-${selected[3]}`
 }
 
 function getPasswordStrength(password, email = '') {
   const value = String(password || '')
+  const lower = value.toLowerCase()
   const lowerEmailName = String(email || '').split('@')[0]?.toLowerCase() || ''
   const checks = {
-    length: value.length >= 12,
+    length: value.length >= 16,
     upper: /[A-Z]/.test(value),
     lower: /[a-z]/.test(value),
     number: /\d/.test(value),
     special: /[^A-Za-z0-9]/.test(value),
-    noEmail: !lowerEmailName || lowerEmailName.length < 3 || !value.toLowerCase().includes(lowerEmailName)
+    noEmail: !lowerEmailName || lowerEmailName.length < 3 || !lower.includes(lowerEmailName),
+    noCommon: !weakPasswordWords.some(word => lower.includes(word)),
+    noRepeat: !/(.)\1{2,}/.test(value),
+    noSequence: !weakSequences.some(seq => lower.includes(seq))
   }
 
   let score = 0
-  if (checks.length) score += 1
+  if (checks.length) score += 2
   if (checks.upper && checks.lower) score += 1
   if (checks.number) score += 1
   if (checks.special) score += 1
-  if (checks.noEmail && value.length >= 14) score += 1
-  if (value.length >= 18 && score >= 4) score += 1
-  score = Math.max(0, Math.min(5, score))
+  if (checks.noEmail) score += 1
+  if (checks.noCommon) score += 1
+  if (checks.noRepeat && checks.noSequence) score += 1
+  if (value.length >= 20 && score >= 7) score += 1
+  score = Math.max(0, Math.min(8, score))
 
-  const labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent']
-  return { score, percent: (score / 5) * 100, label: labels[score], checks }
+  const labels = ['Too weak', 'Too weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very strong', 'Excellent', 'Excellent']
+  return { score, max: 8, percent: (score / 8) * 100, label: labels[score], checks }
 }
 
-function PasswordField({ value, onChange, onEnter, placeholder, showPassword, setShowPassword }) {
+function PasswordField({ value, onChange, onEnter, placeholder, showPassword, setShowPassword, mode }) {
   return (
     <div style={{ position: 'relative', marginBottom: 14 }}>
       <input
@@ -50,14 +75,15 @@ function PasswordField({ value, onChange, onEnter, placeholder, showPassword, se
         value={value}
         onChange={onChange}
         onKeyDown={onEnter}
-        autoComplete="current-password"
+        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
         style={{ marginBottom: 0, paddingRight: 48 }}
       />
       <button
         type="button"
         onClick={() => setShowPassword(!showPassword)}
         aria-label={showPassword ? 'Hide password' : 'Show password'}
-        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+        title={showPassword ? 'Hide password' : 'Show password'}
+        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center', fontSize: 16 }}
       >
         {showPassword ? '🙈' : '👁️'}
       </button>
@@ -68,38 +94,44 @@ function PasswordField({ value, onChange, onEnter, placeholder, showPassword, se
 function PasswordStrengthBox({ password, email, suggestions, onUseSuggestion, onRefresh, t }) {
   const strength = getPasswordStrength(password, email)
   const requirements = [
-    ['length', t('password_req_length', 'At least 12 characters')],
+    ['length', t('password_req_length', 'At least 16 characters')],
     ['upper', t('password_req_upper_lower', 'Uppercase and lowercase letters')],
     ['number', t('password_req_number', 'At least one number')],
     ['special', t('password_req_special', 'At least one symbol')],
-    ['noEmail', t('password_req_no_email', 'Does not contain your email name')]
+    ['noEmail', t('password_req_no_email', 'Does not contain your email name')],
+    ['noCommon', t('password_req_no_common', 'No common weak words such as password, admin, qwerty or azerty')],
+    ['noRepeat', t('password_req_no_repeat', 'No repeated characters such as aaa or 111')],
+    ['noSequence', t('password_req_no_sequence', 'No common sequences such as 123456 or abcdef')]
   ]
 
   return (
-    <div style={{ margin: '-4px 0 14px', border: '1px solid var(--border)', background: 'var(--bg-input)', borderRadius: 14, padding: 12 }}>
+    <div style={{ margin: '-4px 0 14px', border: '1px solid var(--border-focus)', background: 'var(--bg-input)', borderRadius: 16, padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-        <strong style={{ fontSize: 12, color: 'var(--text-primary)' }}>{t('password_strength', 'Password strength')}</strong>
-        <span style={{ fontSize: 11, fontWeight: 900, color: strength.score >= 4 ? '#4caf7d' : strength.score >= 3 ? 'var(--accent)' : '#ff6b6b' }}>{strength.label}</span>
+        <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t('password_strength', 'Password strength')}</strong>
+        <span style={{ fontSize: 12, fontWeight: 950, color: strength.score >= 7 ? 'var(--green)' : strength.score >= 5 ? 'var(--accent)' : 'var(--red)' }}>{strength.label}</span>
       </div>
-      <div style={{ height: 7, borderRadius: 999, background: 'rgba(127,127,127,.18)', overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ width: `${strength.percent}%`, height: '100%', borderRadius: 999, background: strength.score >= 4 ? '#4caf7d' : strength.score >= 3 ? 'var(--accent)' : '#ff6b6b', transition: 'width .2s ease' }} />
+      <div style={{ height: 8, borderRadius: 999, background: 'rgba(127,127,127,.18)', overflow: 'hidden', marginBottom: 10 }}>
+        <div style={{ width: `${strength.percent}%`, height: '100%', borderRadius: 999, background: strength.score >= 7 ? 'var(--green)' : strength.score >= 5 ? 'var(--accent)' : 'var(--red)', transition: 'width .2s ease' }} />
       </div>
+      <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: 10 }}>
+        {t('password_modern_guidance', 'Use a long unique password. A generated passphrase is safer than a short complex password and easier to store in a password manager.')}
+      </p>
       <div style={{ display: 'grid', gap: 5, marginBottom: 12 }}>
         {requirements.map(([key, label]) => (
-          <span key={key} style={{ fontSize: 11, color: strength.checks[key] ? '#4caf7d' : 'var(--text-muted)', lineHeight: 1.35 }}>
+          <span key={key} style={{ fontSize: 11, color: strength.checks[key] ? 'var(--green)' : 'var(--text-muted)', lineHeight: 1.35 }}>
             {strength.checks[key] ? '✓' : '○'} {label}
           </span>
         ))}
       </div>
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <strong style={{ fontSize: 12, color: 'var(--text-primary)' }}>{t('password_suggestions', 'Strong password suggestions')}</strong>
-          <button type="button" onClick={onRefresh} style={{ border: 0, background: 'transparent', color: 'var(--accent)', fontSize: 11, fontWeight: 900, cursor: 'pointer' }}>{t('refresh', 'Refresh')}</button>
+          <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{t('password_suggestions', 'Generate secure password')}</strong>
+          <button type="button" onClick={onRefresh} style={{ border: 0, background: 'transparent', color: 'var(--accent)', fontSize: 12, fontWeight: 950, cursor: 'pointer' }}>{t('refresh', 'Refresh')}</button>
         </div>
         <div style={{ display: 'grid', gap: 7 }}>
           {suggestions.map(suggestion => (
-            <button key={suggestion} type="button" onClick={() => onUseSuggestion(suggestion)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-card)', color: 'var(--text-primary)', padding: '9px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer', wordBreak: 'break-word' }}>
-              {suggestion}
+            <button key={suggestion} type="button" onClick={() => onUseSuggestion(suggestion)} style={{ textAlign: 'left', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg-card)', color: 'var(--text-primary)', padding: '10px 11px', fontSize: 12, fontWeight: 900, cursor: 'pointer', wordBreak: 'break-word', lineHeight: 1.35 }}>
+              Use: {suggestion}
             </button>
           ))}
         </div>
@@ -122,7 +154,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
   const [loading, setLoading] = useState(false)
 
   const passwordStrength = useMemo(() => getPasswordStrength(password, email), [password, email])
-  const signupPasswordStrongEnough = mode !== 'signup' || passwordStrength.score >= 4
+  const signupPasswordStrongEnough = mode !== 'signup' || passwordStrength.score >= 7
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose() }
@@ -130,6 +162,10 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
     document.body.style.overflow = 'hidden'
     return () => { document.removeEventListener('keydown', handler); document.body.style.overflow = '' }
   }, [onClose])
+
+  useEffect(() => {
+    if (mode === 'signup') refreshSuggestions()
+  }, [mode])
 
   const refreshSuggestions = () => setSuggestions([generateStrongPassword(), generateStrongPassword(), generateStrongPassword()])
 
@@ -148,7 +184,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
       return false
     }
     if (mode === 'signup' && !signupPasswordStrongEnough) {
-      setError(t('password_too_weak', 'Please choose a strong password or use one of the suggested passwords.'))
+      setError(t('password_too_weak', 'Please use a stronger password. Use at least 16 characters, include upper/lowercase letters, a number, a symbol, and avoid common words or sequences.'))
       return false
     }
     return true
@@ -196,7 +232,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, animation: 'fadeIn 0.2s ease' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 'clamp(24px,5vw,32px)', maxWidth: 440, width: '100%', position: 'relative', animation: 'fadeUp 0.3s ease', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 'clamp(24px,5vw,32px)', maxWidth: 460, width: '100%', position: 'relative', animation: 'fadeUp 0.3s ease', maxHeight: '90vh', overflowY: 'auto' }}>
 
         <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 22, padding: '4px 8px', lineHeight: 1 }}>×</button>
 
@@ -214,8 +250,8 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
             <button key={m} onClick={() => switchMode(m)} style={{
               flex: 1, padding: '9px', borderRadius: 8, border: 'none', cursor: 'pointer',
               background: mode===m?'var(--accent)':'transparent',
-              color: mode===m?'#1A1B22':'var(--text-muted)',
-              fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 600, transition: 'all 0.2s'
+              color: mode===m?'#FFFDF8':'var(--text-secondary)',
+              fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 700
             }}>{label}</button>
           ))}
         </div>
@@ -256,22 +292,22 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
         </div>
 
         <input type="email" placeholder={t('email_placeholder')} value={email} onChange={e=>setEmail(e.target.value)} style={{ marginBottom: 8 }} autoComplete="email" />
-        <PasswordField value={password} onChange={e=>setPassword(e.target.value)} onEnter={e=>e.key==='Enter'&&handleSubmit()} placeholder={t('password_placeholder')} showPassword={showPassword} setShowPassword={setShowPassword} />
+        <PasswordField mode={mode} value={password} onChange={e=>setPassword(e.target.value)} onEnter={e=>e.key==='Enter'&&handleSubmit()} placeholder={t('password_placeholder')} showPassword={showPassword} setShowPassword={setShowPassword} />
 
         {mode === 'signup' && <PasswordStrengthBox password={password} email={email} suggestions={suggestions} onUseSuggestion={value => { setPassword(value); setShowPassword(true); setError('') }} onRefresh={refreshSuggestions} t={t} />}
 
-        {error && <p style={{ fontSize:13, color:'#ff6b6b', marginBottom:10, padding:'10px 12px', background:'rgba(255,107,107,0.08)', borderRadius:8 }}>{error}</p>}
-        {success && <p style={{ fontSize:13, color:'#4caf7d', marginBottom:10, padding:'10px 12px', background:'rgba(76,175,125,0.08)', borderRadius:8 }}>{success}</p>}
+        {error && <p style={{ fontSize:13, color:'var(--red)', marginBottom:10, padding:'10px 12px', background:'rgba(169,71,64,0.08)', borderRadius:8 }}>{error}</p>}
+        {success && <p style={{ fontSize:13, color:'var(--green)', marginBottom:10, padding:'10px 12px', background:'rgba(63,111,80,0.08)', borderRadius:8 }}>{success}</p>}
 
         <button onClick={handleSubmit} disabled={createDisabled} className="btn-primary" style={{ width:'100%' }}>
           {loading ? t('please_wait') : mode==='signin' ? t('sign_in_arrow') : t('create_account')}
         </button>
 
-        {mode === 'signup' && password && !signupPasswordStrongEnough && <p style={{ fontSize:11, color:'var(--accent)', textAlign:'center', marginTop:10, lineHeight:1.5 }}>{t('password_strength_needed', 'Use a strong password to create your account. You can click one of the suggestions above.')}</p>}
+        {mode === 'signup' && password && !signupPasswordStrongEnough && <p style={{ fontSize:11, color:'var(--accent)', textAlign:'center', marginTop:10, lineHeight:1.5 }}>{t('password_strength_needed', 'Use a very strong unique password. You can click one of the generated suggestions above.')}</p>}
 
         <p style={{ fontSize:11, color:'var(--text-hint)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>
           {mode === 'signup' ? t('legal_signup_notice') : t('auth_terms')}{' '}
-          <a href="/privacy" style={{ color:'var(--text-muted)' }}>{t('privacy_policy')}</a>.
+          <a href="/privacy" style={{ color:'var(--text-secondary)' }}>{t('privacy_policy')}</a>.
         </p>
       </div>
     </div>
