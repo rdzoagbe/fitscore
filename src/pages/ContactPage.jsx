@@ -5,7 +5,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import LangSelector from '../components/LangSelector'
 import './ContactPage.css'
 
-const CONTACT_EMAIL = 'roland.dzoagbe@hotmail.com'
+const CONTACT_EMAIL = 'admin@joblytics-ai.com'
 
 function encodeMailto({ name, email, category, subject, message }) {
   const clean = value => String(value || '').trim()
