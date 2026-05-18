@@ -7,6 +7,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      cleanupOutdatedCaches: true,
+      workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
+        navigateFallbackDenylist: [/^\/api\//]
+      },
       includeAssets: ['icons/icon.svg'],
       manifest: {
         name: 'Joblytics — Know before you apply',
