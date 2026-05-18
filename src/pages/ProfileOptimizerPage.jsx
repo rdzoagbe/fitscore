@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { getDeviceId } from '../utils/deviceId'
@@ -30,6 +30,15 @@ function looksLikeLinkedInUrl(value) {
   return isValidProfileUrl(value) && normalizeProfileUrl(value).includes('linkedin.com/')
 }
 
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read this file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
 function CopyButton({ value, label, copiedLabel }) {
   const [copied, setCopied] = useState(false)
   return <button type="button" className="profileOpt-copy" onClick={() => { navigator.clipboard.writeText(value || ''); setCopied(true); setTimeout(() => setCopied(false), 1200) }}>{copied ? copiedLabel : label}</button>
@@ -38,48 +47,61 @@ function CopyButton({ value, label, copiedLabel }) {
 export default function ProfileOptimizerPage() {
   const { session } = useAuth()
   const { t } = useLang()
+  const fileInputRef = useRef(null)
   const [text, setText] = useState('')
   const [targetRole, setTargetRole] = useState('')
   const [profileUrl, setProfileUrl] = useState('')
   const [result, setResult] = useState(null)
   const [usage, setUsage] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importInfo, setImportInfo] = useState(null)
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
 
   const hasEnoughProfileText = text.trim().length >= 120
   const hasProfileUrl = normalizeProfileUrl(profileUrl).includes('linkedin.com/')
-  const canAnalyze = hasEnoughProfileText || hasProfileUrl
+  const canAnalyze = hasEnoughProfileText
   const validProfileUrl = isValidProfileUrl(profileUrl)
-  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : hasProfileUrl && !hasEnoughProfileText ? t('profile_ready') : t('profile_score_label', 'Profile')
-  const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : hasProfileUrl && !hasEnoughProfileText ? t('profile_link_saved') : t('profile_ai_optimizer')
+  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : importInfo ? t('profile_pdf_imported', 'PDF imported') : hasProfileUrl && !hasEnoughProfileText ? t('profile_ready') : t('profile_score_label', 'Profile')
+  const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : importInfo ? t('profile_text_ready', 'text ready') : hasProfileUrl && !hasEnoughProfileText ? t('profile_link_saved') : t('profile_ai_optimizer')
 
   const handleProfileTextChange = e => {
     const value = e.target.value
     if (looksLikeLinkedInUrl(value) && value.trim().split(/\s+/).length <= 2) {
-      setProfileUrl(normalizeProfileUrl(value))
-      setText('')
-      setResult(null)
-      setChecklist(null)
-      setError('')
-      return
+      setProfileUrl(normalizeProfileUrl(value)); setText(''); setResult(null); setChecklist(null); setError(''); setImportInfo(null); return
     }
-    setText(value)
-    setResult(null)
-    setChecklist(null)
-    setError('')
+    setText(value); setResult(null); setChecklist(null); setError(''); setImportInfo(null)
+  }
+
+  const importLinkedInPdf = async (file) => {
+    if (!file) return
+    setError(''); setChecklist(null); setResult(null); setImportInfo(null); setImporting(true)
+    try {
+      if (file.type && file.type !== 'application/pdf') throw new Error(t('profile_pdf_only', 'Please upload a PDF file.'))
+      const fileBase64 = await readFileAsBase64(file)
+      const res = await fetch('/api/profile-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64, filename: file.name })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Import failed ${res.status}`)
+      setText(data.text || '')
+      setImportInfo({ filename: data.filename || file.name, characters: data.characters || (data.text || '').length, pages: data.pages || null })
+    } catch (e) {
+      setError(e.message || t('profile_pdf_import_failed', 'Could not import this LinkedIn PDF.'))
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const runAnalysis = async () => {
-    setError('')
-    setChecklist(null)
-    setResult(null)
-    setUsage(null)
-
-    if (!validProfileUrl) {
-      setError(t('profile_invalid_link'))
-      return
-    }
+    setError(''); setChecklist(null); setResult(null); setUsage(null)
+    if (!validProfileUrl) { setError(t('profile_invalid_link')); return }
+    if (!session?.access_token) { setError(t('profile_signin_required', 'Please sign in to analyze your LinkedIn profile.')); return }
+    if (!hasEnoughProfileText) { setError(t('profile_import_or_paste_required', 'Import your LinkedIn PDF or paste your profile text before analysis.')); return }
 
     setLoading(true)
     try {
@@ -87,7 +109,7 @@ export default function ProfileOptimizerPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          Authorization: `Bearer ${session.access_token}`,
           'X-Joblytics-Device-Id': getDeviceId()
         },
         body: JSON.stringify({ profileText: text, targetRole, profileUrl: normalizeProfileUrl(profileUrl) })
@@ -121,7 +143,7 @@ export default function ProfileOptimizerPage() {
           <div>
             <p className="profileOpt-kicker">{t('profile_kicker')}</p>
             <h1>{t('profile_title')}</h1>
-            <p>{t('profile_subtitle')}</p>
+            <p>{t('profile_subtitle_pdf', 'Import your LinkedIn profile as a PDF or paste your profile text. Joblytics will analyze your real profile content and propose stronger recruiter-facing improvements.')}</p>
           </div>
           <div className="profileOpt-score"><strong>{scoreLabel}</strong><span>{scoreCaption}</span></div>
         </section>
@@ -130,20 +152,28 @@ export default function ProfileOptimizerPage() {
           <article className="profileOpt-card">
             <label>{t('profile_link_label')}<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setResult(null); setChecklist(null); setError('') }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder={t('profile_link_placeholder')} /></label>
             {profileUrl.trim() && !validProfileUrl && <p className="profileOpt-warning">{t('profile_invalid_link')}</p>}
+
+            <div className="profileOpt-importBox">
+              <div><p className="profileOpt-kicker">{t('profile_pdf_import_title', 'LinkedIn PDF import')}</p><h3>{t('profile_pdf_import_headline', 'Import profile PDF, then analyze')}</h3><span>{t('profile_pdf_import_desc', 'Download your profile from LinkedIn as a PDF and upload it here. The extracted text will fill the profile text box automatically.')}</span></div>
+              <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" onChange={e => importLinkedInPdf(e.target.files?.[0])} hidden />
+              <button type="button" className="profileOpt-importBtn" onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? t('profile_pdf_importing', 'Importing PDF...') : t('profile_pdf_import_cta', 'Upload LinkedIn PDF')}</button>
+              {importInfo && <p className="profileOpt-importSuccess">✓ {t('profile_pdf_import_success', { name: importInfo.filename, count: importInfo.characters }, `Imported ${importInfo.filename} · ${importInfo.characters} characters`)}</p>}
+            </div>
+
             <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
-            <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder')} /></label>
+            <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder_pdf', 'Upload your LinkedIn PDF to auto-fill this box, or paste your Headline, About, Experience and Skills here...')} /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
-            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_link_detected')}</p>}
+            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_link_detected_pdf', 'LinkedIn link saved as a reference. Import a LinkedIn PDF or paste profile text to run AI analysis.')}</p>}
             {usage && <p className="profileOpt-warning">{t('profile_usage', { plan: usage.planLabel, used: usage.used, limit: usage.limit, remaining: usage.remaining })}</p>}
             {error && <p className="profileOpt-warning">{error}</p>}
-            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading} onClick={runAnalysis}>{loading ? t('profile_analyzing') : hasEnoughProfileText ? t('profile_analyze_ai') : t('profile_check_link')}</button>
+            <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading || importing} onClick={runAnalysis}>{loading ? t('profile_analyzing') : t('profile_analyze_ai')}</button>
           </article>
 
           <aside className="profileOpt-card profileOpt-help">
             <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
-            <p>{t('profile_help_desc')}</p>
+            <p>{t('profile_help_desc_pdf', 'The LinkedIn link is only a reference. The AI analyzes the PDF-imported or pasted text so it does not invent experience or scrape inaccessible LinkedIn pages.')}</p>
           </aside>
         </section>
 
