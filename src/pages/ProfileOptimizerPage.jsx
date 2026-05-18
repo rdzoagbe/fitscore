@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
+import { supabase } from '../lib/supabase'
 import { getDeviceId } from '../utils/deviceId'
 import './ProfileOptimizerPage.css'
 
@@ -17,6 +18,12 @@ function looksLikeOnlyLinkedInUrl(value) {
   const text = String(value || '').trim()
   if (!text || text.split(/\s+/).length > 2) return false
   return /linkedin\.com\//i.test(text)
+}
+
+async function getFreshAccessToken(session) {
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || null
 }
 
 function CopyButton({ value, label, copiedLabel }) {
@@ -92,16 +99,22 @@ export default function ProfileOptimizerPage() {
     setChecklist(null)
     setResult(null)
     setUsage(null)
-    if (!session?.access_token) { setError(t('profile_signin_required', 'Please sign in to analyze your LinkedIn profile.')); return }
     if (!hasEnoughProfileText) { setError(t('profile_import_or_paste_required', 'Import your LinkedIn PDF or paste your profile text before analysis.')); return }
 
     setLoading(true)
     try {
+      const accessToken = await getFreshAccessToken(session)
+      if (!accessToken) {
+        setError(t('profile_session_expired', 'Your session could not be verified. Please refresh the page or sign in again.'))
+        setLoading(false)
+        return
+      }
+
       const res = await fetch('/api/profile-optimize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
           'X-Joblytics-Device-Id': getDeviceId()
         },
         body: JSON.stringify({ profileText: text, targetRole, profileUrl: null })
