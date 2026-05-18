@@ -15,6 +15,7 @@ const navItems = [
 
 const workspaceItems = [
   ...navItems,
+  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
   { id: 'billing', icon: '💳', labelKey: 'nav_billing', fallback: 'Billing' }
 ]
 
@@ -82,28 +83,17 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         </nav>
 
         <div className="jobNav-right">
-          <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>
-            {label('new_check', 'New check')}
-          </button>
+          <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>{label('new_check', 'New check')}</button>
 
           <details className="jobNav-account" ref={accountMenuRef}>
-            <summary className="jobNav-menuButton">
-              <span>{t('menu_label', 'Menu')}</span>
-              <strong>{initials}</strong>
-            </summary>
+            <summary className="jobNav-menuButton"><span>{t('menu_label', 'Menu')}</span><strong>{initials}</strong></summary>
 
             <div className="jobNav-menuPanel" role="menu">
-              <div className="jobNav-menuIdentity">
-                <strong>{displayName}</strong>
-                <span>{user?.email}</span>
-              </div>
+              <div className="jobNav-menuIdentity"><strong>{displayName}</strong><span>{user?.email}</span></div>
 
               <div className="jobNav-menuSection">
                 <p>{t('preferences', 'Preferences')}</p>
-                <div className="jobNav-menuControls">
-                  <LangSelector />
-                  <ThemeToggle />
-                </div>
+                <div className="jobNav-menuControls"><LangSelector /><ThemeToggle /></div>
               </div>
 
               <div className="jobNav-menuSection">
@@ -121,7 +111,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
                 <a href="/legal" onClick={closeMenu}>{t('legal_notice', 'Legal notice')}</a>
                 <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
                 <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
-                <a href="/contact" onClick={closeMenu}>{t('contact_support', 'Contact support')}</a>
+                <button type="button" onClick={() => goTo('contact')}>💬 {t('contact_support', 'Contact support')}</button>
               </div>
 
               <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
@@ -133,8 +123,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
       <nav className="jobNav-mobile" aria-label="Mobile navigation">
         {mobileNavItems.map(item => (
           <button key={item.id} type="button" className={`jobNav-mobileItem ${page === item.id ? 'is-active' : ''}`} onClick={() => goTo(item.id)}>
-            <span>{item.icon}</span>
-            <em>{label(item.labelKey, item.fallback)}</em>
+            <span>{item.icon}</span><em>{label(item.labelKey, item.fallback)}</em>
           </button>
         ))}
       </nav>
