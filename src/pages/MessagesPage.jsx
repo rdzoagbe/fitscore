@@ -9,15 +9,24 @@ function formatDate(value) {
   try { return new Date(value).toLocaleString() } catch { return value }
 }
 
+async function getFreshAccessToken(session) {
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || null
+}
+
 export default function MessagesPage({ setPage }) {
-  const { user } = useAuth()
+  const { user, session } = useAuth()
   const { t } = useLang()
   const [threads, setThreads] = useState([])
   const [selected, setSelected] = useState(null)
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [reply, setReply] = useState('')
+  const [sendingReply, setSendingReply] = useState(false)
   const [error, setError] = useState('')
+  const [replySuccess, setReplySuccess] = useState('')
 
   useEffect(() => {
     let active = true
@@ -43,6 +52,8 @@ export default function MessagesPage({ setPage }) {
 
   const openThread = async thread => {
     setSelected(thread)
+    setReply('')
+    setReplySuccess('')
     setLoadingMessages(true)
     setError('')
     const { data, error } = await supabase
@@ -56,6 +67,34 @@ export default function MessagesPage({ setPage }) {
     setLoadingMessages(false)
   }
 
+  const sendReply = async event => {
+    event.preventDefault()
+    const body = reply.trim()
+    if (!selected?.id || body.length < 2) return
+    setSendingReply(true)
+    setError('')
+    setReplySuccess('')
+    try {
+      const token = await getFreshAccessToken(session)
+      if (!token) throw new Error(t('messages_signin_required', 'Please sign in to reply.'))
+      const res = await fetch('/api/support-reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ threadId: selected.id, message: body })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Could not send reply (${res.status})`)
+      if (data?.message) setMessages(current => [...current, data.message])
+      setReply('')
+      setReplySuccess(t('messages_reply_sent', 'Reply sent.'))
+      setThreads(current => current.map(thread => thread.id === selected.id ? { ...thread, last_message_at: new Date().toISOString(), status: thread.status === 'closed' ? 'open' : thread.status } : thread))
+    } catch (e) {
+      setError(e.message || t('messages_reply_failed', 'Could not send your reply.'))
+    } finally {
+      setSendingReply(false)
+    }
+  }
+
   return (
     <div className="messagesPage">
       <main className="messagesShell">
@@ -65,10 +104,11 @@ export default function MessagesPage({ setPage }) {
             <h1>{t('messages_title', 'Your support conversations.')}</h1>
             <span>{t('messages_subtitle', 'Track your submitted requests and future updates from Joblytics support.')}</span>
           </div>
-          <button type="button" onClick={() => setPage?.('contact')}>{t('messages_new_request', 'New request')}</button>
+          <a className="messagesHeroButton" href="/contact">{t('messages_new_request', 'New request')}</a>
         </section>
 
         {error && <p className="messagesError">⚠ {error}</p>}
+        {replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}
 
         <section className="messagesGrid">
           <aside className="messagesList">
@@ -81,7 +121,7 @@ export default function MessagesPage({ setPage }) {
               <div className="messagesEmpty">
                 <strong>{t('messages_empty_title', 'No messages yet')}</strong>
                 <p>{t('messages_empty_body', 'When you send a support request, it will appear here.')}</p>
-                <button type="button" onClick={() => setPage?.('contact')}>{t('messages_contact_support', 'Contact support')}</button>
+                <a className="messagesEmptyButton" href="/contact">{t('messages_contact_support', 'Contact support')}</a>
               </div>
             )}
             {threads.map(thread => (
@@ -112,6 +152,12 @@ export default function MessagesPage({ setPage }) {
                     <p>{message.body}</p>
                   </div>
                 ))}
+
+                <form className="messagesReply" onSubmit={sendReply}>
+                  <label>{t('messages_reply_label', 'Reply')}</label>
+                  <textarea value={reply} onChange={event => setReply(event.target.value)} rows={4} placeholder={t('messages_reply_placeholder', 'Write a follow-up message...')} />
+                  <button type="submit" disabled={sendingReply || reply.trim().length < 2}>{sendingReply ? t('messages_sending_reply', 'Sending...') : t('messages_send_reply', 'Send reply')}</button>
+                </form>
               </>
             )}
           </article>
