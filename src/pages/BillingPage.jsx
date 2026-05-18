@@ -1,12 +1,20 @@
 import React, { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
+import { supabase } from '../lib/supabase'
 import { TERMS_VERSION, billingLegalAcceptancePayload, storePendingBillingLegalAcceptance } from '../lib/legal'
 import './BillingPage.css'
 
-function PlanCard({ planId, name, price, description, features, badge, current, t, legalAccepted, withdrawalAccepted, onToggleLegal, onToggleWithdrawal, onBlockedCheckout, onReadyCheckout }) {
+async function getFreshAccessToken(session) {
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || null
+}
+
+function PlanCard({ planId, name, price, description, features, badge, current, t, legalAccepted, withdrawalAccepted, checkoutLoading, onToggleLegal, onToggleWithdrawal, onBlockedCheckout, onReadyCheckout }) {
   const paid = !current
   const canCheckout = legalAccepted && withdrawalAccepted
-  const buttonText = current ? t('billing_free_plan') : canCheckout ? t('billing_coming_soon') : t('billing_accept_to_continue')
+  const buttonText = current ? t('billing_free_plan') : checkoutLoading === planId ? t('billing_redirecting', 'Redirecting...') : canCheckout ? t('billing_start_checkout', 'Start checkout') : t('billing_accept_to_continue')
 
   const handleClick = () => {
     if (!paid) return
@@ -30,10 +38,7 @@ function PlanCard({ planId, name, price, description, features, badge, current, 
       </div>
 
       <p className="billing-desc">{description}</p>
-
-      <ul className="billing-features">
-        {features.map(feature => <li key={feature}>{feature}</li>)}
-      </ul>
+      <ul className="billing-features">{features.map(feature => <li key={feature}>{feature}</li>)}</ul>
 
       {paid && (
         <div className="billing-legalStack">
@@ -48,19 +53,19 @@ function PlanCard({ planId, name, price, description, features, badge, current, 
         </div>
       )}
 
-      <button type="button" className="billing-button" disabled={current} onClick={handleClick}>
-        {buttonText}
-      </button>
+      <button type="button" className="billing-button" disabled={current || checkoutLoading === planId} onClick={handleClick}>{buttonText}</button>
     </article>
   )
 }
 
 export default function BillingPage() {
+  const { session } = useAuth()
   const { t } = useLang()
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [withdrawalAccepted, setWithdrawalAccepted] = useState(false)
   const [legalError, setLegalError] = useState('')
   const [readyMessage, setReadyMessage] = useState('')
+  const [checkoutLoading, setCheckoutLoading] = useState('')
 
   const onToggleLegal = value => {
     setLegalAccepted(value)
@@ -80,11 +85,30 @@ export default function BillingPage() {
     else if (!withdrawalAccepted) setLegalError(t('billing_withdrawal_required'))
   }
 
-  const onReadyCheckout = ({ planId, planName }) => {
+  const onReadyCheckout = async ({ planId, planName }) => {
     setLegalError('')
-    const payload = billingLegalAcceptancePayload({ planId, planName, source: 'billing_page_pre_stripe' })
-    storePendingBillingLegalAcceptance(payload)
-    setReadyMessage(t('billing_metadata_ready', { plan: planName }, `Legal acceptance saved for ${planName}. Stripe checkout can now use this metadata.`))
+    setReadyMessage('')
+    setCheckoutLoading(planId)
+
+    try {
+      const legalAcceptance = billingLegalAcceptancePayload({ planId, planName, source: 'billing_page_stripe_checkout' })
+      storePendingBillingLegalAcceptance(legalAcceptance)
+      const token = await getFreshAccessToken(session)
+      if (!token) throw new Error(t('billing_signin_required', 'Please sign in before subscribing.'))
+
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ planId, legalAcceptance })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Could not start checkout (${res.status})`)
+      if (!data?.url) throw new Error('Stripe did not return a checkout URL.')
+      window.location.href = data.url
+    } catch (e) {
+      setLegalError(e.message || t('billing_checkout_failed', 'Could not start checkout. Please try again.'))
+      setCheckoutLoading('')
+    }
   }
 
   const plans = [
@@ -117,23 +141,12 @@ export default function BillingPage() {
     <div className="billing-page">
       <main className="billing-shell">
         <section className="billing-hero">
-          <div>
-            <p className="billing-kicker">{t('billing_kicker')}</p>
-            <h1>{t('billing_title')}</h1>
-            <p>{t('billing_subtitle')}</p>
-          </div>
-          <div className="billing-status">
-            <strong>{t('billing_status_ready')}</strong>
-            <span>{t('billing_status_body')}</span>
-          </div>
+          <div><p className="billing-kicker">{t('billing_kicker')}</p><h1>{t('billing_title')}</h1><p>{t('billing_subtitle')}</p></div>
+          <div className="billing-status"><strong>{t('billing_status_ready')}</strong><span>{t('billing_status_body')}</span></div>
         </section>
 
         <section className="billing-legalPanel">
-          <div>
-            <p className="billing-kicker">{t('billing_legal_title')}</p>
-            <h2>{t('billing_checkout_ready')}</h2>
-            <p>{t('billing_legal_body')}</p>
-          </div>
+          <div><p className="billing-kicker">{t('billing_legal_title')}</p><h2>{t('billing_checkout_ready')}</h2><p>{t('billing_legal_body')}</p></div>
           <strong>{TERMS_VERSION}</strong>
         </section>
 
@@ -141,18 +154,12 @@ export default function BillingPage() {
         {readyMessage && <p className="billing-ready">✓ {readyMessage}</p>}
 
         <section className="billing-grid">
-          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} withdrawalAccepted={withdrawalAccepted} onToggleLegal={onToggleLegal} onToggleWithdrawal={onToggleWithdrawal} onBlockedCheckout={onBlockedCheckout} onReadyCheckout={onReadyCheckout} />)}
+          {plans.map(plan => <PlanCard key={plan.name} {...plan} t={t} legalAccepted={legalAccepted} withdrawalAccepted={withdrawalAccepted} checkoutLoading={checkoutLoading} onToggleLegal={onToggleLegal} onToggleWithdrawal={onToggleWithdrawal} onBlockedCheckout={onBlockedCheckout} onReadyCheckout={onReadyCheckout} />)}
         </section>
 
         <section className="billing-infoGrid">
-          <article className="billing-info">
-            <p className="billing-kicker">{t('billing_note_title')}</p>
-            <p>{t('billing_note_body')}</p>
-          </article>
-          <article className="billing-info">
-            <p className="billing-kicker">{t('billing_free_limit_title')}</p>
-            <p>{t('billing_free_limit_body')}</p>
-          </article>
+          <article className="billing-info"><p className="billing-kicker">{t('billing_note_title')}</p><p>{t('billing_note_body')}</p></article>
+          <article className="billing-info"><p className="billing-kicker">{t('billing_free_limit_title')}</p><p>{t('billing_free_limit_body')}</p></article>
         </section>
       </main>
     </div>
