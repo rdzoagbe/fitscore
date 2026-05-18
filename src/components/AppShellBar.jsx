@@ -12,7 +12,7 @@ export default function AppShellBar() {
           <a href="/privacy">{t('app_footer_privacy')}</a>
           <a href="/terms">{t('app_footer_terms')}</a>
           <a href="/legal">{t('legal_notice', 'Legal notice')}</a>
-          <a href="mailto:contact@joblytics-ai.com">{t('app_footer_contact')}</a>
+          <a href="/contact">{t('app_footer_contact')}</a>
         </span>
       </div>
     </footer>
