@@ -63,8 +63,8 @@ export default function ProfileOptimizerPage() {
   const hasProfileUrl = normalizeProfileUrl(profileUrl).includes('linkedin.com/')
   const canAnalyze = hasEnoughProfileText
   const validProfileUrl = isValidProfileUrl(profileUrl)
-  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : importInfo ? t('profile_pdf_imported', 'PDF imported') : hasProfileUrl && !hasEnoughProfileText ? t('profile_ready') : t('profile_score_label', 'Profile')
-  const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : importInfo ? t('profile_text_ready', 'text ready') : hasProfileUrl && !hasEnoughProfileText ? t('profile_link_saved') : t('profile_ai_optimizer')
+  const scoreLabel = loading ? 'AI' : result?.score !== undefined ? `${result.score}%` : importInfo ? t('profile_pdf_imported', 'PDF imported') : hasEnoughProfileText ? t('profile_text_ready', 'Text ready') : hasProfileUrl ? t('profile_reference_only', 'Reference') : t('profile_score_label', 'Profile')
+  const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : importInfo ? t('profile_ready_to_analyze', 'ready to analyze') : hasEnoughProfileText ? t('profile_ready_to_analyze', 'ready to analyze') : hasProfileUrl ? t('profile_url_reference_only', 'url reference only') : t('profile_ai_optimizer')
 
   const handleProfileTextChange = e => {
     const value = e.target.value
@@ -143,18 +143,29 @@ export default function ProfileOptimizerPage() {
           <div>
             <p className="profileOpt-kicker">{t('profile_kicker')}</p>
             <h1>{t('profile_title')}</h1>
-            <p>{t('profile_subtitle_pdf', 'Import your LinkedIn profile as a PDF or paste your profile text. Joblytics will analyze your real profile content and propose stronger recruiter-facing improvements.')}</p>
+            <p>{t('profile_subtitle_pdf', 'Import your LinkedIn profile PDF or paste profile text. Joblytics analyzes the real content you provide and turns it into stronger recruiter-facing positioning.')}</p>
           </div>
           <div className="profileOpt-score"><strong>{scoreLabel}</strong><span>{scoreCaption}</span></div>
         </section>
 
         <section className="profileOpt-grid">
           <article className="profileOpt-card">
-            <label>{t('profile_link_label')}<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setResult(null); setChecklist(null); setError('') }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder={t('profile_link_placeholder')} /></label>
+            <label>{t('profile_link_reference_label', 'LinkedIn profile link · reference only')}<input value={profileUrl} onChange={e => { setProfileUrl(e.target.value); setResult(null); setChecklist(null); setError('') }} onBlur={() => setProfileUrl(value => normalizeProfileUrl(value))} placeholder={t('profile_link_placeholder')} /></label>
             {profileUrl.trim() && !validProfileUrl && <p className="profileOpt-warning">{t('profile_invalid_link')}</p>}
+            {hasProfileUrl && <p className="profileOpt-referenceNote">{t('profile_url_reference_note', 'This link is saved as a reference only. Joblytics does not scrape LinkedIn. Import a PDF or paste text to analyze your full profile.')}</p>}
 
             <div className="profileOpt-importBox">
-              <div><p className="profileOpt-kicker">{t('profile_pdf_import_title', 'LinkedIn PDF import')}</p><h3>{t('profile_pdf_import_headline', 'Import profile PDF, then analyze')}</h3><span>{t('profile_pdf_import_desc', 'Download your profile from LinkedIn as a PDF and upload it here. The extracted text will fill the profile text box automatically.')}</span></div>
+              <div>
+                <p className="profileOpt-kicker">{t('profile_import_content_title', 'Import profile content')}</p>
+                <h3>{t('profile_import_content_headline', 'Upload LinkedIn PDF, then analyze')}</h3>
+                <span>{t('profile_pdf_import_desc', 'Export your own LinkedIn profile as a PDF, upload it here, and Joblytics will auto-fill the profile text for analysis.')}</span>
+              </div>
+              <div className="profileOpt-steps">
+                <div><span>1</span><p>{t('profile_pdf_step_1', 'Open your LinkedIn profile')}</p></div>
+                <div><span>2</span><p>{t('profile_pdf_step_2', 'Click More / Resources')}</p></div>
+                <div><span>3</span><p>{t('profile_pdf_step_3', 'Choose Save to PDF')}</p></div>
+                <div><span>4</span><p>{t('profile_pdf_step_4', 'Upload the PDF here')}</p></div>
+              </div>
               <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" onChange={e => importLinkedInPdf(e.target.files?.[0])} hidden />
               <button type="button" className="profileOpt-importBtn" onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? t('profile_pdf_importing', 'Importing PDF...') : t('profile_pdf_import_cta', 'Upload LinkedIn PDF')}</button>
               {importInfo && <p className="profileOpt-importSuccess">✓ {t('profile_pdf_import_success', { name: importInfo.filename, count: importInfo.characters }, `Imported ${importInfo.filename} · ${importInfo.characters} characters`)}</p>}
@@ -163,7 +174,7 @@ export default function ProfileOptimizerPage() {
             <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
             <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder_pdf', 'Upload your LinkedIn PDF to auto-fill this box, or paste your Headline, About, Experience and Skills here...')} /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
-            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_link_detected_pdf', 'LinkedIn link saved as a reference. Import a LinkedIn PDF or paste profile text to run AI analysis.')}</p>}
+            {hasProfileUrl && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_link_detected_pdf', 'LinkedIn URL is not enough for analysis. Upload your LinkedIn PDF or paste your profile text.')}</p>}
             {usage && <p className="profileOpt-warning">{t('profile_usage', { plan: usage.planLabel, used: usage.used, limit: usage.limit, remaining: usage.remaining })}</p>}
             {error && <p className="profileOpt-warning">{error}</p>}
             <button type="button" className="profileOpt-primary" disabled={!canAnalyze || !validProfileUrl || loading || importing} onClick={runAnalysis}>{loading ? t('profile_analyzing') : t('profile_analyze_ai')}</button>
@@ -173,7 +184,8 @@ export default function ProfileOptimizerPage() {
             <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
-            <p>{t('profile_help_desc_pdf', 'The LinkedIn link is only a reference. The AI analyzes the PDF-imported or pasted text so it does not invent experience or scrape inaccessible LinkedIn pages.')}</p>
+            <p>{t('profile_help_desc_pdf', 'The LinkedIn URL is a reference only. The AI analyzes PDF-imported or pasted text so it does not invent experience or scrape inaccessible LinkedIn pages.')}</p>
+            <div className="profileOpt-futureNote"><strong>{t('profile_future_import_title', 'Future option')}</strong><p>{t('profile_future_import_body', 'A one-click LinkedIn import could be added later through a browser extension, where the user imports their own visible profile content from their own browser session.')}</p></div>
           </aside>
         </section>
 
