@@ -25,6 +25,27 @@ function clean(value) {
   return String(value || '').trim()
 }
 
+function getStripeSecretKey() {
+  return clean(process.env.STRIPE_SECRET_KEY)
+}
+
+function assertStripeSecretKey() {
+  const key = getStripeSecretKey()
+  if (!key) {
+    const err = new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel.')
+    err.statusCode = 503
+    err.code = 'STRIPE_NOT_CONFIGURED'
+    throw err
+  }
+  if (!/^sk_(test|live)_/.test(key)) {
+    const err = new Error('Stripe secret key is invalid. In Vercel, STRIPE_SECRET_KEY must start with sk_test_ for testing or sk_live_ for live mode. Do not use mk_, pk_, price_ or prod_ values.')
+    err.statusCode = 503
+    err.code = 'STRIPE_SECRET_KEY_INVALID_FORMAT'
+    throw err
+  }
+  return key
+}
+
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 }
@@ -94,13 +115,7 @@ function appendParam(params, key, value) {
 }
 
 async function createStripeCheckoutSession({ req, user, plan, legalAcceptance }) {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    const err = new Error('Stripe is not configured yet. Add STRIPE_SECRET_KEY in Vercel.')
-    err.statusCode = 503
-    err.code = 'STRIPE_NOT_CONFIGURED'
-    throw err
-  }
-
+  const stripeSecretKey = assertStripeSecretKey()
   const appUrl = getAppUrl(req)
   const params = new URLSearchParams()
   params.append('mode', 'subscription')
@@ -137,7 +152,7 @@ async function createStripeCheckoutSession({ req, user, plan, legalAcceptance })
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+      Authorization: `Bearer ${stripeSecretKey}`,
       'Content-Type': 'application/x-www-form-urlencoded'
     },
     body: params
