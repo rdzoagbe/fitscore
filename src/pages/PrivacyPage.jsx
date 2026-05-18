@@ -7,7 +7,7 @@ import { PRIVACY_VERSION } from '../lib/legal'
 const sections = [
   {
     title: '1. Data controller',
-    content: 'Joblytics AI is responsible for the processing of personal data collected through the service. Before paid public launch, this section must be completed with the official legal name, address, SIREN/SIRET, contact email and, if applicable, VAT status and DPO/contact person.'
+    content: 'Joblytics AI is responsible for the processing of personal data collected through the service. Before paid public launch, this section must be completed with the official legal name, address, SIREN/SIRET, admin@joblytics-ai.com and, if applicable, VAT status and DPO/contact person.'
   },
   {
     title: '2. Data we collect',
@@ -55,7 +55,7 @@ const sections = [
   },
   {
     title: '13. Contact',
-    content: 'Privacy contact: contact@joblytics-ai.com. Before paid launch, replace this with the official business contact email and publisher details.'
+    content: 'Privacy contact: admin@joblytics-ai.com. Before paid launch, complete the Legal Notice page with official business and publisher details.'
   }
 ]
 
