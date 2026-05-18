@@ -42,30 +42,53 @@ function normalizeProfileUrl(value) {
   return raw
 }
 
-function createAdminClient() {
-  const url = process.env.SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+function getSupabaseUrl() {
+  return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+}
+
+function getSupabaseKey() {
+  return (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+}
+
+function createServerSupabaseClient() {
+  const url = getSupabaseUrl()
+  const key = getSupabaseKey()
   if (!url || !key) return null
-  return createClient(url, key, { auth: { persistSession: false } })
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
 }
 
 function getBearerToken(req) {
   const header = req.headers.authorization || req.headers.Authorization || ''
-  if (!header.startsWith('Bearer ')) return null
-  return header.slice('Bearer '.length).trim()
+  if (!header || typeof header !== 'string') return null
+  const match = header.match(/^Bearer\s+(.+)$/i)
+  return match?.[1]?.trim() || null
 }
 
 async function requireUser(req, supabase) {
   const token = getBearerToken(req)
-  if (!token || !supabase) {
-    const err = new Error('Please sign in to use this feature.')
+  if (!token) {
+    const err = new Error('Your sign-in token was not sent to the server. Refresh the page and try again.')
     err.statusCode = 401
-    err.code = 'AUTH_REQUIRED'
+    err.code = 'AUTH_TOKEN_MISSING'
     throw err
   }
+
+  if (!supabase) {
+    const err = new Error('Profile optimizer authentication is not configured on the server. Check Supabase environment variables in Vercel.')
+    err.statusCode = 500
+    err.code = 'SUPABASE_AUTH_CONFIG_MISSING'
+    throw err
+  }
+
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data?.user) {
-    const err = new Error('Your session expired. Please sign in again.')
+    const err = new Error('Your session could not be verified. Please refresh the page or sign in again.')
     err.statusCode = 401
     err.code = 'INVALID_SESSION'
     throw err
@@ -99,7 +122,7 @@ function startOfMonthIso() {
 
 function hash(value) {
   if (!value) return null
-  const salt = process.env.USAGE_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || 'joblytics'
+  const salt = process.env.USAGE_HASH_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'joblytics'
   return crypto.createHash('sha256').update(`${salt}:${value}`).digest('hex')
 }
 
@@ -182,7 +205,7 @@ function publicUsage(usage, increment = 0) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const supabase = createAdminClient()
+  const supabase = createServerSupabaseClient()
 
   try {
     const user = await requireUser(req, supabase)
@@ -193,14 +216,14 @@ export default async function handler(req, res) {
 
     if (text.length < 120) {
       return res.status(400).json({
-        error: 'Paste your LinkedIn headline, About section, Experience and Skills text to run AI profile optimization.',
+        error: 'Import your LinkedIn PDF or paste your profile text to run AI profile optimization.',
         code: 'PROFILE_TEXT_REQUIRED',
         profileUrl: url || null,
         checklist: [
-          'Paste your current headline.',
+          'Upload your LinkedIn profile PDF.',
+          'Or paste your current headline.',
           'Paste your About section.',
-          'Paste 2-3 Experience entries.',
-          'Paste your Skills section or top tools.'
+          'Paste your Experience and Skills sections.'
         ]
       })
     }
