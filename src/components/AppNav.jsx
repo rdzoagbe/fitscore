@@ -121,7 +121,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
                 <a href="/legal" onClick={closeMenu}>{t('legal_notice', 'Legal notice')}</a>
                 <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
                 <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
-                <a href="mailto:contact@joblytics-ai.com" onClick={closeMenu}>{t('contact_support', 'Contact support')}</a>
+                <a href="/contact" onClick={closeMenu}>{t('contact_support', 'Contact support')}</a>
               </div>
 
               <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
