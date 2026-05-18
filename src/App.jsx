@@ -21,11 +21,50 @@ import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
 import './pages/CvBuilderPage.css'
 
+const PAGE_TO_PATH = {
+  dashboard: '/dashboard',
+  analyzer: '/analyzer',
+  history: '/history',
+  coach: '/coach',
+  profile: '/profile',
+  billing: '/billing',
+  messages: '/messages',
+  contact: '/contact',
+  'cv-builder': '/cv-builder'
+}
+
+const PATH_TO_PAGE = Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page]))
+const PUBLIC_PATHS = new Set(['/privacy', '/terms', '/legal'])
+
+function getPageFromPath() {
+  const path = window.location.pathname || '/'
+  if (PATH_TO_PAGE[path]) return PATH_TO_PAGE[path]
+  if (path === '/') return 'dashboard'
+  return null
+}
+
 export default function App() {
   const { user, loading } = useAuth()
-  const [page, setPage] = useState('dashboard')
+  const [page, setPageState] = useState(() => getPageFromPath() || 'dashboard')
   const [selectedAnalysis, setSelectedAnalysis] = useState(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
+
+  const setPage = nextPage => {
+    setPageState(nextPage)
+    const nextPath = PAGE_TO_PATH[nextPage]
+    if (nextPath && window.location.pathname !== nextPath) {
+      window.history.pushState({ page: nextPage }, '', nextPath)
+    }
+  }
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextPage = getPageFromPath()
+      if (nextPage) setPageState(nextPage)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   useEffect(() => {
     if (user && hasAcceptedCurrentTerms(user) && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
@@ -37,8 +76,10 @@ export default function App() {
   if (path === '/privacy') return <PrivacyPage onBack={() => window.history.back()} />
   if (path === '/terms') return <TermsPage onBack={() => window.history.back()} />
   if (path === '/legal') return <LegalNoticePage onBack={() => window.history.back()} />
-  if (path === '/contact') return <ContactPage onBack={() => window.history.back()} />
-  if (path === '/messages') return user ? <MessagesPage setPage={setPage} /> : <LandingPage />
+
+  const routePage = getPageFromPath()
+  if (!routePage && !PUBLIC_PATHS.has(path)) window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
+
   if (!user) return <LandingPage />
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
   if (!hasAcceptedCurrentTerms(user)) return <TermsGate />
