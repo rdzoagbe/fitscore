@@ -5,6 +5,7 @@
 # - /api/profile-import
 # - /api/cover-letter
 # - /api/contact
+# - /api/support-reply
 
 api/**
 !api/analyze.js
@@ -12,3 +13,4 @@ api/**
 !api/profile-import.js
 !api/cover-letter.js
 !api/contact.js
+!api/support-reply.js
