@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://joblytics-ai.com/sitemap.xml
