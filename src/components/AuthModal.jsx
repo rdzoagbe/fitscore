@@ -66,7 +66,7 @@ function getPasswordStrength(password, email = '') {
   return { score, max: 8, percent: (score / 8) * 100, label: labels[score], checks }
 }
 
-function PasswordField({ value, onChange, onEnter, placeholder, showPassword, setShowPassword, mode }) {
+function PasswordField({ value, onChange, onEnter, onFocus, placeholder, showPassword, setShowPassword, mode }) {
   return (
     <div style={{ position: 'relative', marginBottom: 14 }}>
       <input
@@ -74,6 +74,7 @@ function PasswordField({ value, onChange, onEnter, placeholder, showPassword, se
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onFocus={onFocus}
         onKeyDown={onEnter}
         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
         style={{ marginBottom: 0, paddingRight: 48 }}
@@ -147,6 +148,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [passwordHelpOpen, setPasswordHelpOpen] = useState(false)
   const [suggestions, setSuggestions] = useState(() => [generateStrongPassword(), generateStrongPassword(), generateStrongPassword()])
   const [acceptedLegal, setAcceptedLegal] = useState(false)
   const [error, setError] = useState('')
@@ -174,6 +176,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
     setError('')
     setSuccess('')
     setPassword('')
+    setPasswordHelpOpen(false)
     setShowPassword(false)
     if (nextMode === 'signup') refreshSuggestions()
   }
@@ -184,6 +187,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
       return false
     }
     if (mode === 'signup' && !signupPasswordStrongEnough) {
+      setPasswordHelpOpen(true)
       setError(t('password_too_weak', 'Please use a stronger password. Use at least 16 characters, include upper/lowercase letters, a number, a symbol, and avoid common words or sequences.'))
       return false
     }
@@ -292,9 +296,10 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
         </div>
 
         <input type="email" placeholder={t('email_placeholder')} value={email} onChange={e=>setEmail(e.target.value)} style={{ marginBottom: 8 }} autoComplete="email" />
-        <PasswordField mode={mode} value={password} onChange={e=>setPassword(e.target.value)} onEnter={e=>e.key==='Enter'&&handleSubmit()} placeholder={t('password_placeholder')} showPassword={showPassword} setShowPassword={setShowPassword} />
-
-        {mode === 'signup' && <PasswordStrengthBox password={password} email={email} suggestions={suggestions} onUseSuggestion={value => { setPassword(value); setShowPassword(true); setError('') }} onRefresh={refreshSuggestions} t={t} />}
+        <div onFocus={() => mode === 'signup' && setPasswordHelpOpen(true)} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setPasswordHelpOpen(false) }}>
+          <PasswordField mode={mode} value={password} onFocus={() => mode === 'signup' && setPasswordHelpOpen(true)} onChange={e=>setPassword(e.target.value)} onEnter={e=>e.key==='Enter'&&handleSubmit()} placeholder={t('password_placeholder')} showPassword={showPassword} setShowPassword={setShowPassword} />
+          {mode === 'signup' && passwordHelpOpen && <PasswordStrengthBox password={password} email={email} suggestions={suggestions} onUseSuggestion={value => { setPassword(value); setShowPassword(true); setPasswordHelpOpen(true); setError('') }} onRefresh={refreshSuggestions} t={t} />}
+        </div>
 
         {error && <p style={{ fontSize:13, color:'var(--red)', marginBottom:10, padding:'10px 12px', background:'rgba(169,71,64,0.08)', borderRadius:8 }}>{error}</p>}
         {success && <p style={{ fontSize:13, color:'var(--green)', marginBottom:10, padding:'10px 12px', background:'rgba(63,111,80,0.08)', borderRadius:8 }}>{success}</p>}
@@ -303,7 +308,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
           {loading ? t('please_wait') : mode==='signin' ? t('sign_in_arrow') : t('create_account')}
         </button>
 
-        {mode === 'signup' && password && !signupPasswordStrongEnough && <p style={{ fontSize:11, color:'var(--accent)', textAlign:'center', marginTop:10, lineHeight:1.5 }}>{t('password_strength_needed', 'Use a very strong unique password. You can click one of the generated suggestions above.')}</p>}
+        {mode === 'signup' && password && !signupPasswordStrongEnough && <p style={{ fontSize:11, color:'var(--accent)', textAlign:'center', marginTop:10, lineHeight:1.5 }}>{t('password_strength_needed', 'Use a very strong unique password. Click the password field to view secure suggestions.')}</p>}
 
         <p style={{ fontSize:11, color:'var(--text-hint)', textAlign:'center', marginTop:14, lineHeight:1.6 }}>
           {mode === 'signup' ? t('legal_signup_notice') : t('auth_terms')}{' '}
