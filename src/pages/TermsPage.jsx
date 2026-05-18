@@ -19,7 +19,7 @@ const sections = [
   { title: '12. Liability', body: 'To the maximum extent permitted by applicable law, Joblytics is not liable for indirect losses, rejected applications, missed opportunities, employer decisions, salary negotiation outcomes, user input errors or third-party service interruptions. Nothing in these terms limits mandatory consumer rights under French or EU law.' },
   { title: '13. Termination', body: 'You may stop using the service at any time. We may suspend access if these terms are not respected or if there is a security, legal or service-integrity risk. Data deletion requests are handled according to the Privacy Policy.' },
   { title: '14. Governing law and consumer rights', body: 'These terms are governed by French law, subject to mandatory EU consumer protection rules where applicable. If you are a consumer, you may benefit from mandatory rights that cannot be waived by contract.' },
-  { title: '15. Contact', body: 'For legal, privacy or subscription questions, contact: contact@joblytics-ai.com. Before paid launch, replace this with the official business contact and legal publisher details.' }
+  { title: '15. Contact', body: 'For legal, privacy, support or subscription questions, contact: admin@joblytics-ai.com. Before paid launch, complete the Legal Notice page with official business and publisher details.' }
 ]
 
 export default function TermsPage({ onBack }) {
