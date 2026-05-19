@@ -25,6 +25,8 @@ export default function MessagesPage({ setPage }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [reply, setReply] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
+  const [syncLoading, setSyncLoading] = useState(false)
+  const [syncMessage, setSyncMessage] = useState('')
   const [error, setError] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
 
@@ -50,6 +52,15 @@ export default function MessagesPage({ setPage }) {
     return () => { active = false }
   }, [user?.id, t])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const sync = params.get('sync')
+    if (sync === 'connected') setSyncMessage(t('smart_sync_connected', 'Mail and calendar connected. Run Smart Sync to update your job tracking.'))
+    if (sync === 'failed') setError(params.get('reason') || t('smart_sync_failed', 'Mail/calendar sync failed.'))
+    if (sync === 'cancelled') setError(t('smart_sync_cancelled', 'Mail/calendar sync was cancelled.'))
+    if (sync) window.history.replaceState({}, '', '/messages')
+  }, [t])
+
   const openThread = async thread => {
     setSelected(thread)
     setReply('')
@@ -65,6 +76,52 @@ export default function MessagesPage({ setPage }) {
     if (error) setError(error.message || t('messages_thread_error', 'Could not load this conversation.'))
     else setMessages(data || [])
     setLoadingMessages(false)
+  }
+
+  const startGoogleSync = async () => {
+    setSyncLoading(true)
+    setSyncMessage('')
+    setError('')
+    try {
+      const token = await getFreshAccessToken(session)
+      if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
+      const res = await fetch('/api/google-sync-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Could not start Google sync (${res.status})`)
+      if (!data?.url) throw new Error('Google did not return a connection URL.')
+      window.location.href = data.url
+    } catch (e) {
+      setError(e.message || t('smart_sync_start_failed', 'Could not start mail/calendar sync.'))
+      setSyncLoading(false)
+    }
+  }
+
+  const runSmartSync = async () => {
+    setSyncLoading(true)
+    setSyncMessage('')
+    setError('')
+    try {
+      const token = await getFreshAccessToken(session)
+      if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
+      const res = await fetch('/api/smart-job-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data?.code === 'GOOGLE_SYNC_NOT_CONNECTED') {
+        await startGoogleSync()
+        return
+      }
+      if (!res.ok) throw new Error(data?.error || `Smart sync failed (${res.status})`)
+      setSyncMessage(t('smart_sync_complete', { scanned: data.scanned, events: data.eventsStored, updated: data.analysesUpdated }, `Smart Sync complete: ${data.scanned} signals scanned, ${data.eventsStored} events saved, ${data.analysesUpdated} jobs updated.`))
+    } catch (e) {
+      setError(e.message || t('smart_sync_failed', 'Smart sync failed.'))
+    } finally {
+      setSyncLoading(false)
+    }
   }
 
   const sendReply = async event => {
@@ -107,8 +164,26 @@ export default function MessagesPage({ setPage }) {
           <a className="messagesHeroButton" href="/contact">{t('messages_new_request', 'New request')}</a>
         </section>
 
+        <section className="smartSyncCard">
+          <div>
+            <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
+            <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
+            <span>{t('smart_sync_body', 'Connect Gmail and Calendar read-only so Joblytics can detect application confirmations, recruiter replies, interviews, offers and rejections only for jobs already analyzed in your History.')}</span>
+            <ul>
+              <li>{t('smart_sync_point_1', 'Only job-related signals connected to analyzed jobs are used.')}</li>
+              <li>{t('smart_sync_point_2', 'Full inbox and calendar data are not displayed or stored.')}</li>
+              <li>{t('smart_sync_point_3', 'History statuses update automatically: applied, interview, offer or rejected.')}</li>
+            </ul>
+          </div>
+          <div className="smartSyncActions">
+            <button type="button" onClick={startGoogleSync} disabled={syncLoading}>{syncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_connect', 'Sync your mail and calendar')}</button>
+            <button type="button" className="secondary" onClick={runSmartSync} disabled={syncLoading}>{t('smart_sync_run', 'Run Smart Sync')}</button>
+          </div>
+        </section>
+
         {error && <p className="messagesError">⚠ {error}</p>}
         {replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}
+        {syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
 
         <section className="messagesGrid">
           <aside className="messagesList">
