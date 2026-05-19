@@ -9,6 +9,9 @@
 # - /api/system-check
 # - /api/create-checkout-v2
 # - /api/stripe-webhook
+# - /api/google-sync-start
+# - /api/google-sync-callback
+# - /api/smart-job-sync
 
 api/**
 !api/analyze.js
@@ -20,3 +23,6 @@ api/**
 !api/system-check.js
 !api/create-checkout-v2.js
 !api/stripe-webhook.js
+!api/google-sync-start.js
+!api/google-sync-callback.js
+!api/smart-job-sync.js
