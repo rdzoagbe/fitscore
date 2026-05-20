@@ -15,7 +15,11 @@ const navItems = [
 ]
 
 const workspaceItems = [
-  ...navItems,
+  { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
+  { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
+  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' },
   { id: 'billing', icon: '💳', labelKey: 'nav_billing', fallback: 'Billing' }
 ]
 
