@@ -1,18 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
-import {
-  clean,
-  cleanBody,
-  classifyStatus,
-  confidenceLabel,
-  detectPlatform,
-  eventIsInterview,
-  extractCompany,
-  extractGmailBody,
-  isNoiseSubject,
-  parseFromHeader,
-  simpleSummary
-} from './lib/jobSignalClassifier.js'
+
 
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
