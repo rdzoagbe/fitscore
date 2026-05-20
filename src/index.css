@@ -24,17 +24,28 @@
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
 
-html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 body {
   background: var(--bg);
   color: var(--text-primary);
   font-family: var(--font-body);
   min-height: 100dvh;
   overflow-x: hidden;
+  line-height: 1.5;
+  font-synthesis-weight: none;
 }
 #root { min-height: 100dvh; }
 input, textarea, button, select { font-family: var(--font-body); color: var(--text-primary); }
 button, a, input, textarea, select { touch-action: manipulation; }
+button, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+p, li, span, label, input, textarea, select, button { overflow-wrap: anywhere; }
 
 .page { min-height: 100dvh; background: var(--bg); }
 .page-header { display: flex; align-items: center; justify-content: space-between; padding: clamp(16px,4vw,28px) clamp(16px,5vw,48px) 0; max-width: 900px; margin: 0 auto; gap: 12px; flex-wrap: wrap; }
@@ -106,6 +117,17 @@ textarea::placeholder { color: var(--text-secondary); opacity: 1; }
   .desktop-top-nav { display: none !important; }
   .mobile-bottom-nav { display: flex !important; }
   body { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0)); }
+  input[type="url"], input[type="email"], input[type="password"], input[type="text"], textarea, select {
+    font-size: 16px;
+  }
+  button {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 420px) {
+  html { font-size: 15.5px; }
+  .page-main { padding-left: 12px; padding-right: 12px; }
 }
 
 @keyframes slideUp {
