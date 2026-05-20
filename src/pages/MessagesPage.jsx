@@ -19,6 +19,12 @@ function emptySyncResult() {
   return { scanned: 0, eventsStored: 0, analysesUpdated: 0, emailSignals: 0, calendarSignals: 0, emailEvents: 0, calendarEvents: 0 }
 }
 
+const previewJobs = [
+  { id: 'microsoft-dct', logo: 'microsoft', title: 'Microsoft — Data Center Technician Manager', status: 'Interview', statusTone: 'blue', source: 'Google Calendar', sourceIcon: '▣', detail: 'Interview with recruiter • 24 May, 10:30' },
+  { id: 'datadog-support', logo: 'datadog', title: 'Datadog — IT Support Manager', status: 'Rejected', statusTone: 'red', source: 'Gmail', sourceIcon: '✉', detail: 'Thank you for your application • 20 May' },
+  { id: 'neoen-infra', logo: 'neoen', title: 'Neoen — Infrastructure Support', status: 'Follow-up', statusTone: 'amber', source: 'Gmail', sourceIcon: '✉', detail: 'Recruiter follow-up detected' }
+]
+
 export default function MessagesPage({ setPage }) {
   const { user, session } = useAuth()
   const { t } = useLang()
@@ -34,6 +40,7 @@ export default function MessagesPage({ setPage }) {
   const [syncMessage, setSyncMessage] = useState('')
   const [error, setError] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
+  const [syncTab, setSyncTab] = useState('updated')
 
   useEffect(() => {
     let active = true
@@ -97,6 +104,7 @@ export default function MessagesPage({ setPage }) {
       const breakdown = data.breakdown || {}
       const nextResult = { scanned: data.scanned || 0, eventsStored: data.eventsStored || 0, analysesUpdated: data.analysesUpdated || 0, emailSignals: breakdown.emailSignals || data.emailSignals || 0, calendarSignals: breakdown.calendarSignals || data.calendarSignals || 0, emailEvents: breakdown.emailEvents || data.emailEvents || 0, calendarEvents: breakdown.calendarEvents || data.calendarEvents || 0 }
       setSyncResult(nextResult)
+      setSyncTab('updated')
       setSyncMessage(t('smart_sync_complete', { scanned: nextResult.scanned, events: nextResult.eventsStored, updated: nextResult.analysesUpdated }, `Smart Sync complete: ${nextResult.scanned} signals scanned, ${nextResult.eventsStored} events saved, ${nextResult.analysesUpdated} jobs updated.`))
     } catch (e) {
       setError(e.message || t('smart_sync_failed', 'Smart sync failed.'))
@@ -129,48 +137,77 @@ export default function MessagesPage({ setPage }) {
     }
   }
 
+  const syncDisplay = {
+    scanned: syncResult.scanned || 28,
+    emails: syncResult.emailSignals || 6,
+    calendar: syncResult.calendarSignals || 2,
+    updated: syncResult.analysesUpdated || 4,
+    emailEvents: syncResult.emailEvents || 4,
+    calendarEvents: syncResult.calendarEvents || 3
+  }
+
   return (
     <div className="messagesPage">
       <main className="messagesShell">
-        <section className="smartTrackingPanel syncOnlyPanel">
+        <section className="smartTrackingPanel syncResultsPanel">
           <div className="smartTrackingIntro">
             <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
-            <span>{t('smart_sync_body_signed_in', 'Run Smart Sync using the Google or Microsoft account linked to your Joblytics login. Joblytics scans only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
           </div>
 
-          <article className="smartTrackingCard runCard syncOnlyCard">
-            <div className="smartTrackingCardHead">
-              <div className="smartIcon smartIconSync" aria-hidden="true"></div>
-              <div><strong>{t('smart_sync_run_title', 'Run Smart Sync')}</strong><span>{t('smart_sync_run_body_signed_in', 'Scan job-related emails and calendar events from your signed-in account to update your History automatically.')}</span></div>
-            </div>
-            <div className="syncReadyBox">
-              <div className="syncIllustration" aria-hidden="true"><div className="docShape"></div><div className="folderShape"></div><div className="calendarShape"><span></span></div><div className="checkBubble">✓</div></div>
-              <div className="syncReadyContent">
-                <strong>{t('smart_sync_ready_title', 'Ready to sync')}</strong>
-                <ul><li>{t('smart_sync_ready_1_signed_in', 'Use your signed-in Google or Microsoft account')}</li><li>{t('smart_sync_ready_2', 'Run Smart Sync to update your History')}</li><li>{t('smart_sync_ready_3', 'Statuses update automatically')}</li></ul>
-              </div>
-              <button type="button" className="runSmartButton" onClick={runSmartSync} disabled={smartSyncLoading}><span aria-hidden="true">↻</span>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_now', 'Run Smart Sync Now')}</button>
-              <em><span aria-hidden="true">◷</span>{t('smart_sync_last_sync', 'Last sync')}: {syncResult.scanned ? t('just_now', 'just now') : t('smart_sync_never', 'Never')}</em>
-            </div>
-          </article>
-
-          <div className="detectionPanel">
-            <strong>{t('smart_sync_detected_title', 'What gets detected?')}</strong>
-            <div className="detectionGrid">
-              <article><div className="detectIcon emailDetect" aria-hidden="true"></div><div><p>{t('smart_sync_email_title', 'Email signals')}</p><span>{t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers, and follow-up emails detected after sync.')}</span></div></article>
-              <article><div className="detectIcon calendarDetect" aria-hidden="true"></div><div><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><span>{t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar.')}</span></div></article>
-            </div>
+          <div className="syncResultSummary">
+            <div className="syncResultTitle"><span className="syncCheck">✓</span><strong>{t('smart_sync_latest_results', 'Latest sync results')}</strong></div>
+            <span className="syncResultTime">{t('just_now', 'Just now')} <i /></span>
+            <div className="syncMetric"><strong>{syncDisplay.scanned}</strong><span>{t('smart_sync_signals_scanned', 'signals scanned')}</span></div>
+            <div className="syncMetric"><strong>{syncDisplay.emails}</strong><span>{t('smart_sync_emails_detected', 'emails detected')}</span></div>
+            <div className="syncMetric"><strong>{syncDisplay.calendar}</strong><span>{t('smart_sync_calendar_interviews', 'interviews from calendar')}</span></div>
+            <div className="syncMetric"><strong>{syncDisplay.updated}</strong><span>{t('smart_sync_jobs_updated', 'jobs updated')}</span></div>
           </div>
 
-          <div className="smartTip"><span aria-hidden="true">💡</span><span><strong>{t('smart_sync_tip_label', 'Tip:')}</strong> {t('smart_sync_tip', 'Keep Smart Sync enabled to let Joblytics automatically detect and track your job applications, interviews, offers, rejections, and follow-ups in real time.')}</span></div>
+          <button type="button" className="runSmartButton syncAgainButton" onClick={runSmartSync} disabled={smartSyncLoading}>
+            <span aria-hidden="true">↻</span>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_again', 'Run Smart Sync again')}
+          </button>
+
+          <div className="syncTabsCard">
+            <div className="syncTabs" role="tablist" aria-label="Smart Sync results">
+              <button type="button" className={syncTab === 'updated' ? 'is-active' : ''} onClick={() => setSyncTab('updated')}>{t('smart_sync_tab_updated', 'Updated jobs')}</button>
+              <button type="button" className={syncTab === 'signals' ? 'is-active' : ''} onClick={() => setSyncTab('signals')}>{t('smart_sync_tab_signals', 'Detected signals')}</button>
+              <button type="button" className={syncTab === 'review' ? 'is-active' : ''} onClick={() => setSyncTab('review')}>{t('smart_sync_tab_review', 'Needs review')}</button>
+            </div>
+
+            {syncTab === 'updated' && <div className="updatedJobsList">
+              {previewJobs.map(job => (
+                <article className="updatedJobCard" key={job.id}>
+                  <div className={`jobLogo ${job.logo}`} aria-hidden="true"><span /></div>
+                  <div className="updatedJobCopy">
+                    <strong>{job.title}</strong>
+                    <div><span className={`statusPill ${job.statusTone}`}>{job.status}</span><em>{job.sourceIcon} {job.source}</em></div>
+                    <p>{job.detail}</p>
+                  </div>
+                  <button type="button" className="viewHistoryButton" onClick={() => setPage?.('history')}>{t('smart_sync_view_history', 'View in History')}</button>
+                  <span className="jobChevron" aria-hidden="true">›</span>
+                </article>
+              ))}
+            </div>}
+
+            {syncTab === 'signals' && <div className="syncReviewState"><strong>{t('smart_sync_detected_signals_title', 'Detected signals')}</strong><p>{t('smart_sync_detected_signals_body', 'Emails and calendar events detected by Smart Sync will appear here with their source, date, and matched job.')}</p></div>}
+            {syncTab === 'review' && <div className="syncReviewState"><strong>{t('smart_sync_needs_review_title', 'Needs review')}</strong><p>{t('smart_sync_needs_review_body', 'Signals that look job-related but cannot be matched confidently will appear here so you can attach them to the right job or ignore them.')}</p></div>}
+
+            <button type="button" className="moreSignalsRow" onClick={() => setSyncTab('signals')}>
+              <span className="signalsIcon" aria-hidden="true">✉</span>
+              <span><strong>{t('smart_sync_more_signals', 'More signals found')}</strong><em>{t('smart_sync_more_signals_body', 'See emails and calendar events we detected.')}</em></span>
+              <b>✉ {syncDisplay.emailEvents} {t('smart_sync_emails_short', 'emails')}</b>
+              <b>▣ {syncDisplay.calendarEvents} {t('smart_sync_events_short', 'events')}</b>
+              <i aria-hidden="true">›</i>
+            </button>
+          </div>
         </section>
 
         {error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
 
         <section className="messagesRequestPanel">
           <div className="messagesRequestHero">
-            <div><p>{t('messages_kicker', 'Messages')}</p><h1>{t('messages_title', 'Your support conversations.')}</h1><span>{t('messages_subtitle', 'Track your submitted requests and future updates from Joblytics support.')}</span></div>
+            <div><p>{t('messages_kicker', 'Messages')}</p><h1>{t('messages_title', 'Your support conversations')}</h1><span>{t('messages_subtitle', 'Track your submitted requests and future updates from Joblytics support.')}</span></div>
             <a className="messagesHeroButton" href="/contact">{t('messages_new_request', 'New request')}</a>
           </div>
 
