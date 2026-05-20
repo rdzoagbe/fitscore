@@ -19,10 +19,15 @@ function emptySyncResult() {
   return { scanned: 0, eventsStored: 0, analysesUpdated: 0, emailSignals: 0, calendarSignals: 0, emailEvents: 0, calendarEvents: 0 }
 }
 
-const previewJobs = [
-  { id: 'microsoft-dct', logo: 'microsoft', title: 'Microsoft — Data Center Technician Manager', status: 'Interview', statusTone: 'blue', source: 'Google Calendar', sourceIcon: '▣', detail: 'Interview with recruiter • 24 May, 10:30' },
-  { id: 'datadog-support', logo: 'datadog', title: 'Datadog — IT Support Manager', status: 'Rejected', statusTone: 'red', source: 'Gmail', sourceIcon: '✉', detail: 'Thank you for your application • 20 May' },
-  { id: 'neoen-infra', logo: 'neoen', title: 'Neoen — Infrastructure Support', status: 'Follow-up', statusTone: 'amber', source: 'Gmail', sourceIcon: '✉', detail: 'Recruiter follow-up detected' }
+const previewEmails = [
+  { id: 'datadog-rejection', logo: 'datadog', title: 'Datadog — IT Support Manager', status: 'Rejected', statusTone: 'red', source: 'Gmail', from: 'careers@datadog.com', subject: 'Thank you for your application', date: '20 May, 09:12', snippet: 'Thank you for your application. After careful review, we will not be moving forward at this time.', body: 'Hi Roland,\n\nThank you for your application for the IT Support Manager position. After careful review, we have decided not to move forward at this time.\n\nWe appreciate the time you invested and encourage you to apply again for future opportunities that match your experience.\n\nBest regards,\nDatadog Recruiting Team' },
+  { id: 'neoen-followup', logo: 'neoen', title: 'Neoen — Infrastructure Support', status: 'Follow-up', statusTone: 'amber', source: 'Gmail', from: 'recruitment@neoen.com', subject: 'Next steps for your application', date: '22 May, 14:45', snippet: 'Recruiter follow-up detected. Please confirm your availability for a short call this week.', body: 'Hello Roland,\n\nThank you for your interest in the Infrastructure Support role. We would like to schedule a short follow-up call to discuss your background and availability.\n\nCould you please confirm a few slots this week?\n\nKind regards,\nNeoen Recruitment' },
+  { id: 'summit-confirmation', logo: 'job', title: 'Summit Paris — Business Applications Manager', status: 'Application', statusTone: 'blue', source: 'Gmail', from: 'talent@summitparis.com', subject: 'Application received', date: '23 May, 11:20', snippet: 'Application confirmation detected for Business Applications Manager.', body: 'Hi Roland,\n\nWe have received your application for the Business Applications Manager position. Our team will review your profile and get back to you if your experience matches the role requirements.\n\nThank you,\nSummit Paris Talent Team' }
+]
+
+const previewCalendarEvents = [
+  { id: 'microsoft-dct', logo: 'microsoft', title: 'Microsoft — Data Center Technician Manager', status: 'Interview', statusTone: 'blue', source: 'Google Calendar', eventTitle: 'Interview with Microsoft recruiter', date: '24 May, 10:30', attendees: 'recruiter@microsoft.com', location: 'Microsoft Teams', detail: 'Interview meeting detected from your calendar.' },
+  { id: 'datadog-screen', logo: 'datadog', title: 'Datadog — Enterprise IT Support Manager', status: 'Interview', statusTone: 'blue', source: 'Google Calendar', eventTitle: 'Talent screen — Datadog', date: '26 May, 15:00', attendees: 'recruiting@datadog.com', location: 'Google Meet', detail: 'Recruitment event detected from your calendar.' }
 ]
 
 export default function MessagesPage({ setPage }) {
@@ -40,7 +45,8 @@ export default function MessagesPage({ setPage }) {
   const [syncMessage, setSyncMessage] = useState('')
   const [error, setError] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
-  const [syncTab, setSyncTab] = useState('updated')
+  const [syncTab, setSyncTab] = useState('emails')
+  const [selectedEmail, setSelectedEmail] = useState(previewEmails[0])
 
   useEffect(() => {
     let active = true
@@ -104,7 +110,7 @@ export default function MessagesPage({ setPage }) {
       const breakdown = data.breakdown || {}
       const nextResult = { scanned: data.scanned || 0, eventsStored: data.eventsStored || 0, analysesUpdated: data.analysesUpdated || 0, emailSignals: breakdown.emailSignals || data.emailSignals || 0, calendarSignals: breakdown.calendarSignals || data.calendarSignals || 0, emailEvents: breakdown.emailEvents || data.emailEvents || 0, calendarEvents: breakdown.calendarEvents || data.calendarEvents || 0 }
       setSyncResult(nextResult)
-      setSyncTab('updated')
+      setSyncTab('emails')
       setSyncMessage(t('smart_sync_complete', { scanned: nextResult.scanned, events: nextResult.eventsStored, updated: nextResult.analysesUpdated }, `Smart Sync complete: ${nextResult.scanned} signals scanned, ${nextResult.eventsStored} events saved, ${nextResult.analysesUpdated} jobs updated.`))
     } catch (e) {
       setError(e.message || t('smart_sync_failed', 'Smart sync failed.'))
@@ -169,33 +175,56 @@ export default function MessagesPage({ setPage }) {
           </button>
 
           <div className="syncTabsCard">
-            <div className="syncTabs" role="tablist" aria-label="Smart Sync results">
-              <button type="button" className={syncTab === 'updated' ? 'is-active' : ''} onClick={() => setSyncTab('updated')}>{t('smart_sync_tab_updated', 'Updated jobs')}</button>
-              <button type="button" className={syncTab === 'signals' ? 'is-active' : ''} onClick={() => setSyncTab('signals')}>{t('smart_sync_tab_signals', 'Detected signals')}</button>
-              <button type="button" className={syncTab === 'review' ? 'is-active' : ''} onClick={() => setSyncTab('review')}>{t('smart_sync_tab_review', 'Needs review')}</button>
+            <div className="syncTabs twoTabs" role="tablist" aria-label="Smart Sync results">
+              <button type="button" className={syncTab === 'emails' ? 'is-active' : ''} onClick={() => setSyncTab('emails')}>{t('smart_sync_tab_emails', 'Emails')}</button>
+              <button type="button" className={syncTab === 'calendar' ? 'is-active' : ''} onClick={() => setSyncTab('calendar')}>{t('smart_sync_tab_calendar', 'Calendar')}</button>
             </div>
 
-            {syncTab === 'updated' && <div className="updatedJobsList">
-              {previewJobs.map(job => (
-                <article className="updatedJobCard" key={job.id}>
-                  <div className={`jobLogo ${job.logo}`} aria-hidden="true"><span /></div>
+            {syncTab === 'emails' && <div className="syncSplitView">
+              <div className="updatedJobsList emailSignalsList">
+                {previewEmails.map(email => (
+                  <button type="button" className={`updatedJobCard emailSignalCard ${selectedEmail?.id === email.id ? 'is-selected' : ''}`} key={email.id} onClick={() => setSelectedEmail(email)}>
+                    <div className={`jobLogo ${email.logo}`} aria-hidden="true"><span /></div>
+                    <div className="updatedJobCopy">
+                      <strong>{email.title}</strong>
+                      <div><span className={`statusPill ${email.statusTone}`}>{email.status}</span><em>✉ {email.source}</em></div>
+                      <p>{email.subject} • {email.date}</p>
+                    </div>
+                    <span className="jobChevron" aria-hidden="true">›</span>
+                  </button>
+                ))}
+              </div>
+
+              <article className="emailPreviewPanel">
+                <div className="emailPreviewHead">
+                  <span className="emailSourceIcon">✉</span>
+                  <div><p>{selectedEmail?.source}</p><h3>{selectedEmail?.subject}</h3><em>{selectedEmail?.from} · {selectedEmail?.date}</em></div>
+                </div>
+                <div className="emailPreviewBody">
+                  {(selectedEmail?.body || '').split('\n').map((line, index) => <p key={`${selectedEmail?.id}-${index}`}>{line || '\u00A0'}</p>)}
+                </div>
+                <div className="emailPreviewFooter"><span className={`statusPill ${selectedEmail?.statusTone}`}>{selectedEmail?.status}</span><strong>{selectedEmail?.title}</strong></div>
+              </article>
+            </div>}
+
+            {syncTab === 'calendar' && <div className="updatedJobsList calendarSignalsList">
+              {previewCalendarEvents.map(event => (
+                <article className="updatedJobCard calendarSignalCard" key={event.id}>
+                  <div className={`jobLogo ${event.logo}`} aria-hidden="true"><span /></div>
                   <div className="updatedJobCopy">
-                    <strong>{job.title}</strong>
-                    <div><span className={`statusPill ${job.statusTone}`}>{job.status}</span><em>{job.sourceIcon} {job.source}</em></div>
-                    <p>{job.detail}</p>
+                    <strong>{event.title}</strong>
+                    <div><span className={`statusPill ${event.statusTone}`}>{event.status}</span><em>▣ {event.source}</em></div>
+                    <p>{event.eventTitle} • {event.date}</p>
+                    <small>{event.location} · {event.attendees}</small>
                   </div>
-                  <button type="button" className="viewHistoryButton" onClick={() => setPage?.('history')}>{t('smart_sync_view_history', 'View in History')}</button>
                   <span className="jobChevron" aria-hidden="true">›</span>
                 </article>
               ))}
             </div>}
 
-            {syncTab === 'signals' && <div className="syncReviewState"><strong>{t('smart_sync_detected_signals_title', 'Detected signals')}</strong><p>{t('smart_sync_detected_signals_body', 'Emails and calendar events detected by Smart Sync will appear here with their source, date, and matched job.')}</p></div>}
-            {syncTab === 'review' && <div className="syncReviewState"><strong>{t('smart_sync_needs_review_title', 'Needs review')}</strong><p>{t('smart_sync_needs_review_body', 'Signals that look job-related but cannot be matched confidently will appear here so you can attach them to the right job or ignore them.')}</p></div>}
-
-            <button type="button" className="moreSignalsRow" onClick={() => setSyncTab('signals')}>
-              <span className="signalsIcon" aria-hidden="true">✉</span>
-              <span><strong>{t('smart_sync_more_signals', 'More signals found')}</strong><em>{t('smart_sync_more_signals_body', 'See emails and calendar events we detected.')}</em></span>
+            <button type="button" className="moreSignalsRow" onClick={() => setSyncTab(syncTab === 'emails' ? 'calendar' : 'emails')}>
+              <span className="signalsIcon" aria-hidden="true">{syncTab === 'emails' ? '▣' : '✉'}</span>
+              <span><strong>{syncTab === 'emails' ? t('smart_sync_calendar_found', 'Calendar events found') : t('smart_sync_emails_found', 'Emails found')}</strong><em>{syncTab === 'emails' ? t('smart_sync_calendar_found_body', 'See interviews and recruitment events detected from your agenda.') : t('smart_sync_emails_found_body', 'See emails detected from your inbox.')}</em></span>
               <b>✉ {syncDisplay.emailEvents} {t('smart_sync_emails_short', 'emails')}</b>
               <b>▣ {syncDisplay.calendarEvents} {t('smart_sync_events_short', 'events')}</b>
               <i aria-hidden="true">›</i>
