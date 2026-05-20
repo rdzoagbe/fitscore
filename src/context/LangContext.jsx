@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState } from 'react'
 import { translations, LANGUAGES } from '../i18n/translations'
 import { extraTranslations } from '../i18n/appTranslations'
 import { billingTranslations } from '../i18n/billingTranslations'
@@ -6,6 +6,7 @@ import { coachTranslations } from '../i18n/coachTranslations'
 import { historyTranslations } from '../i18n/historyTranslations'
 import { postAnalysisTranslations } from '../i18n/postAnalysisTranslations'
 import { legalTranslations } from '../i18n/legalTranslations'
+import { productionTranslations } from '../i18n/productionTranslations'
 
 const LangContext = createContext({})
 
@@ -19,7 +20,7 @@ function mergeTranslations(base, ...packs) {
   return merged
 }
 
-const allTranslations = mergeTranslations(translations, extraTranslations, billingTranslations, coachTranslations, historyTranslations, postAnalysisTranslations, legalTranslations)
+const allTranslations = mergeTranslations(translations, extraTranslations, billingTranslations, coachTranslations, historyTranslations, postAnalysisTranslations, legalTranslations, productionTranslations)
 
 function formatTemplate(value, params = {}) {
   if (typeof value !== 'string') return value
@@ -36,6 +37,7 @@ export function LangProvider({ children }) {
   })
 
   const changeLang = (l) => {
+    if (!allTranslations[l]) return
     setLang(l)
     localStorage.setItem('fitscore_lang', l)
   }
