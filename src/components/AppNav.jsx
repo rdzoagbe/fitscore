@@ -10,12 +10,12 @@ const navItems = [
   { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
   { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
   { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
 ]
 
 const workspaceItems = [
   ...navItems,
-  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
   { id: 'billing', icon: '💳', labelKey: 'nav_billing', fallback: 'Billing' }
 ]
 
@@ -23,8 +23,8 @@ const mobileNavItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' },
-  { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' }
+  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
+  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' }
 ]
 
 function getDisplayName(user) {
