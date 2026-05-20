@@ -9,17 +9,40 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const syncSession = async (forceRefresh = false) => {
+    const result = forceRefresh ? await supabase.auth.refreshSession() : await supabase.auth.getSession()
+    const nextSession = result?.data?.session ?? null
+    setSession(nextSession)
+    setUser(nextSession?.user ?? null)
+    return nextSession
+  }
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session ?? null)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    syncSession(false).finally(() => setLoading(false))
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session ?? null)
       setUser(session?.user ?? null)
     })
-    return () => subscription.unsubscribe()
+
+    const refreshTimer = window.setInterval(() => {
+      supabase.auth.getSession().then(({ data }) => {
+        const expiresAt = data?.session?.expires_at ? data.session.expires_at * 1000 : 0
+        const shouldRefresh = Boolean(data?.session?.refresh_token) && expiresAt && expiresAt - Date.now() < 5 * 60 * 1000
+        if (shouldRefresh) syncSession(true).catch(() => {})
+      })
+    }, 60 * 1000)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncSession(true).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      subscription.unsubscribe()
+      window.clearInterval(refreshTimer)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   const signUp = (email, password, legalSource = 'signup_email') => supabase.auth.signUp({
@@ -63,7 +86,7 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithMicrosoft, signInWithLinkedIn, acceptCurrentTerms, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, refreshSession: () => syncSession(true), signUp, signIn, signInWithGoogle, signInWithMicrosoft, signInWithLinkedIn, acceptCurrentTerms, signOut }}>
       {children}
     </AuthContext.Provider>
   )
