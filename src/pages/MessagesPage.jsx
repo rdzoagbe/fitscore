@@ -29,7 +29,6 @@ export default function MessagesPage({ setPage }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [reply, setReply] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
-  const [connectProvider, setConnectProvider] = useState('google')
   const [syncLoadingProvider, setSyncLoadingProvider] = useState('')
   const [smartSyncLoading, setSmartSyncLoading] = useState(false)
   const [syncResult, setSyncResult] = useState(emptySyncResult())
@@ -116,7 +115,7 @@ export default function MessagesPage({ setPage }) {
       const res = await fetch('/api/smart-job-sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } })
       const data = await res.json().catch(() => ({}))
       if (data?.code === 'MAIL_CALENDAR_SYNC_NOT_CONNECTED' || data?.code === 'GOOGLE_SYNC_NOT_CONNECTED') {
-        setError(t('smart_sync_connect_first', 'Choose Gmail/Google Calendar or Outlook/Hotmail/Microsoft Calendar, connect it, then run Smart Sync.'))
+        setError(t('smart_sync_connect_first', 'Connect Gmail or Google Calendar first, then run Smart Sync.'))
         return
       }
       if (!res.ok) throw new Error(data?.error || `Smart sync failed (${res.status})`)
@@ -156,8 +155,7 @@ export default function MessagesPage({ setPage }) {
   }
 
   const anySyncLoading = Boolean(syncLoadingProvider) || smartSyncLoading
-  const selectedProviderLabel = connectProvider === 'google' ? t('smart_sync_provider_google', 'Gmail / Google Calendar') : t('smart_sync_provider_microsoft', 'Outlook / Hotmail / Microsoft Calendar')
-  const providerIcon = connectProvider === 'google' ? 'G' : 'M'
+  const googleConnecting = syncLoadingProvider === 'google'
 
   return (
     <div className="messagesPage">
@@ -168,40 +166,59 @@ export default function MessagesPage({ setPage }) {
           <div className="smartTrackingIntro">
             <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
-            <span>{t('smart_sync_body_any_provider', 'Choose your email and calendar provider, connect it with read-only access, then run Smart Sync. Joblytics scans only job-related content linked to jobs already analyzed in your History.')}</span>
+            <span>{t('smart_sync_body_any_provider', 'Connect your email and calendar with read-only access, then run Smart Sync. Joblytics scans only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
           </div>
 
           <div className="smartTrackingGrid">
             <article className="smartTrackingCard connectCard">
               <div className="smartTrackingCardHead">
-                <div className="smartIcon">🔗</div>
-                <div><strong>1. {t('smart_sync_connect_title', 'Connect your accounts')}</strong><span>{t('smart_sync_connect_body', 'Select your email/calendar provider and approve read-only access.')}</span></div>
+                <div className="smartIcon smartIconLink" aria-hidden="true"></div>
+                <div><strong>1. {t('smart_sync_connect_title', 'Connect your accounts')}</strong><span>{t('smart_sync_connect_body', 'Select your email and calendar provider and approve read-only access.')}</span></div>
               </div>
 
               <div className="providerBox">
-                <label className="smartSyncSelectLabel" htmlFor="smart-sync-provider">{t('smart_sync_provider_label', 'Choose your email/calendar')}</label>
-                <select id="smart-sync-provider" className="smartSyncSelect" value={connectProvider} onChange={event => setConnectProvider(event.target.value)} disabled={anySyncLoading}>
-                  <option value="google">Gmail / Google Calendar</option>
-                  <option value="microsoft">Outlook / Hotmail / Microsoft Calendar</option>
-                </select>
-                <button type="button" className="connectProviderButton" onClick={() => startMailSync(connectProvider)} disabled={anySyncLoading}>
-                  <span className={`providerMark ${connectProvider}`}>{providerIcon}</span>
-                  {syncLoadingProvider ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect_account', { provider: selectedProviderLabel }, `Connect ${selectedProviderLabel}`)}
-                </button>
-                <p className="privacyLine">🔒 {t('smart_sync_privacy_line', 'Read-only access. We scan only job-related signals and never modify, send, or delete your data.')}</p>
+                <div className="smartSyncProviderTitle">{t('smart_sync_provider_label', 'Choose your email/calendar')}</div>
+                <p className="privacyLine"><span className="miniLock" aria-hidden="true">▣</span>{t('smart_sync_privacy_line', 'Read-only access. We scan only job-related signals and never modify, send, or delete your data.')}</p>
+
+                <div className="syncServiceRows">
+                  <article className="syncServiceRow">
+                    <div className="serviceLogo gmailLogo" aria-hidden="true"><span>M</span></div>
+                    <div className="serviceCopy"><strong>Gmail</strong><span>{t('smart_sync_gmail_body', 'Scan job-related emails like confirmations, replies, and offers.')}</span></div>
+                    <span className="connectionBadge">{t('smart_sync_not_connected', 'Not connected')}</span>
+                    <button type="button" className="connectProviderButton compact" onClick={() => startMailSync('google')} disabled={anySyncLoading}>
+                      <span className="googleDot" aria-hidden="true">G</span>
+                      {googleConnecting ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect', 'Connect')}
+                    </button>
+                  </article>
+
+                  <article className="syncServiceRow">
+                    <div className="serviceLogo calendarLogo" aria-hidden="true"><span>31</span></div>
+                    <div className="serviceCopy"><strong>Google Calendar</strong><span>{t('smart_sync_calendar_provider_body', 'Scan interview meetings and recruitment events.')}</span></div>
+                    <span className="connectionBadge">{t('smart_sync_not_connected', 'Not connected')}</span>
+                    <button type="button" className="connectProviderButton compact" onClick={() => startMailSync('google')} disabled={anySyncLoading}>
+                      <span className="googleDot" aria-hidden="true">G</span>
+                      {googleConnecting ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect', 'Connect')}
+                    </button>
+                  </article>
+                </div>
+
+                <div className="privacyCallout"><span className="shieldIcon" aria-hidden="true">♢</span><span>{t('smart_sync_privacy_callout', 'Your privacy is our priority. We use read-only access and never modify, send, or store your email or calendar data.')}</span></div>
               </div>
             </article>
 
             <article className="smartTrackingCard runCard">
               <div className="smartTrackingCardHead">
-                <div className="smartIcon">↻</div>
-                <div><strong>2. {t('smart_sync_run_title', 'Run Smart Sync')}</strong><span>{t('smart_sync_run_body', 'After connecting, scan job-related emails and calendar events to update your History.')}</span></div>
+                <div className="smartIcon smartIconSync" aria-hidden="true"></div>
+                <div><strong>2. {t('smart_sync_run_title', 'Run Smart Sync')}</strong><span>{t('smart_sync_run_body', 'After connecting your accounts, scan job-related emails and calendar events to update your History.')}</span></div>
               </div>
               <div className="syncReadyBox">
-                <strong>{t('smart_sync_ready_title', 'Ready to sync')}</strong>
-                <ul><li>✓ {t('smart_sync_ready_1', 'Connect your email/calendar account')}</li><li>✓ {t('smart_sync_ready_2', 'Run Smart Sync to update your History')}</li><li>✓ {t('smart_sync_ready_3', 'Statuses update automatically')}</li></ul>
-                <button type="button" className="runSmartButton" onClick={runSmartSync} disabled={anySyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_now', 'Run Smart Sync Now')}</button>
-                <em>{t('smart_sync_last_sync', 'Last sync')}: {syncResult.scanned ? t('just_now', 'just now') : t('smart_sync_never', 'Never')}</em>
+                <div className="syncIllustration" aria-hidden="true"><div className="docShape"></div><div className="folderShape"></div><div className="calendarShape"><span></span></div><div className="checkBubble">✓</div></div>
+                <div className="syncReadyContent">
+                  <strong>{t('smart_sync_ready_title', 'Ready to sync')}</strong>
+                  <ul><li>{t('smart_sync_ready_1', 'Connect your email and calendar account')}</li><li>{t('smart_sync_ready_2', 'Run Smart Sync to update your History')}</li><li>{t('smart_sync_ready_3', 'Statuses update automatically')}</li></ul>
+                </div>
+                <button type="button" className="runSmartButton" onClick={runSmartSync} disabled={anySyncLoading}><span aria-hidden="true">↻</span>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_now', 'Run Smart Sync Now')}</button>
+                <em><span aria-hidden="true">◷</span>{t('smart_sync_last_sync', 'Last sync')}: {syncResult.scanned ? t('just_now', 'just now') : t('smart_sync_never', 'Never')}</em>
               </div>
             </article>
           </div>
@@ -209,12 +226,12 @@ export default function MessagesPage({ setPage }) {
           <div className="detectionPanel">
             <strong>{t('smart_sync_detected_title', 'What gets detected?')}</strong>
             <div className="detectionGrid">
-              <article><div className="detectIcon">✉️</div><div><p>{t('smart_sync_email_title', 'Email signals')}</p><span>{syncResult.emailSignals} — {t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers and follow-up emails detected after sync.')}</span><em>{syncResult.emailEvents} {t('smart_sync_events_saved', 'events saved')}</em></div></article>
-              <article><div className="detectIcon purple">📅</div><div><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><span>{syncResult.calendarSignals} — {t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar after sync.')}</span><em>{syncResult.calendarEvents} {t('smart_sync_events_saved', 'events saved')}</em></div></article>
+              <article><div className="detectIcon emailDetect" aria-hidden="true"></div><div><p>{t('smart_sync_email_title', 'Email signals')}</p><span>{t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers, and follow-up emails detected after sync.')}</span></div></article>
+              <article><div className="detectIcon calendarDetect" aria-hidden="true"></div><div><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><span>{t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar.')}</span></div></article>
             </div>
           </div>
 
-          <div className="smartTip">💡 <span>{t('smart_sync_tip', 'Tip: Smart Sync helps Joblytics keep your job pipeline accurate by detecting applications, interviews, offers, rejections, and follow-ups from connected accounts.')}</span></div>
+          <div className="smartTip"><span aria-hidden="true">💡</span><span><strong>{t('smart_sync_tip_label', 'Tip:')}</strong> {t('smart_sync_tip', 'Keep Smart Sync enabled to let Joblytics automatically detect and track your job applications, interviews, offers, rejections, and follow-ups in real time.')}</span></div>
         </section>
 
         {error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
