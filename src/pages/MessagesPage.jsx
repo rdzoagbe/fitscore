@@ -29,7 +29,6 @@ export default function MessagesPage({ setPage }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [reply, setReply] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
-  const [connectProvider, setConnectProvider] = useState('google')
   const [syncLoadingProvider, setSyncLoadingProvider] = useState('')
   const [smartSyncLoading, setSmartSyncLoading] = useState(false)
   const [syncResult, setSyncResult] = useState(emptySyncResult())
@@ -155,6 +154,8 @@ export default function MessagesPage({ setPage }) {
     }
   }
 
+  const anySyncLoading = Boolean(syncLoadingProvider) || smartSyncLoading
+
   return (
     <div className="messagesPage">
       <main className="messagesShell">
@@ -164,11 +165,11 @@ export default function MessagesPage({ setPage }) {
           <div>
             <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
-            <span>{t('smart_sync_body_any_provider', 'Choose Connect Gmail or Connect Outlook / Hotmail. After connecting your account, return here and click Run Smart Sync. Joblytics will then scan only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
-            <ol className="smartSyncSteps"><li>{t('smart_sync_step_1', 'Choose your account type from the dropdown.')}</li><li>{t('smart_sync_step_2', 'Click Connect selected account and approve read-only access.')}</li><li>{t('smart_sync_step_3', 'Return here, click Run Smart Sync, then review Email signals and Calendar signals below.')}</li></ol>
+            <span>{t('smart_sync_body_any_provider', 'Connect Gmail/Google Calendar or Outlook/Hotmail/Microsoft Calendar. Joblytics scans only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
+            <ol className="smartSyncSteps"><li>{t('smart_sync_step_1', 'Connect your Gmail or Outlook/Hotmail account with read-only access.')}</li><li>{t('smart_sync_step_2', 'Return here and click Run Smart Sync.')}</li><li>{t('smart_sync_step_3', 'Review Email signals and Calendar signals. History statuses update automatically.')}</li></ol>
             <div className="smartSyncInlineResults"><article><p>{t('smart_sync_email_title', 'Email signals')}</p><strong>{syncResult.emailSignals}</strong><span>{t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers and follow-up emails detected after sync.')}</span><em>{syncResult.emailEvents} {t('smart_sync_events_saved', 'events saved')}</em></article><article><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><strong>{syncResult.calendarSignals}</strong><span>{t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar after sync.')}</span><em>{syncResult.calendarEvents} {t('smart_sync_events_saved', 'events saved')}</em></article></div>
           </div>
-          <div className="smartSyncActions"><label className="smartSyncSelectLabel">{t('smart_sync_provider_label', 'Provider')}</label><select className="smartSyncSelect" value={connectProvider} onChange={event => setConnectProvider(event.target.value)} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}><option value="google">Connect Gmail</option><option value="microsoft">Connect Outlook / Hotmail</option></select><button type="button" onClick={() => startMailSync(connectProvider)} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}>{syncLoadingProvider ? t('smart_sync_connecting', 'Connecting account...') : t('smart_sync_connect_selected', 'Connect selected account')}</button><button type="button" className="secondary" onClick={runSmartSync} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run', 'Run Smart Sync')}</button></div>
+          <div className="smartSyncActions"><button type="button" onClick={() => startMailSync('google')} disabled={anySyncLoading}>{syncLoadingProvider === 'google' ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect_google', 'Connect Gmail / Google Calendar')}</button><button type="button" onClick={() => startMailSync('microsoft')} disabled={anySyncLoading}>{syncLoadingProvider === 'microsoft' ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect_microsoft', 'Connect Outlook / Hotmail / Microsoft Calendar')}</button><button type="button" className="secondary" onClick={runSmartSync} disabled={anySyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run', 'Run Smart Sync')}</button></div>
         </section>
 
         {error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
