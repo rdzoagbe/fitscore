@@ -6,142 +6,188 @@ import crypto from 'crypto'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const SYSTEM = `You are an ATS specialist, recruiter, and career coach with 15+ years of experience. You run DETERMINISTIC analyses — same CV + same job MUST always yield the same scores.
+const SYSTEM = `You are Joblytics ATS Intelligence v2: an ATS specialist, recruiter, hiring manager, and career coach with 15+ years of experience.
 
-Apply this RIGID scoring rubric exactly:
+Your mission is to help a jobseeker decide whether to APPLY, IMPROVE, PREPARE, FOLLOW UP, or SKIP. You must analyze deeper than keyword matching. Use deterministic reasoning: same CV + same job = same scores.
 
-KEYWORD MATCH SCORE (0-100):
-- Extract ALL technical skills, tools, methodologies, certifications, and domain terms from the job offer (the "required keyword set")
-- Count how many appear VERBATIM (case-insensitive) in the CV
-- Score = (matched_count / total_required_count) * 100, rounded to nearest integer
+CRITICAL RULES:
+- Return ONLY valid JSON. No markdown. No preamble.
+- Never invent candidate experience. If proof is missing, say it is missing.
+- Separate explicit job requirements from inferred recruiter expectations.
+- Do not over-reward keyword stuffing. Evidence and context matter.
+- Be useful to a real jobseeker: concrete, practical, honest, and specific.
+- Use the language of the job/CV where possible, otherwise English.
 
-REQUIREMENTS MATCH SCORE (0-100):
-- Identify ALL hard requirements (years of experience, education, certifications, language fluency, location, work authorization)
-- For each, score 100 if met, 50 if partially met, 0 if absent
-- Score = average of all hard requirements
+SCORING RUBRIC:
+1. keyword_match.score: exact and close-match coverage of important technical/domain keywords.
+2. requirements_check.score: hard requirements met, partially met, or missing.
+3. semantic_fit.score: similarity between candidate achievements and job responsibilities, not only terms.
+4. seniority_fit.score: whether the candidate level fits the job level.
+5. evidence_depth.score: proof quality: metrics, scope, tools used in context, ownership, scale, leadership, outcomes.
+6. recruiter_shortlist_probability: realistic probability a recruiter would shortlist this CV for this job.
+7. confidence.level: confidence in the analysis based on job text quality and CV extraction quality.
 
-OVERALL VERDICT:
-- "likely_passed" if BOTH keyword_match.score >= 70 AND requirements_check.score >= 70 AND no critical_gaps
-- "borderline" if keyword_match.score >= 50 AND requirements_check.score >= 50
-- "likely_filtered" otherwise
+WEIGHTED DISPLAY SCORE:
+- keyword_match 25%
+- requirements_check 25%
+- semantic_fit 20%
+- seniority_fit 15%
+- evidence_depth 15%
 
-MATCH PROBABILITY (0-100):
-- Formula: (display_score * 0.5) + (requirements_score * 0.5) - (10 * critical_gaps_count), bounded 0-100
+REQUIREMENT CLASSIFICATION:
+- must_have: required/essential/mandatory/non-negotiable requirements.
+- nice_to_have: preferred/bonus/desirable requirements.
+- hidden_expectations: things recruiters likely expect based on title/domain even if not stated.
 
-SENIORITY ALIGNMENT:
-- Extract candidate_level from CV: count years of relevant experience + assess role progression
-- candidate_level values: "intern" | "junior" (0-2y) | "mid" (3-5y) | "senior" (6-9y) | "lead" (8-12y, with leadership) | "staff_principal" (10+y, scope) | "executive" (director+)
-- Extract job_level from job offer same way (look at title + required years + responsibilities)
-- alignment values:
-  - "right_level" — same level
-  - "stretch" — job is 1 level above candidate (worth applying, ambitious fit)
-  - "reach" — job is 2+ levels above (apply only with strong edge cases)
-  - "below_level" — candidate is 1+ levels above job (likely overqualified, flight risk)
-  - "pivot" — different career track entirely (e.g. IC vs management, different domain)
+NEXT BEST ACTION:
+Choose one:
+- apply_now: strong match, sufficient proof, no major blockers.
+- improve_cv_first: good or possible fit but CV evidence/keywords are weak.
+- prepare_interview: match is strong enough and interview risks are clear.
+- ask_recruiter_question: role ambiguity, salary ambiguity, location/work mode ambiguity, or requirement ambiguity.
+- skip_or_low_priority: weak match or major blocker.
 
-Return ONLY a JSON object — no markdown, no preamble:
-
+Return this JSON shape exactly:
 {
   "job_context": {
-    "title": "<exact job title>",
-    "company": "<company name or 'Not specified'>",
-    "location": "<city, country, or 'Remote' or 'Not specified'>",
-    "work_mode": "<remote | hybrid | onsite | unknown>",
-    "contract_type": "<CDI | CDD | freelance | internship | apprenticeship | temp | unknown>",
-    "salary_range": "<exact salary with currency, or 'Not specified'>",
-    "experience_required": "<e.g. '3-5 years' or 'Not specified'>",
-    "posted_date": "<date or 'Unknown'>",
-    "languages_required": ["language1"],
-    "apply_url": "<direct application URL if found in job posting, else null>",
-    "easy_apply": <true if job has LinkedIn Easy Apply or Indeed Apply button, else false>,
-    "hiring_contact": "<name of recruiter/hiring manager if EXPLICITLY named in the posting (e.g. 'Marie Dupont' or 'John Smith - HR'). Do NOT guess. null if no name is mentioned.>"
+    "title": "exact job title or Not specified",
+    "company": "company or Not specified",
+    "location": "city/country/remote/not specified",
+    "work_mode": "remote|hybrid|onsite|unknown",
+    "contract_type": "CDI|CDD|freelance|internship|apprenticeship|temp|unknown",
+    "salary_range": "exact salary or Not specified",
+    "experience_required": "e.g. 3-5 years or Not specified",
+    "posted_date": "date or Unknown",
+    "languages_required": ["language"],
+    "apply_url": null,
+    "easy_apply": false,
+    "hiring_contact": null
   },
-  "job_summary": "<2 sentences max>",
-  "match_probability": <integer 0-100>,
-  "match_reasoning": "<one sentence>",
+  "job_summary": "2 sentences max",
+  "match_probability": 0,
+  "match_reasoning": "one clear sentence",
+  "display_score": 0,
+  "recruiter_shortlist": {
+    "probability": 0,
+    "verdict": "strong_shortlist|possible_shortlist|unlikely_shortlist",
+    "reason": "why a recruiter would or would not shortlist this candidate",
+    "top_screening_factors": ["factor 1", "factor 2", "factor 3"],
+    "likely_recruiter_concerns": ["concern 1", "concern 2", "concern 3"]
+  },
+  "next_best_action": {
+    "action": "apply_now|improve_cv_first|prepare_interview|ask_recruiter_question|skip_or_low_priority",
+    "label": "short label",
+    "reason": "specific reason",
+    "steps": ["step 1", "step 2", "step 3"]
+  },
+  "confidence": {
+    "level": "high|medium|low",
+    "score": 0,
+    "reasons": ["reason 1", "reason 2"],
+    "job_text_quality": "complete|partial|thin|blocked",
+    "cv_text_quality": "complete|partial|thin|scanned_or_poor"
+  },
   "seniority": {
-    "candidate_level": "<intern|junior|mid|senior|lead|staff_principal|executive>",
-    "job_level": "<intern|junior|mid|senior|lead|staff_principal|executive>",
-    "alignment": "<right_level|stretch|reach|below_level|pivot>",
-    "alignment_label": "<2-3 word summary, e.g. 'Right level' or 'Slight stretch'>",
-    "alignment_reason": "<one sentence explaining the verdict>",
-    "candidate_years": <number — total years of relevant experience>,
-    "job_years_required": <number — years required by the role>
+    "candidate_level": "intern|junior|mid|senior|lead|staff_principal|executive",
+    "job_level": "intern|junior|mid|senior|lead|staff_principal|executive",
+    "alignment": "right_level|stretch|reach|below_level|pivot",
+    "alignment_label": "2-3 word summary",
+    "alignment_reason": "one sentence",
+    "candidate_years": 0,
+    "job_years_required": 0
   },
-  "red_flags": ["<posting red flag if any, max 3>"],
-  "salary_assessment": {
-    "specified": <true|false>,
-    "assessment": "<below_market | market | above_market | unknown | not_specified>",
-    "comment": "<brief>"
+  "seniority_fit": {
+    "score": 0,
+    "candidate_scope": ["scope evidence from CV"],
+    "role_scope": ["scope requirement from job"],
+    "risk": "none|slight_stretch|overqualified|underqualified|track_mismatch"
   },
-  "salary_intelligence": {
-    "currency": "<3-letter ISO: EUR, GBP, USD, CHF, CAD, etc. Match the posting's currency or local currency for the location.>",
-    "scenario": "<'salary_mentioned' if posting includes a number/range, else 'salary_hidden'>",
-    "posted_low": <number or null. The lower bound of salary in posting (annual, gross), or null if not specified>,
-    "posted_high": <number or null. The upper bound of salary in posting, or null if not specified>,
-    "estimated_market_low": <number. Your estimate of typical low end for this role in this location/seniority based on training data>,
-    "estimated_market_high": <number. Your estimate of typical high end for this role in this location/seniority>,
-    "target_low": <number. Realistic ask for someone with the candidate's profile — usually middle-to-upper of the range>,
-    "target_high": <number. Stretch ask for the candidate IF they have strong leverage points (specific keywords, seniority match, etc.)>,
-    "leverage_points": ["<specific reason 1 the candidate could push higher, e.g. 'Direct experience in fintech regulation'>", "<reason 2>", "<reason 3 max>"],
-    "negotiation_strategy": "<2 sentences max. Tactical advice: when to mention numbers, what range to name first, how to anchor>",
-    "confidence": "<'high' if very common role in major city, 'medium' if some assumptions made, 'low' if unusual role/location>"
-  },
-  "verdict": "<one sentence verdict, max 12 words>",
   "keyword_match": {
-    "score": <0-100>,
-    "found": ["max 10 keywords found verbatim in CV"],
-    "missing_required": ["max 6 critical missing keywords"],
-    "missing_nice": ["max 4 nice-to-have missing"]
+    "score": 0,
+    "found": ["max 10"],
+    "missing_required": ["max 8"],
+    "missing_nice": ["max 6"],
+    "keyword_stuffing_risk": "low|medium|high"
   },
   "requirements_check": {
-    "score": <0-100>,
-    "met": ["max 5 requirements met"],
-    "unmet": ["max 4 requirements not met"]
+    "score": 0,
+    "must_have": [
+      { "requirement": "requirement", "status": "met|partial|missing", "evidence": "CV evidence or missing proof" }
+    ],
+    "nice_to_have": [
+      { "requirement": "requirement", "status": "met|partial|missing", "evidence": "CV evidence or missing proof" }
+    ],
+    "met": ["max 5"],
+    "unmet": ["max 5"]
   },
-  "format_warnings": ["<max 3, empty if clean>"],
-  "critical_gaps": ["<max 3, empty if none>"],
-  "quick_wins": [
-    { "tip": "<action 1, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
-    { "tip": "<action 2, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
-    { "tip": "<action 3, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" },
-    { "tip": "<action 4, max 12 words>", "example": "<copy-paste sentence with realistic details, max 25 words>" }
+  "semantic_fit": {
+    "score": 0,
+    "matched_responsibilities": ["responsibility matched with CV evidence"],
+    "weak_or_missing_responsibilities": ["job responsibility without enough proof"],
+    "domain_fit": "strong|moderate|weak",
+    "domain_reason": "one sentence"
+  },
+  "experience_depth": {
+    "score": 0,
+    "hands_on": "strong|moderate|weak|unclear",
+    "leadership": "strong|moderate|weak|not_required|unclear",
+    "scale": "strong|moderate|weak|unclear",
+    "metrics": "strong|moderate|weak|missing",
+    "ownership": "strong|moderate|weak|unclear",
+    "proof_summary": "one sentence"
+  },
+  "proof_gaps": [
+    { "gap": "missing proof", "why_it_matters": "why recruiter cares", "how_to_fix": "copy-ready fix direction" }
   ],
-  "overall_verdict": "<likely_filtered | borderline | likely_passed>",
-  "overall_reason": "<one sentence>",
+  "hidden_expectations": [
+    { "expectation": "inferred recruiter expectation", "candidate_signal": "evidence or missing", "risk": "low|medium|high" }
+  ],
+  "red_flags": ["posting or fit red flag, max 4"],
+  "salary_assessment": {
+    "specified": false,
+    "assessment": "below_market|market|above_market|unknown|not_specified",
+    "comment": "brief"
+  },
+  "salary_intelligence": {
+    "currency": "EUR|GBP|USD|CHF|CAD|UNKNOWN",
+    "scenario": "salary_mentioned|salary_hidden",
+    "posted_low": null,
+    "posted_high": null,
+    "estimated_market_low": null,
+    "estimated_market_high": null,
+    "target_low": null,
+    "target_high": null,
+    "leverage_points": ["max 3 concrete leverage points"],
+    "negotiation_strategy": "2 sentences max",
+    "confidence": "high|medium|low"
+  },
+  "verdict": "max 12 words",
+  "overall_verdict": "likely_filtered|borderline|likely_passed",
+  "overall_reason": "one sentence",
+  "critical_gaps": ["max 4"],
+  "format_warnings": ["max 3"],
+  "quick_wins": [
+    { "tip": "max 12 words", "example": "copy-paste sentence based only on real CV evidence" }
+  ],
+  "rewrite_priorities": [
+    { "section": "summary|experience|skills|keywords|metrics", "priority": "high|medium|low", "instruction": "specific rewrite instruction", "example": "copy-ready sentence or bullet without inventing facts" }
+  ],
+  "jobseeker_strategy": {
+    "apply_message_angle": "best positioning angle",
+    "follow_up_timing": "when to follow up if they apply",
+    "questions_to_ask_recruiter": ["question 1", "question 2", "question 3"],
+    "skip_reason": "null or reason to deprioritize"
+  },
   "interview_prep": {
-    "likely_questions": [
-      "<5 specific interview questions tailored to THIS role + THIS candidate's CV gaps. Not generic ('Tell me about yourself'). Be specific — reference actual technologies, gaps, or experience from CV/job. E.g. 'How would you handle the React migration mentioned in the JD given your Vue background?'>"
-    ],
-    "your_edges": [
-      "<3 things from candidate CV that EXCEED what the role requires. These are selling points to lean on in interview. Each: one concrete sentence quoting CV evidence.>"
-    ],
+    "show_prep": true,
+    "likely_questions": ["5 specific questions"],
+    "your_edges": ["3 concrete selling points"],
     "weak_spots": [
-      "<3 areas where candidate will be challenged in interview. Each item: one object {area: '<weak area>', prep_tip: '<concrete prep advice, 1 sentence>'}>"
+      { "area": "weak area", "prep_tip": "concrete prep advice" }
     ],
-    "salary_negotiation_hint": "<one sentence strategic advice based on salary range + candidate level. If salary not specified, advise asking range early.>",
-    "show_prep": <boolean — true if display_score >= 50, else false>
+    "salary_negotiation_hint": "one sentence"
   }
-}
-
-CRITICAL: Apply the rubric mechanically. Do not introduce subjective judgment. Same input = same output.
-
-For interview_prep:
-- likely_questions: think like a real hiring manager. Reference specific tech/gaps/CV items by name.
-- your_edges: only include if genuinely above requirement. If candidate is junior for the role, this array can be smaller or focus on transferable strengths.
-- weak_spots: be honest. Each weak spot must have a concrete prep_tip the candidate can act on.
-- show_prep should be true if display_score >= 50 (worth interviewing for), else false.
-
-For salary_intelligence:
-- Estimate based on: job title, seniority level, location (city/country/region), required skills, contract type
-- Use ROUND numbers (e.g., 60000, not 59783)
-- All numbers in LOCAL ANNUAL GROSS currency (EUR for France/EU, GBP for UK, USD for US, CHF for Switzerland)
-- target_low and target_high are a NEGOTIATION range:
-  * If salary_mentioned: target = upper third of posted range; push = ~5-15% above posted high IF leverage points exist
-  * If salary_hidden: target = realistic ask matching candidate profile; push = stretch with leverage
-- leverage_points must be CONCRETE and tied to this CV + this job (not generic). Max 3 items. If fewer than 2 truthful items exist, return only the truthful ones.
-- confidence: 'high' for common roles in major European cities, 'low' for unusual roles where market data is thin
-- This is GUIDANCE not market data — numbers may be off by ±20%.`
+}`
 
 function getRestrictedBoardName(url = '') {
   const lower = String(url).toLowerCase()
@@ -155,31 +201,28 @@ function getRestrictedBoardName(url = '') {
 
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
-
   let res
   try {
     res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
       },
       redirect: 'follow'
     })
-  } catch (fetchErr) {
+  } catch {
     const err = new Error(`${restrictedBoard || 'This job page'} could not be reached from URL mode. Paste mode is available as a fallback.`)
     err.statusCode = 400
     err.code = 'URL_FETCH_FAILED'
     throw err
   }
-
   if (!res.ok) {
     const err = new Error(`${restrictedBoard || 'This job page'} returned ${res.status}. Paste mode is available as a fallback.`)
     err.statusCode = 400
     err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_FETCH_FAILED'
     throw err
   }
-
   const html = await res.text()
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -189,14 +232,13 @@ async function fetchJobText(url) {
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/\s{2,}/g, ' ').trim()
-
   if (text.length < 200) {
     const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Paste mode is available as a fallback.`)
     err.statusCode = 400
     err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_TEXT_TOO_SHORT'
     throw err
   }
-  return text.slice(0, 6000)
+  return text.slice(0, 9000)
 }
 
 async function extractCvText(base64Data, mimeType) {
@@ -210,8 +252,6 @@ function hashContent(...parts) {
   return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
 }
 
-// RATE LIMIT: max 10 analyses per user per hour, max 30 per day
-// Whitelist of user IDs with elevated limits (admin / dev)
 const WHITELIST = (process.env.RATE_LIMIT_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean)
 const HOURLY_LIMIT = 15
 const DAILY_LIMIT = 50
@@ -219,34 +259,122 @@ const WHITELIST_DAILY = 500
 
 async function checkRateLimit(supabase, userId) {
   if (!supabase || !userId) return { allowed: true, dayCount: 0, dayLimit: DAILY_LIMIT }
-
   const isWhitelisted = WHITELIST.includes(userId)
   const dayLimit = isWhitelisted ? WHITELIST_DAILY : DAILY_LIMIT
-
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
-  const { count: hourCount } = await supabase
-    .from('analyses')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', oneHourAgo)
-
-  if (!isWhitelisted && (hourCount ?? 0) >= HOURLY_LIMIT) {
-    return { allowed: false, reason: 'hourly', message: `Hourly limit reached (${HOURLY_LIMIT} analyses/hour). Please try again later.`, dayCount: 0, dayLimit }
-  }
-
-  const { count: dayCount } = await supabase
-    .from('analyses')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', oneDayAgo)
-
-  if ((dayCount ?? 0) >= dayLimit) {
-    return { allowed: false, reason: 'daily', message: `Daily limit reached (${dayLimit} analyses/day). Please try again tomorrow.`, dayCount: dayCount ?? 0, dayLimit }
-  }
-
+  const { count: hourCount } = await supabase.from('analyses').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', oneHourAgo)
+  if (!isWhitelisted && (hourCount ?? 0) >= HOURLY_LIMIT) return { allowed: false, reason: 'hourly', message: `Hourly limit reached (${HOURLY_LIMIT} analyses/hour). Please try again later.`, dayCount: 0, dayLimit }
+  const { count: dayCount } = await supabase.from('analyses').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', oneDayAgo)
+  if ((dayCount ?? 0) >= dayLimit) return { allowed: false, reason: 'daily', message: `Daily limit reached (${dayLimit} analyses/day). Please try again tomorrow.`, dayCount: dayCount ?? 0, dayLimit }
   return { allowed: true, dayCount: dayCount ?? 0, dayLimit }
+}
+
+function safeScore(val, fallback = 0) {
+  const n = typeof val === 'number' ? val : parseInt(val, 10)
+  if (Number.isNaN(n) || n < 0 || n > 100) return fallback
+  return Math.round(n)
+}
+
+function arr(value, limit = 10) {
+  return Array.isArray(value) ? value.filter(Boolean).slice(0, limit) : []
+}
+
+function obj(value, fallback = {}) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback
+}
+
+function normalizeAnalysis(analysis, jobUrl, cvText) {
+  if (!analysis || typeof analysis !== 'object') throw new Error('AI returned an unexpected response. Please try again.')
+
+  analysis.keyword_match = obj(analysis.keyword_match, {})
+  analysis.requirements_check = obj(analysis.requirements_check, {})
+  analysis.semantic_fit = obj(analysis.semantic_fit, {})
+  analysis.seniority_fit = obj(analysis.seniority_fit, {})
+  analysis.experience_depth = obj(analysis.experience_depth, {})
+  analysis.recruiter_shortlist = obj(analysis.recruiter_shortlist, {})
+  analysis.next_best_action = obj(analysis.next_best_action, {})
+  analysis.confidence = obj(analysis.confidence, {})
+  analysis.seniority = obj(analysis.seniority, {})
+
+  analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
+  analysis.requirements_check.score = safeScore(analysis.requirements_check.score, 0)
+  analysis.semantic_fit.score = safeScore(analysis.semantic_fit.score, Math.round((analysis.keyword_match.score + analysis.requirements_check.score) / 2))
+  analysis.seniority_fit.score = safeScore(analysis.seniority_fit.score, 60)
+  analysis.experience_depth.score = safeScore(analysis.experience_depth.score, 50)
+  analysis.recruiter_shortlist.probability = safeScore(analysis.recruiter_shortlist.probability, analysis.match_probability || 0)
+  analysis.confidence.score = safeScore(analysis.confidence.score, 70)
+
+  analysis.display_score = safeScore(analysis.display_score, Math.round(
+    analysis.keyword_match.score * 0.25 +
+    analysis.requirements_check.score * 0.25 +
+    analysis.semantic_fit.score * 0.2 +
+    analysis.seniority_fit.score * 0.15 +
+    analysis.experience_depth.score * 0.15
+  ))
+  analysis.match_probability = safeScore(analysis.match_probability, analysis.recruiter_shortlist.probability || analysis.display_score)
+
+  analysis.keyword_match.found = arr(analysis.keyword_match.found, 10)
+  analysis.keyword_match.missing_required = arr(analysis.keyword_match.missing_required, 8)
+  analysis.keyword_match.missing_nice = arr(analysis.keyword_match.missing_nice, 6)
+  analysis.requirements_check.must_have = arr(analysis.requirements_check.must_have, 12)
+  analysis.requirements_check.nice_to_have = arr(analysis.requirements_check.nice_to_have, 10)
+  analysis.requirements_check.met = arr(analysis.requirements_check.met, 6)
+  analysis.requirements_check.unmet = arr(analysis.requirements_check.unmet, 6)
+  analysis.semantic_fit.matched_responsibilities = arr(analysis.semantic_fit.matched_responsibilities, 6)
+  analysis.semantic_fit.weak_or_missing_responsibilities = arr(analysis.semantic_fit.weak_or_missing_responsibilities, 6)
+  analysis.proof_gaps = arr(analysis.proof_gaps, 6)
+  analysis.hidden_expectations = arr(analysis.hidden_expectations, 6)
+  analysis.red_flags = arr(analysis.red_flags, 4)
+  analysis.critical_gaps = arr(analysis.critical_gaps, 4)
+  analysis.format_warnings = arr(analysis.format_warnings, 3)
+  analysis.quick_wins = arr(analysis.quick_wins, 5)
+  analysis.rewrite_priorities = arr(analysis.rewrite_priorities, 6)
+  analysis.recruiter_shortlist.top_screening_factors = arr(analysis.recruiter_shortlist.top_screening_factors, 5)
+  analysis.recruiter_shortlist.likely_recruiter_concerns = arr(analysis.recruiter_shortlist.likely_recruiter_concerns, 5)
+  analysis.next_best_action.steps = arr(analysis.next_best_action.steps, 4)
+  analysis.confidence.reasons = arr(analysis.confidence.reasons, 4)
+
+  if (!['high', 'medium', 'low'].includes(analysis.confidence.level)) analysis.confidence.level = analysis.confidence.score >= 80 ? 'high' : analysis.confidence.score >= 55 ? 'medium' : 'low'
+  if (!['strong_shortlist', 'possible_shortlist', 'unlikely_shortlist'].includes(analysis.recruiter_shortlist.verdict)) {
+    analysis.recruiter_shortlist.verdict = analysis.recruiter_shortlist.probability >= 75 ? 'strong_shortlist' : analysis.recruiter_shortlist.probability >= 50 ? 'possible_shortlist' : 'unlikely_shortlist'
+  }
+  if (!['apply_now', 'improve_cv_first', 'prepare_interview', 'ask_recruiter_question', 'skip_or_low_priority'].includes(analysis.next_best_action.action)) {
+    analysis.next_best_action.action = analysis.display_score >= 78 ? 'apply_now' : analysis.display_score >= 55 ? 'improve_cv_first' : 'skip_or_low_priority'
+  }
+
+  if (!analysis.overall_verdict) {
+    analysis.overall_verdict = analysis.display_score >= 75 ? 'likely_passed' : analysis.display_score >= 50 ? 'borderline' : 'likely_filtered'
+  }
+
+  const si = obj(analysis.salary_intelligence, null)
+  if (si) {
+    const safeNum = v => {
+      const n = typeof v === 'number' ? v : parseFloat(v)
+      return Number.isNaN(n) || n <= 0 ? null : Math.round(n)
+    }
+    si.posted_low = safeNum(si.posted_low)
+    si.posted_high = safeNum(si.posted_high)
+    si.estimated_market_low = safeNum(si.estimated_market_low)
+    si.estimated_market_high = safeNum(si.estimated_market_high)
+    si.target_low = safeNum(si.target_low)
+    si.target_high = safeNum(si.target_high)
+    si.leverage_points = arr(si.leverage_points, 3)
+    si.currency = typeof si.currency === 'string' && si.currency.length >= 3 ? si.currency.toUpperCase().slice(0, 3) : 'EUR'
+    si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
+    si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
+    analysis.salary_intelligence = si.target_low && si.target_high ? si : null
+  } else {
+    analysis.salary_intelligence = null
+  }
+
+  analysis.job_url = jobUrl || null
+  analysis.job_source = jobUrl ? 'url' : 'pasted'
+  analysis.job_title = analysis.job_context?.title || null
+  analysis.cv_preview = cvText.trim().slice(0, 800).replace(/\s+/g, ' ').trim()
+  analysis.cv_preview_truncated = cvText.trim().length > 800
+  analysis.analysis_version = 'ats-intelligence-v2'
+  return analysis
 }
 
 export default async function handler(req, res) {
@@ -257,7 +385,6 @@ export default async function handler(req, res) {
     const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
 
-    // Setup admin Supabase client
     let supabaseClient = null
     try {
       const url = process.env.SUPABASE_URL
@@ -265,174 +392,66 @@ export default async function handler(req, res) {
       if (url && key) supabaseClient = createClient(url, key, { auth: { persistSession: false } })
     } catch {}
 
-    // SECURITY: rate limit check
-    let rateLimitInfo = { dayCount: 0, dayLimit: 50 }
+    let rateLimitInfo = { dayCount: 0, dayLimit: DAILY_LIMIT }
     if (supabaseClient && userId) {
       const rl = await checkRateLimit(supabaseClient, userId)
       rateLimitInfo = { dayCount: rl.dayCount, dayLimit: rl.dayLimit }
-      if (!rl.allowed) {
-        return res.status(429).json({ error: rl.message, rate_limited: true, reason: rl.reason })
-      }
+      if (!rl.allowed) return res.status(429).json({ error: rl.message, rate_limited: true, reason: rl.reason })
     }
 
     const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(providedJobText.slice(0, 6000)) : fetchJobText(jobUrl),
+      providedJobText ? Promise.resolve(providedJobText.slice(0, 9000)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
 
-    if (!cvText || cvText.trim().length < 50) {
-      return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
-    }
+    if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
+    if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
 
-    if (!jobText || jobText.trim().length < 100) {
-      return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting (requirements, responsibilities, etc.).' })
-    }
-
-    // CACHE: same content = same result
-    const cacheKey = hashContent(cvText.slice(0, 4000), jobText.slice(0, 4000))
-
+    const cacheKey = hashContent('ats-v2', cvText.slice(0, 6000), jobText.slice(0, 6000))
     if (supabaseClient && userId) {
-      const { data: cached } = await supabaseClient
-        .from('analyses')
-        .select('result, created_at')
-        .eq('user_id', userId)
-        .eq('cache_key', cacheKey)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      if (cached?.result) {
-        return res.status(200).json({ success: true, analysis: cached.result, cached: true })
-      }
+      const { data: cached } = await supabaseClient.from('analyses').select('result, created_at').eq('user_id', userId).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).single()
+      if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true })
     }
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2500,
+      max_tokens: 4200,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 6000)}\n\n---\n\nCV:\n${cvText.slice(0, 6000)}` }]
+      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 9000)}\n\n---\n\nCV:\n${cvText.slice(0, 9000)}` }]
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
-
     let analysis
     try {
       analysis = JSON.parse(raw)
-    } catch (parseErr) {
-      console.error('JSON parse failed. Raw output (first 500):', raw.slice(0, 500))
+    } catch {
+      console.error('JSON parse failed. Raw output first 700:', raw.slice(0, 700))
       throw new Error('AI returned malformed JSON. This is usually transient — please try again.')
     }
 
-    // Coerce scores defensively — AI might return string numbers or missing structure
-    const safeScore = (val, fallback = 0) => {
-      const n = typeof val === 'number' ? val : parseInt(val, 10)
-      if (isNaN(n) || n < 0 || n > 100) return fallback
-      return Math.round(n)
-    }
+    analysis = normalizeAnalysis(analysis, jobUrl, cvText)
 
-    if (!analysis || typeof analysis !== 'object') {
-      throw new Error('AI returned an unexpected response. Please try again.')
-    }
-
-    // Ensure structure exists with safe defaults rather than throwing
-    analysis.keyword_match = analysis.keyword_match || { score: 0, found: [], missing: [] }
-    analysis.requirements_check = analysis.requirements_check || { score: 0 }
-    analysis.keyword_match.score = safeScore(analysis.keyword_match.score, 0)
-    analysis.requirements_check.score = safeScore(analysis.requirements_check.score, 0)
-
-    // Defensive defaults for salary_intelligence (older cached results may not have it)
-    if (!analysis.salary_intelligence || typeof analysis.salary_intelligence !== 'object') {
-      analysis.salary_intelligence = null
-    } else {
-      const si = analysis.salary_intelligence
-      // Coerce numbers safely
-      const safeNum = (v) => {
-        const n = typeof v === 'number' ? v : parseFloat(v)
-        return isNaN(n) || n <= 0 ? null : Math.round(n)
-      }
-      si.posted_low = safeNum(si.posted_low)
-      si.posted_high = safeNum(si.posted_high)
-      si.estimated_market_low = safeNum(si.estimated_market_low)
-      si.estimated_market_high = safeNum(si.estimated_market_high)
-      si.target_low = safeNum(si.target_low)
-      si.target_high = safeNum(si.target_high)
-      si.leverage_points = Array.isArray(si.leverage_points) ? si.leverage_points.slice(0, 3) : []
-      si.currency = (typeof si.currency === 'string' && si.currency.length === 3) ? si.currency.toUpperCase() : 'EUR'
-      si.confidence = ['high', 'medium', 'low'].includes(si.confidence) ? si.confidence : 'medium'
-      si.scenario = ['salary_mentioned', 'salary_hidden'].includes(si.scenario) ? si.scenario : (si.posted_low ? 'salary_mentioned' : 'salary_hidden')
-      // If we don't have at least target numbers, kill it — better to show nothing than garbage
-      if (!si.target_low || !si.target_high) {
-        analysis.salary_intelligence = null
-      }
-    }
-
-    analysis.display_score = Math.round((analysis.keyword_match.score * 0.6) + (analysis.requirements_check.score * 0.4))
-    analysis.job_url = jobUrl || null
-    analysis.job_source = jobUrl ? 'url' : 'pasted'
-    analysis.job_title = analysis.job_context?.title || null
-    // CV text preview (first 800 chars) so user can verify what AI is reading
-    analysis.cv_preview = cvText.trim().slice(0, 800).replace(/\s+/g, ' ').trim()
-    analysis.cv_preview_truncated = cvText.trim().length > 800
-
-    // Save with cache_key — upsert: if same cv+job already saved, update it
     let savedRow = null
     try {
       if (supabaseClient && userId) {
-        // First check if a row with this cache_key already exists for this user
-        const { data: existing } = await supabaseClient
-          .from('analyses')
-          .select('id, application_status, status_updated_at')
-          .eq('user_id', userId)
-          .eq('cache_key', cacheKey)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-
+        const { data: existing } = await supabaseClient.from('analyses').select('id, application_status, status_updated_at').eq('user_id', userId).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).maybeSingle()
         if (existing) {
-          // Update existing row, preserve application_status
-          const { data: updated } = await supabaseClient
-            .from('analyses')
-            .update({
-              job_url: jobUrl || 'manual_paste',
-              job_title: analysis.job_context?.title || null,
-              score: analysis.display_score,
-              result: analysis,
-              cv_file_name: cvFileName || null
-            })
-            .eq('id', existing.id)
-            .select()
-            .single()
+          const { data: updated } = await supabaseClient.from('analyses').update({ job_url: jobUrl || 'manual_paste', job_title: analysis.job_context?.title || null, score: analysis.display_score, result: analysis, cv_file_name: cvFileName || null }).eq('id', existing.id).select().single()
           savedRow = updated
         } else {
-          // Insert new row
-          const { data: inserted } = await supabaseClient
-            .from('analyses')
-            .insert({
-              user_id: userId,
-              job_url: jobUrl || 'manual_paste',
-              job_title: analysis.job_context?.title || null,
-              score: analysis.display_score,
-              result: analysis,
-              cv_file_path: null,
-              cv_file_name: cvFileName || null,
-              cache_key: cacheKey
-            })
-            .select()
-            .single()
+          const { data: inserted } = await supabaseClient.from('analyses').insert({ user_id: userId, job_url: jobUrl || 'manual_paste', job_title: analysis.job_context?.title || null, score: analysis.display_score, result: analysis, cv_file_path: null, cv_file_name: cvFileName || null, cache_key: cacheKey }).select().single()
           savedRow = inserted
         }
       }
-    } catch (e) { console.log('Save failed:', e.message) }
+    } catch (e) {
+      console.log('Save failed:', e.message)
+    }
 
-    return res.status(200).json({
-      success: true,
-      analysis,
-      savedRow,
-      rateLimit: rateLimitInfo
-    })
+    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo })
   } catch (e) {
     console.error('Handler error:', e.message)
-    const statusCode = e.statusCode || (e.code === 'PASTE_REQUIRED' ? 400 : 500)
+    const statusCode = e.statusCode || 500
     return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED' })
   }
 }
