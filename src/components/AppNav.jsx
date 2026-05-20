@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import LangSelector from './LangSelector'
@@ -38,14 +38,12 @@ function getInitials(name) {
 export default function AppNav({ page, setPage, onLogoClick }) {
   const { user, signOut } = useAuth()
   const { t } = useLang()
-  const accountMenuRef = useRef(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const displayName = getDisplayName(user)
   const initials = getInitials(displayName)
   const label = (key, fallback) => t(key, fallback)
 
-  const closeMenu = () => {
-    if (accountMenuRef.current) accountMenuRef.current.open = false
-  }
+  const closeMenu = () => setMenuOpen(false)
 
   const goTo = id => {
     closeMenu()
@@ -61,6 +59,14 @@ export default function AppNav({ page, setPage, onLogoClick }) {
     closeMenu()
     signOut?.()
   }
+
+  useEffect(() => {
+    const onKeyDown = event => {
+      if (event.key === 'Escape') closeMenu()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <>
@@ -85,38 +91,45 @@ export default function AppNav({ page, setPage, onLogoClick }) {
         <div className="jobNav-right">
           <button type="button" className="jobNav-newCheck" onClick={() => goTo('analyzer')}>{label('new_check', 'New check')}</button>
 
-          <details className="jobNav-account" ref={accountMenuRef}>
-            <summary className="jobNav-menuButton"><span>{t('menu_label', 'Menu')}</span><strong>{initials}</strong></summary>
+          <div className={`jobNav-account ${menuOpen ? 'is-open' : ''}`}>
+            <button type="button" className="jobNav-menuButton" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
+              <span>{t('menu_label', 'Menu')}</span>
+              <strong>{initials}</strong>
+            </button>
 
-            <div className="jobNav-menuPanel" role="menu">
-              <div className="jobNav-menuIdentity"><strong>{displayName}</strong><span>{user?.email}</span></div>
+            {menuOpen && <button type="button" className="jobNav-menuOverlay" aria-label={t('close_menu', 'Close menu')} onClick={closeMenu} />}
 
-              <div className="jobNav-menuSection">
-                <p>{t('preferences', 'Preferences')}</p>
-                <div className="jobNav-menuControls"><LangSelector /><ThemeToggle /></div>
+            {menuOpen && (
+              <div className="jobNav-menuPanel" role="menu">
+                <div className="jobNav-menuIdentity"><strong>{displayName}</strong><span>{user?.email}</span></div>
+
+                <div className="jobNav-menuSection">
+                  <p>{t('preferences', 'Preferences')}</p>
+                  <div className="jobNav-menuControls"><LangSelector /><ThemeToggle /></div>
+                </div>
+
+                <div className="jobNav-menuSection">
+                  <p>{t('workspace', 'Workspace')}</p>
+                  {workspaceItems.map(item => (
+                    <button key={item.id} type="button" onClick={() => goTo(item.id)} className={page === item.id ? 'is-active' : ''}>
+                      <span>{item.icon}</span>
+                      {label(item.labelKey, item.fallback)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="jobNav-menuSection">
+                  <p>{t('legal_support', 'Legal & support')}</p>
+                  <a href="/legal" onClick={closeMenu}>{t('legal_notice', 'Legal notice')}</a>
+                  <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
+                  <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
+                  <button type="button" onClick={() => goTo('contact')}>💬 {t('contact_support', 'Contact support')}</button>
+                </div>
+
+                <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
               </div>
-
-              <div className="jobNav-menuSection">
-                <p>{t('workspace', 'Workspace')}</p>
-                {workspaceItems.map(item => (
-                  <button key={item.id} type="button" onClick={() => goTo(item.id)} className={page === item.id ? 'is-active' : ''}>
-                    <span>{item.icon}</span>
-                    {label(item.labelKey, item.fallback)}
-                  </button>
-                ))}
-              </div>
-
-              <div className="jobNav-menuSection">
-                <p>{t('legal_support', 'Legal & support')}</p>
-                <a href="/legal" onClick={closeMenu}>{t('legal_notice', 'Legal notice')}</a>
-                <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
-                <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
-                <button type="button" onClick={() => goTo('contact')}>💬 {t('contact_support', 'Contact support')}</button>
-              </div>
-
-              <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
-            </div>
-          </details>
+            )}
+          </div>
         </div>
       </header>
 
