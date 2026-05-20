@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Connect Smart Sync · Joblytics</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#07143a;background:#f6f8fc}body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:22px}.card{width:min(720px,100%);background:#fff;border:1px solid #dfe7f4;border-radius:28px;box-shadow:0 24px 70px rgba(15,30,60,.12);padding:clamp(24px,5vw,44px)}.kicker{margin:0 0 8px;color:#0f62e6;font-size:12px;font-weight:950;letter-spacing:.14em;text-transform:uppercase}h1{font-family:Georgia,serif;font-size:clamp(38px,7vw,68px);line-height:.94;letter-spacing:-.075em;font-weight:500;margin:0 0 14px}p{color:#46557f;line-height:1.65;margin:0 0 16px}.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:22px 0}button,a{min-height:50px;border-radius:999px;border:0;font:inherit;font-weight:950;text-decoration:none;display:flex;align-items:center;justify-content:center;cursor:pointer}button{background:#0f62e6;color:#fff}button.secondary{background:#07143a}a{background:#edf4ff;color:#0f62e6;border:1px solid #c9dcff}.notice,.error{border-radius:16px;padding:13px 14px;margin-top:16px;font-size:14px;line-height:1.55}.notice{background:#edf7f1;color:#2f6b45;border:1px solid #cdebd9}.error{background:#fff0f0;color:#a43d3d;border:1px solid #ffd4d4}.trust{display:grid;gap:10px;margin-top:20px}.trust div{border:1px solid #e4ebf6;background:#f8fbff;border-radius:16px;padding:12px 14px;color:#46557f;font-size:14px}@media(max-width:560px){.actions{grid-template-columns:1fr}.card{border-radius:22px;padding:20px}h1{font-size:42px}}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="kicker">Smart Sync</p>
+    <h1>Connect your account</h1>
+    <p>Connect Google or Microsoft to let Joblytics read job-related emails and calendar interviews. Access is read-only: Joblytics does not send, delete, move, or modify your emails or calendar events.</p>
+    <div class="actions">
+      <button id="google">Connect Google</button>
+      <button id="microsoft" class="secondary">Connect Microsoft</button>
+    </div>
+    <a href="/messages">Back to Smart Tracking</a>
+    <div class="trust">
+      <div>Read-only mail and calendar access.</div>
+      <div>Only job-search signals are processed for Smart Tracking.</div>
+      <div>You can revoke provider access from Google or Microsoft account settings at any time.</div>
+    </div>
+    <div id="message" aria-live="polite"></div>
+  </main>
+  <script>
+    const message = document.getElementById('message')
+    function show(text, type='notice'){ message.className = type; message.textContent = text }
+    function findAccessToken(){
+      for (let i=0;i<localStorage.length;i++){
+        const key = localStorage.key(i)
+        if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) continue
+        try {
+          const value = JSON.parse(localStorage.getItem(key) || '{}')
+          if (value?.access_token) return value.access_token
+          if (value?.currentSession?.access_token) return value.currentSession.access_token
+        } catch {}
+      }
+      return null
+    }
+    async function connect(provider){
+      const token = findAccessToken()
+      if (!token) { show('Please sign in to Joblytics first, then come back to this page.', 'error'); return }
+      show('Starting secure provider authorization...')
+      try {
+        const res = await fetch('/api/mail-sync-start', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` }, body: JSON.stringify({ provider }) })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.url) throw new Error(data.error || 'Could not start Smart Sync connection.')
+        window.location.href = data.url
+      } catch (e) { show(e.message || 'Could not start Smart Sync connection.', 'error') }
+    }
+    document.getElementById('google').addEventListener('click', () => connect('google'))
+    document.getElementById('microsoft').addEventListener('click', () => connect('microsoft'))
+  </script>
+</body>
+</html>
