@@ -157,21 +157,64 @@ export default function MessagesPage({ setPage }) {
 
   const anySyncLoading = Boolean(syncLoadingProvider) || smartSyncLoading
   const selectedProviderLabel = connectProvider === 'google' ? t('smart_sync_provider_google', 'Gmail / Google Calendar') : t('smart_sync_provider_microsoft', 'Outlook / Hotmail / Microsoft Calendar')
+  const providerIcon = connectProvider === 'google' ? 'G' : 'M'
 
   return (
     <div className="messagesPage">
       <main className="messagesShell">
         <section className="messagesHero"><div><p>{t('messages_kicker', 'Messages')}</p><h1>{t('messages_title', 'Your support conversations.')}</h1><span>{t('messages_subtitle', 'Track your submitted requests and future updates from Joblytics support.')}</span></div><a className="messagesHeroButton" href="/contact">{t('messages_new_request', 'New request')}</a></section>
 
-        <section className="smartSyncCard">
-          <div>
+        <section className="smartTrackingPanel">
+          <div className="smartTrackingIntro">
             <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
-            <span>{t('smart_sync_body_any_provider', 'Choose the mailbox/calendar provider you use, connect it with read-only access, then run Smart Sync. Joblytics scans only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
-            <ol className="smartSyncSteps"><li>{t('smart_sync_step_1', 'Select Gmail/Google Calendar or Outlook/Hotmail/Microsoft Calendar from the dropdown.')}</li><li>{t('smart_sync_step_2', 'Click Connect account and approve read-only access.')}</li><li>{t('smart_sync_step_3', 'Click Run Smart Sync to update History statuses automatically.')}</li></ol>
-            <div className="smartSyncInlineResults"><article><p>{t('smart_sync_email_title', 'Email signals')}</p><strong>{syncResult.emailSignals}</strong><span>{t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers and follow-up emails detected after sync.')}</span><em>{syncResult.emailEvents} {t('smart_sync_events_saved', 'events saved')}</em></article><article><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><strong>{syncResult.calendarSignals}</strong><span>{t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar after sync.')}</span><em>{syncResult.calendarEvents} {t('smart_sync_events_saved', 'events saved')}</em></article></div>
+            <span>{t('smart_sync_body_any_provider', 'Choose your email and calendar provider, connect it with read-only access, then run Smart Sync. Joblytics scans only job-related content linked to jobs already analyzed in your History.')}</span>
           </div>
-          <div className="smartSyncActions"><label className="smartSyncSelectLabel" htmlFor="smart-sync-provider">{t('smart_sync_provider_label', 'Choose your email/calendar')}</label><select id="smart-sync-provider" className="smartSyncSelect" value={connectProvider} onChange={event => setConnectProvider(event.target.value)} disabled={anySyncLoading}><option value="google">Gmail / Google Calendar</option><option value="microsoft">Outlook / Hotmail / Microsoft Calendar</option></select><button type="button" onClick={() => startMailSync(connectProvider)} disabled={anySyncLoading}>{syncLoadingProvider ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect_account', { provider: selectedProviderLabel }, `Connect ${selectedProviderLabel}`)}</button><button type="button" className="secondary" onClick={runSmartSync} disabled={anySyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run', 'Run Smart Sync')}</button></div>
+
+          <div className="smartTrackingGrid">
+            <article className="smartTrackingCard connectCard">
+              <div className="smartTrackingCardHead">
+                <div className="smartIcon">🔗</div>
+                <div><strong>1. {t('smart_sync_connect_title', 'Connect your accounts')}</strong><span>{t('smart_sync_connect_body', 'Select your email/calendar provider and approve read-only access.')}</span></div>
+              </div>
+
+              <div className="providerBox">
+                <label className="smartSyncSelectLabel" htmlFor="smart-sync-provider">{t('smart_sync_provider_label', 'Choose your email/calendar')}</label>
+                <select id="smart-sync-provider" className="smartSyncSelect" value={connectProvider} onChange={event => setConnectProvider(event.target.value)} disabled={anySyncLoading}>
+                  <option value="google">Gmail / Google Calendar</option>
+                  <option value="microsoft">Outlook / Hotmail / Microsoft Calendar</option>
+                </select>
+                <button type="button" className="connectProviderButton" onClick={() => startMailSync(connectProvider)} disabled={anySyncLoading}>
+                  <span className={`providerMark ${connectProvider}`}>{providerIcon}</span>
+                  {syncLoadingProvider ? t('smart_sync_connecting', 'Connecting...') : t('smart_sync_connect_account', { provider: selectedProviderLabel }, `Connect ${selectedProviderLabel}`)}
+                </button>
+                <p className="privacyLine">🔒 {t('smart_sync_privacy_line', 'Read-only access. We scan only job-related signals and never modify, send, or delete your data.')}</p>
+              </div>
+            </article>
+
+            <article className="smartTrackingCard runCard">
+              <div className="smartTrackingCardHead">
+                <div className="smartIcon">↻</div>
+                <div><strong>2. {t('smart_sync_run_title', 'Run Smart Sync')}</strong><span>{t('smart_sync_run_body', 'After connecting, scan job-related emails and calendar events to update your History.')}</span></div>
+              </div>
+              <div className="syncReadyBox">
+                <strong>{t('smart_sync_ready_title', 'Ready to sync')}</strong>
+                <ul><li>✓ {t('smart_sync_ready_1', 'Connect your email/calendar account')}</li><li>✓ {t('smart_sync_ready_2', 'Run Smart Sync to update your History')}</li><li>✓ {t('smart_sync_ready_3', 'Statuses update automatically')}</li></ul>
+                <button type="button" className="runSmartButton" onClick={runSmartSync} disabled={anySyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_now', 'Run Smart Sync Now')}</button>
+                <em>{t('smart_sync_last_sync', 'Last sync')}: {syncResult.scanned ? t('just_now', 'just now') : t('smart_sync_never', 'Never')}</em>
+              </div>
+            </article>
+          </div>
+
+          <div className="detectionPanel">
+            <strong>{t('smart_sync_detected_title', 'What gets detected?')}</strong>
+            <div className="detectionGrid">
+              <article><div className="detectIcon">✉️</div><div><p>{t('smart_sync_email_title', 'Email signals')}</p><span>{syncResult.emailSignals} — {t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers and follow-up emails detected after sync.')}</span><em>{syncResult.emailEvents} {t('smart_sync_events_saved', 'events saved')}</em></div></article>
+              <article><div className="detectIcon purple">📅</div><div><p>{t('smart_sync_calendar_title', 'Calendar signals')}</p><span>{syncResult.calendarSignals} — {t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar after sync.')}</span><em>{syncResult.calendarEvents} {t('smart_sync_events_saved', 'events saved')}</em></div></article>
+            </div>
+          </div>
+
+          <div className="smartTip">💡 <span>{t('smart_sync_tip', 'Tip: Smart Sync helps Joblytics keep your job pipeline accurate by detecting applications, interviews, offers, rejections, and follow-ups from connected accounts.')}</span></div>
         </section>
 
         {error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
