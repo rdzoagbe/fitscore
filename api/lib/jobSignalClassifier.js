@@ -11,7 +11,7 @@ export const EN_COURS_KW = [
 ]
 
 export const OFFER_KW = [
-  'offer','job offer','offre','proposition','contrat','contract','compensation package','salary proposal','proposition salariale','promesse d’embauche','promesse d\'embauche'
+  'offer','job offer','offre','proposition','contrat','contract','compensation package','salary proposal','proposition salariale','promesse d’embauche',"promesse d'embauche"
 ]
 
 export const CALENDAR_INTERVIEW_KW = [
@@ -62,11 +62,11 @@ export function classifyStatus(subject = '', snippet = '', body = '') {
 }
 
 export function extractCompany(senderName = '', senderEmail = '', subject = '') {
-  const cleaned = clean(senderName.replace(/\b(team|recruiting|careers|no-?reply|support|talent acquisition|talent|hr|jobs?|notifications?)\b/gi, '').replace(/[\-_,]+/g, ' '), 80)
+  const cleaned = clean(String(senderName || '').replace(/\b(team|recruiting|careers|no-?reply|support|talent acquisition|talent|hr|jobs?|notifications?)\b/gi, '').replace(/[\-_,]+/g, ' '), 80)
   if (cleaned.length >= 3 && !['notifications','noreply','no reply','gmail','outlook','linkedin'].includes(cleaned.toLowerCase())) return cleaned
-  const match = subject.match(/(?:at|chez)\s+([A-Z][\w&'\- ]{2,40})/)
+  const match = String(subject || '').match(/(?:at|chez)\s+([A-Z][\w&'\- ]{2,40})/)
   if (match) return clean(match[1].replace(/[\-_,]+$/g, ''), 80)
-  const domain = senderEmail.includes('@') ? senderEmail.split('@').pop() : senderEmail
+  const domain = String(senderEmail || '').includes('@') ? String(senderEmail).split('@').pop() : senderEmail
   const root = String(domain || '').split('.')[0]
   return root ? root.charAt(0).toUpperCase() + root.slice(1) : 'Unknown'
 }
@@ -124,5 +124,6 @@ export function simpleSummary(signal, classification) {
 }
 
 export function buildGmailQuery(searchAfter = '2025/01/01') {
-  return `after:${searchAfter} (subject:("your application was sent" OR "votre candidature" OR "your application" OR "candidature sur offre" OR "réponse à votre candidature" OR "suite à votre candidature" OR "merci pour votre candidature" OR "thank you for applying" OR "thanks for applying" OR "nous avons bien reçu votre candidature" OR "application received" OR "bien reçu votre candidature" OR "your application was viewed" OR "votre candidature nous est bien parvenue" OR "accusé de réception" OR "votre candidature est arrivée") OR from:no-reply@apec.fr OR from:hellowork OR from:cadremploi OR from:welcometothejungle OR from:builtin.com OR subject:(entretien OR interview OR "pas retenu" OR unfortunately OR regrettons OR availability OR disponibilités OR "next steps"))`
+  const after = String(searchAfter || '2025/01/01').replace(/[^0-9/]/g, '') || '2025/01/01'
+  return `after:${after} ("your application" OR "votre candidature" OR "thank you for applying" OR "merci pour votre candidature" OR "application received" OR "candidature reçue" OR entretien OR interview OR "pas retenu" OR unfortunately OR regrettons OR availability OR disponibilités OR "next steps")`
 }
