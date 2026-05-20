@@ -44,6 +44,7 @@ export default function MessagesPage({ setPage }) {
   const [syncResult, setSyncResult] = useState(emptySyncResult())
   const [syncMessage, setSyncMessage] = useState('')
   const [error, setError] = useState('')
+  const [syncNotice, setSyncNotice] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
   const [syncTab, setSyncTab] = useState('emails')
   const [selectedEmail, setSelectedEmail] = useState(previewEmails[0])
@@ -72,8 +73,8 @@ export default function MessagesPage({ setPage }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const sync = params.get('sync')
-    if (sync === 'failed') setError(params.get('reason') || t('smart_sync_failed', 'Mail/calendar sync failed.'))
-    if (sync === 'cancelled') setError(t('smart_sync_cancelled', 'Mail/calendar sync was cancelled.'))
+    if (sync === 'failed') setSyncNotice(params.get('reason') || t('smart_sync_failed', 'Smart Sync could not complete yet.'))
+    if (sync === 'cancelled') setSyncNotice(t('smart_sync_cancelled', 'Smart Sync was cancelled.'))
     if (sync) window.history.replaceState({}, '', '/messages')
   }, [t])
 
@@ -96,6 +97,7 @@ export default function MessagesPage({ setPage }) {
   const runSmartSync = async () => {
     setSmartSyncLoading(true)
     setSyncMessage('')
+    setSyncNotice('')
     setError('')
     try {
       const token = await getFreshAccessToken(session)
@@ -103,7 +105,7 @@ export default function MessagesPage({ setPage }) {
       const res = await fetch('/api/smart-job-sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } })
       const data = await res.json().catch(() => ({}))
       if (data?.code === 'MAIL_CALENDAR_SYNC_NOT_CONNECTED' || data?.code === 'GOOGLE_SYNC_NOT_CONNECTED') {
-        setError(t('smart_sync_account_access_needed', 'Smart Sync uses the Google or Microsoft account you signed in with. Please sign out, sign in again with Google or Microsoft, then run Smart Sync.'))
+        setSyncNotice(t('smart_sync_setup_pending', 'Real email and calendar sync is not connected yet. This preview shows where your emails and agenda interviews will appear once the secure sync backend is finished.'))
         return
       }
       if (!res.ok) throw new Error(data?.error || `Smart sync failed (${res.status})`)
@@ -113,7 +115,7 @@ export default function MessagesPage({ setPage }) {
       setSyncTab('emails')
       setSyncMessage(t('smart_sync_complete', { scanned: nextResult.scanned, events: nextResult.eventsStored, updated: nextResult.analysesUpdated }, `Smart Sync complete: ${nextResult.scanned} signals scanned, ${nextResult.eventsStored} events saved, ${nextResult.analysesUpdated} jobs updated.`))
     } catch (e) {
-      setError(e.message || t('smart_sync_failed', 'Smart sync failed.'))
+      setSyncNotice(e.message || t('smart_sync_failed', 'Smart Sync could not complete yet.'))
     } finally {
       setSmartSyncLoading(false)
     }
@@ -161,12 +163,12 @@ export default function MessagesPage({ setPage }) {
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
           </div>
 
-          <div className="syncResultSummary">
+          <div className="syncResultSummary compactSummary">
             <div className="syncResultTitle"><span className="syncCheck">✓</span><strong>{t('smart_sync_latest_results', 'Latest sync results')}</strong></div>
             <span className="syncResultTime">{t('just_now', 'Just now')} <i /></span>
             <div className="syncMetric"><strong>{syncDisplay.scanned}</strong><span>{t('smart_sync_signals_scanned', 'signals scanned')}</span></div>
             <div className="syncMetric"><strong>{syncDisplay.emails}</strong><span>{t('smart_sync_emails_detected', 'emails detected')}</span></div>
-            <div className="syncMetric"><strong>{syncDisplay.calendar}</strong><span>{t('smart_sync_calendar_interviews', 'interviews from calendar')}</span></div>
+            <div className="syncMetric"><strong>{syncDisplay.calendar}</strong><span>{t('smart_sync_calendar_interviews', 'calendar interviews')}</span></div>
             <div className="syncMetric"><strong>{syncDisplay.updated}</strong><span>{t('smart_sync_jobs_updated', 'jobs updated')}</span></div>
           </div>
 
@@ -232,7 +234,7 @@ export default function MessagesPage({ setPage }) {
           </div>
         </section>
 
-        {error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
+        {syncNotice && <p className="messagesNotice">ℹ {syncNotice}</p>}{error && <p className="messagesError">⚠ {error}</p>}{replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}{syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
 
         <section className="messagesRequestPanel">
           <div className="messagesRequestHero">
