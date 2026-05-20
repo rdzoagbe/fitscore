@@ -38,6 +38,14 @@ export function AuthProvider({ children }) {
     }
   })
 
+  const signInWithMicrosoft = (legalSource = 'signup_microsoft') => supabase.auth.signInWithOAuth({
+    provider: 'azure',
+    options: {
+      redirectTo: window.location.origin,
+      data: legalAcceptancePayload(legalSource)
+    }
+  })
+
   const signInWithLinkedIn = (legalSource = 'signup_linkedin') => supabase.auth.signInWithOAuth({
     provider: 'linkedin_oidc',
     options: {
@@ -55,7 +63,7 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithLinkedIn, acceptCurrentTerms, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signInWithGoogle, signInWithMicrosoft, signInWithLinkedIn, acceptCurrentTerms, signOut }}>
       {children}
     </AuthContext.Provider>
   )
