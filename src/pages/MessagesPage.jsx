@@ -15,6 +15,18 @@ async function getFreshAccessToken(session) {
   return data?.session?.access_token || null
 }
 
+function emptySyncResult() {
+  return {
+    scanned: 0,
+    eventsStored: 0,
+    analysesUpdated: 0,
+    emailSignals: 0,
+    calendarSignals: 0,
+    emailEvents: 0,
+    calendarEvents: 0
+  }
+}
+
 export default function MessagesPage({ setPage }) {
   const { user, session } = useAuth()
   const { t } = useLang()
@@ -25,7 +37,10 @@ export default function MessagesPage({ setPage }) {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [reply, setReply] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
-  const [syncLoading, setSyncLoading] = useState(false)
+  const [connectProvider, setConnectProvider] = useState('google')
+  const [syncLoadingProvider, setSyncLoadingProvider] = useState('')
+  const [smartSyncLoading, setSmartSyncLoading] = useState(false)
+  const [syncResult, setSyncResult] = useState(emptySyncResult())
   const [syncMessage, setSyncMessage] = useState('')
   const [error, setError] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
@@ -55,7 +70,7 @@ export default function MessagesPage({ setPage }) {
     const params = new URLSearchParams(window.location.search)
     const sync = params.get('sync')
     const provider = params.get('provider')
-    if (sync === 'connected') setSyncMessage(t('smart_sync_connected', `${provider || 'Mail'} connected. Run Smart Sync to update your job tracking.`))
+    if (sync === 'connected') setSyncMessage(t('smart_sync_connected', `${provider || 'Mail'} connected. Now click Run Smart Sync to scan job-related emails and calendar events.`))
     if (sync === 'failed') setError(params.get('reason') || t('smart_sync_failed', 'Mail/calendar sync failed.'))
     if (sync === 'cancelled') setError(t('smart_sync_cancelled', 'Mail/calendar sync was cancelled.'))
     if (sync) window.history.replaceState({}, '', '/messages')
@@ -78,7 +93,7 @@ export default function MessagesPage({ setPage }) {
   }
 
   const startMailSync = async provider => {
-    setSyncLoading(true)
+    setSyncLoadingProvider(provider)
     setSyncMessage('')
     setError('')
     try {
@@ -95,12 +110,12 @@ export default function MessagesPage({ setPage }) {
       window.location.href = data.url
     } catch (e) {
       setError(e.message || t('smart_sync_start_failed', 'Could not start mail/calendar sync.'))
-      setSyncLoading(false)
+      setSyncLoadingProvider('')
     }
   }
 
   const runSmartSync = async () => {
-    setSyncLoading(true)
+    setSmartSyncLoading(true)
     setSyncMessage('')
     setError('')
     try {
@@ -112,17 +127,30 @@ export default function MessagesPage({ setPage }) {
       })
       const data = await res.json().catch(() => ({}))
       if (data?.code === 'MAIL_CALENDAR_SYNC_NOT_CONNECTED' || data?.code === 'GOOGLE_SYNC_NOT_CONNECTED') {
-        setError(t('smart_sync_connect_first', 'Connect Gmail or Outlook/Hotmail first, then run Smart Sync.'))
+        setError(t('smart_sync_connect_first', 'Choose a provider from the dropdown, connect Gmail or Outlook/Hotmail, then run Smart Sync.'))
         return
       }
       if (!res.ok) throw new Error(data?.error || `Smart sync failed (${res.status})`)
-      setSyncMessage(t('smart_sync_complete', { scanned: data.scanned, events: data.eventsStored, updated: data.analysesUpdated }, `Smart Sync complete: ${data.scanned} signals scanned, ${data.eventsStored} events saved, ${data.analysesUpdated} jobs updated.`))
+      const breakdown = data.breakdown || {}
+      const nextResult = {
+        scanned: data.scanned || 0,
+        eventsStored: data.eventsStored || 0,
+        analysesUpdated: data.analysesUpdated || 0,
+        emailSignals: breakdown.emailSignals || data.emailSignals || 0,
+        calendarSignals: breakdown.calendarSignals || data.calendarSignals || 0,
+        emailEvents: breakdown.emailEvents || data.emailEvents || 0,
+        calendarEvents: breakdown.calendarEvents || data.calendarEvents || 0
+      }
+      setSyncResult(nextResult)
+      setSyncMessage(t('smart_sync_complete', { scanned: nextResult.scanned, events: nextResult.eventsStored, updated: nextResult.analysesUpdated }, `Smart Sync complete: ${nextResult.scanned} signals scanned, ${nextResult.eventsStored} events saved, ${nextResult.analysesUpdated} jobs updated.`))
     } catch (e) {
       setError(e.message || t('smart_sync_failed', 'Smart sync failed.'))
     } finally {
-      setSyncLoading(false)
+      setSmartSyncLoading(false)
     }
   }
+
+  const connectLabel = connectProvider === 'microsoft' ? 'Connect Outlook / Hotmail' : 'Connect Gmail'
 
   const sendReply = async event => {
     event.preventDefault()
@@ -159,19 +187,44 @@ export default function MessagesPage({ setPage }) {
           <div><p>{t('messages_kicker', 'Messages')}</p><h1>{t('messages_title', 'Your support conversations.')}</h1><span>{t('messages_subtitle', 'Track your submitted requests and future updates from Joblytics support.')}</span></div>
           <a className="messagesHeroButton" href="/contact">{t('messages_new_request', 'New request')}</a>
         </section>
+
         <section className="smartSyncCard">
           <div>
             <p>{t('smart_sync_kicker', 'Smart Tracking')}</p>
             <h2>{t('smart_sync_title', 'Sync your mail and calendar')}</h2>
-            <span>{t('smart_sync_body_any_provider', 'Connect Gmail, Google Calendar, Outlook, Hotmail or Microsoft Calendar read-only so Joblytics can detect application confirmations, recruiter replies, interviews, offers and rejections only for jobs already analyzed in your History.')}</span>
-            <ul><li>{t('smart_sync_point_1', 'Only job-related signals connected to analyzed jobs are used.')}</li><li>{t('smart_sync_point_2', 'Full inbox and calendar data are not displayed or stored.')}</li><li>{t('smart_sync_point_3', 'History statuses update automatically: applied, interview, offer or rejected.')}</li></ul>
+            <span>{t('smart_sync_body_any_provider', 'Connect Gmail, Google Calendar, Outlook, Hotmail or Microsoft Calendar in read-only mode. After connecting, click Run Smart Sync. Joblytics will then scan only job-related emails and calendar events linked to jobs already analyzed in your History.')}</span>
+            <ol className="smartSyncSteps">
+              <li>{t('smart_sync_step_1', 'Choose and connect your mailbox/calendar provider.')}</li>
+              <li>{t('smart_sync_step_2', 'Return here and click Run Smart Sync.')}</li>
+              <li>{t('smart_sync_step_3', 'Review separate email and calendar signals below.')}</li>
+            </ol>
           </div>
           <div className="smartSyncActions">
-            <button type="button" onClick={() => startMailSync('google')} disabled={syncLoading}>{syncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_connect_google', 'Connect Gmail')}</button>
-            <button type="button" onClick={() => startMailSync('microsoft')} disabled={syncLoading}>{syncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_connect_microsoft', 'Connect Outlook / Hotmail')}</button>
-            <button type="button" className="secondary" onClick={runSmartSync} disabled={syncLoading}>{t('smart_sync_run', 'Run Smart Sync')}</button>
+            <label className="smartSyncSelectLabel">{t('smart_sync_provider_label', 'Provider')}</label>
+            <select className="smartSyncSelect" value={connectProvider} onChange={event => setConnectProvider(event.target.value)} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}>
+              <option value="google">{t('smart_sync_connect_google', 'Connect Gmail')}</option>
+              <option value="microsoft">{t('smart_sync_connect_microsoft', 'Connect Outlook / Hotmail')}</option>
+            </select>
+            <button type="button" onClick={() => startMailSync(connectProvider)} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}>{syncLoadingProvider ? t('smart_sync_connecting', `Connecting ${connectProvider === 'microsoft' ? 'Outlook / Hotmail' : 'Gmail'}...`) : connectLabel}</button>
+            <button type="button" className="secondary" onClick={runSmartSync} disabled={Boolean(syncLoadingProvider) || smartSyncLoading}>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run', 'Run Smart Sync')}</button>
           </div>
         </section>
+
+        <section className="smartSyncResults" aria-label="Smart Tracking results">
+          <article>
+            <p>{t('smart_sync_email_title', 'Email signals')}</p>
+            <strong>{syncResult.emailSignals}</strong>
+            <span>{t('smart_sync_email_body', 'Application confirmations, recruiter replies, rejections, offers and follow-up emails detected after you run Smart Sync.')}</span>
+            <em>{syncResult.emailEvents} {t('smart_sync_events_saved', 'events saved')}</em>
+          </article>
+          <article>
+            <p>{t('smart_sync_calendar_title', 'Calendar signals')}</p>
+            <strong>{syncResult.calendarSignals}</strong>
+            <span>{t('smart_sync_calendar_body', 'Interview meetings and recruitment events detected from your connected calendar after you run Smart Sync.')}</span>
+            <em>{syncResult.calendarEvents} {t('smart_sync_events_saved', 'events saved')}</em>
+          </article>
+        </section>
+
         {error && <p className="messagesError">⚠ {error}</p>}
         {replySuccess && <p className="messagesSuccess">✓ {replySuccess}</p>}
         {syncMessage && <p className="messagesSuccess">✓ {syncMessage}</p>}
