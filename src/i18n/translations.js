@@ -6,6 +6,10 @@ export const LANGUAGES = [
 export const translations = {
   en: {
     tagline: 'KNOW BEFORE YOU APPLY',
+    sign_in: 'Sign in',
+    get_started: 'Get started',
+    back: 'Back',
+    legal_notice: 'Legal notice',
     welcome_back: 'Welcome back',
     welcome_cv_ready: 'Your CV is ready — just paste a job URL.',
     welcome_no_cv: 'Upload your CV once, then test against any job offer.',
@@ -27,6 +31,10 @@ export const translations = {
   },
   fr: {
     tagline: 'SACHEZ AVANT DE POSTULER',
+    sign_in: 'Se connecter',
+    get_started: 'Commencer',
+    back: 'Retour',
+    legal_notice: 'Mentions légales',
     welcome_back: 'Bon retour',
     welcome_cv_ready: 'Votre CV est prêt — collez simplement une offre d’emploi.',
     welcome_no_cv: 'Importez votre CV une fois, puis testez-le sur n’importe quelle offre.',
