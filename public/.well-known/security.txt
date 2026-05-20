@@ -1,0 +1,6 @@
+Contact: mailto:admin@joblytics-ai.com
+Preferred-Languages: en, fr
+Policy: https://joblytics-ai.com/privacy
+Canonical: https://joblytics-ai.com/.well-known/security.txt
+
+Please report suspected vulnerabilities responsibly. Do not access, modify, delete, or exfiltrate user data while testing.
