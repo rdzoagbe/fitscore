@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import { hasAcceptedCurrentTerms } from './lib/legal'
+import { supabase } from './lib/supabase'
 import LandingPage from './pages/LandingPage'
 import Onboarding from './components/Onboarding'
 import EmailVerifyGate from './components/EmailVerifyGate'
@@ -109,6 +110,7 @@ export default function App() {
   if (loading) return <AppLoading />
 
   const path = window.location.pathname
+  if (path === '/auth/callback') return <OAuthCallback />
   if (path === '/privacy') return <Suspense fallback={<AppLoading />}><PrivacyPage onBack={() => window.history.back()} /></Suspense>
   if (path === '/terms') return <Suspense fallback={<AppLoading />}><TermsPage onBack={() => window.history.back()} /></Suspense>
   if (path === '/legal') return <Suspense fallback={<AppLoading />}><LegalNoticePage onBack={() => window.history.back()} /></Suspense>

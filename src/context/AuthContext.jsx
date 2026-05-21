@@ -99,6 +99,7 @@ const signInWithMicrosoft = (legalSource = 'signup_microsoft') => supabase.auth.
   provider: 'azure',
   options: {
     redirectTo: `${window.location.origin}/auth/callback`,
+    scopes: 'openid email profile User.Read',
     data: legalAcceptancePayload(legalSource)
   }
 })
