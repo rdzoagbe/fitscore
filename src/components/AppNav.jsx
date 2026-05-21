@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import LangSelector from './LangSelector'
 import ThemeToggle from './ThemeToggle'
+import { getUserDisplayName, getUserInitials, getUserEmail } from '../lib/userProfile'
 import './AppNav.css'
 
 const navItems = [
@@ -61,8 +62,9 @@ export default function AppNav({ page, setPage, onLogoClick }) {
   const { user, signOut } = useAuth()
   const { t } = useLang()
   const [menuOpen, setMenuOpen] = useState(false)
-  const displayName = getDisplayName(user)
-  const initials = getInitials(displayName)
+  const displayName = getUserDisplayName(user)
+  const initials = getUserInitials(displayName)
+  const accountEmail = getUserEmail(user)
   const label = (key, fallback) => t(key, fallback)
 
   const closeMenu = () => setMenuOpen(false)
@@ -123,7 +125,7 @@ export default function AppNav({ page, setPage, onLogoClick }) {
 
             {menuOpen && (
               <div className="jobNav-menuPanel" role="menu">
-                <div className="jobNav-menuIdentity"><strong>{displayName}</strong><span>{user?.email}</span></div>
+                <div className="jobNav-menuIdentity"><strong>{displayName}</strong><span>{accountEmail}</span></div>
 
                 <div className="jobNav-menuSection">
                   <p>{t('preferences', 'Preferences')}</p>

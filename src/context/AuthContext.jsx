@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { legalAcceptancePayload } from '../lib/legal'
+import { clearPreviousUserBrowserData, getNormalizedUserMetadata, getUserEmail, getUserDisplayName } from '../lib/userProfile'
 
 const AuthContext = createContext({})
 
@@ -9,20 +10,53 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const normalizeSignedInUser = async signedInUser => {
+    if (!signedInUser?.id) return signedInUser
+
+    clearPreviousUserBrowserData(signedInUser.id)
+
+    const displayName = getUserDisplayName(signedInUser)
+    const email = getUserEmail(signedInUser)
+    const metadata = signedInUser.user_metadata || {}
+    const alreadyNormalized = metadata.profile_normalized_at
+
+    if (alreadyNormalized && metadata.full_name && (metadata.email || signedInUser.email)) {
+      return signedInUser
+    }
+
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          ...metadata,
+          ...getNormalizedUserMetadata(signedInUser, 'auth_state_change'),
+          full_name: displayName,
+          name: displayName,
+          email
+        }
+      })
+
+      if (!error && data?.user) return data.user
+    } catch {}
+
+    return signedInUser
+  }
+
   const syncSession = async (forceRefresh = false) => {
     const result = forceRefresh ? await supabase.auth.refreshSession() : await supabase.auth.getSession()
     const nextSession = result?.data?.session ?? null
+    const normalizedUser = nextSession?.user ? await normalizeSignedInUser(nextSession.user) : null
     setSession(nextSession)
-    setUser(nextSession?.user ?? null)
+    setUser(normalizedUser)
     return nextSession
   }
 
   useEffect(() => {
     syncSession(false).finally(() => setLoading(false))
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const normalizedUser = session?.user ? await normalizeSignedInUser(session.user) : null
       setSession(session ?? null)
-      setUser(session?.user ?? null)
+      setUser(normalizedUser)
     })
 
     const refreshTimer = window.setInterval(() => {
