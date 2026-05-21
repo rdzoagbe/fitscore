@@ -71,6 +71,48 @@ const previewCalendarEvents = [
   normalizeCalendar({ id: 'preview-calendar-2', logo: 'job', title: 'Example — Talent screen', eventTitle: 'Example: Talent screen', location: 'Video call', attendees: 'recruiting@example.com' }, true)
 ]
 
+
+function getSignedInProvider(user) {
+  const provider = String(user?.app_metadata?.provider || '').toLowerCase()
+  if (provider === 'google') return 'google'
+  if (provider === 'azure' || provider === 'microsoft') return 'microsoft'
+  return null
+}
+
+function getAccountEmail(user) {
+  const metadata = user?.user_metadata || {}
+  const identity = user?.identities?.[0]?.identity_data || {}
+
+  return (
+    user?.email ||
+    metadata.email ||
+    metadata.preferred_username ||
+    metadata.upn ||
+    metadata.user_name ||
+    identity.email ||
+    identity.preferred_username ||
+    identity.upn ||
+    identity.userPrincipalName ||
+    ''
+  )
+}
+
+function getProviderLabel(provider) {
+  return provider === 'microsoft' ? 'Microsoft / Outlook' : 'Google'
+}
+
+function getProviderProductLabel(provider) {
+  return provider === 'microsoft' ? 'Outlook and Microsoft Calendar' : 'Gmail and Google Calendar'
+}
+
+function getProviderLogoClass(provider) {
+  return provider === 'microsoft' ? 'outlook' : 'gmail'
+}
+
+function getProviderButtonIcon(provider) {
+  return provider === 'microsoft' ? 'newSyncMsIcon' : 'newSyncGoogleG'
+}
+
 export default function MessagesPage({ setPage }) {
   const { user, session } = useAuth()
   const { t } = useLang()
@@ -156,7 +198,7 @@ export default function MessagesPage({ setPage }) {
       const res = await fetch('/api/mail-sync-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ provider })
+        body: JSON.stringify({ provider, loginHint: getAccountEmail(user) || undefined })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.url) throw new Error(data?.error || `Could not start ${provider} sync.`)
@@ -251,6 +293,10 @@ export default function MessagesPage({ setPage }) {
 
   const isGoogleConnected = connectedProviders.has('google')
   const isMsConnected = connectedProviders.has('microsoft')
+  const signedInProvider = getSignedInProvider(user)
+  const accountEmail = getAccountEmail(user)
+  const preferredProvider = signedInProvider || selectedProvider
+  const isPreferredConnected = preferredProvider === 'microsoft' ? isMsConnected : isGoogleConnected
 
   return (
     <div className="messagesPage">
@@ -268,70 +314,102 @@ export default function MessagesPage({ setPage }) {
               <div className="newSyncColHead">
                 <span className="newSyncStepNum">1.</span>
                 <div>
-                  <strong>Connect your accounts</strong>
-                  <p>Select your email and calendar provider and approve read-only access.</p>
+                  <strong>{signedInProvider ? 'Account connected' : 'Connect your accounts'}</strong>
+                  <p>{signedInProvider ? `${getProviderLabel(signedInProvider)} is connected for sign-in. Grant read-only mail and calendar access to activate Smart Sync.` : 'Select your email and calendar provider and approve read-only access.'}</p>
                 </div>
               </div>
 
-              <label className="newSyncProviderLabel">CHOOSE YOUR EMAIL/CALENDAR</label>
-              <div className="newSyncDropdownWrap">
-                <span className={`newSyncDropdownIcon ${selectedProvider}`} aria-hidden="true" />
-                <select className="newSyncDropdown" value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)}>
-                  <option value="google">Gmail / Google Calendar</option>
-                  <option value="microsoft">Outlook / Hotmail / Microsoft Calendar</option>
-                </select>
-                <span className="newSyncDropdownChevron" aria-hidden="true">▾</span>
-              </div>
+              {signedInProvider ? (
+                <div className="newSyncSsoCard">
+                  <div className="newSyncSsoIdentity">
+                    <span className={`newSyncServiceLogo ${getProviderLogoClass(signedInProvider)}`} aria-hidden="true" />
+                    <div>
+                      <strong>{getProviderLabel(signedInProvider)} account connected</strong>
+                      <p>{accountEmail || 'Signed in with SSO'}</p>
+                      <em>Sign-in is active. Now grant read-only access to {getProviderProductLabel(signedInProvider)} so Joblytics can detect job-related emails and calendar interviews.</em>
+                    </div>
+                    <span className="newSyncBadge is-connected">Account connected</span>
+                  </div>
 
-              <div className="newSyncServicesList">
-                {selectedProvider === 'google' ? <>
-                  <div className="newSyncServiceRow">
-                    <span className="newSyncServiceLogo gmail" aria-hidden="true" />
-                    <div className="newSyncServiceText">
-                      <strong>Gmail</strong>
-                      <p>Scan job-related emails like confirmations, replies, and offers.</p>
-                    </div>
-                    <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                    <button type="button" className="newSyncConnectBtn" onClick={() => connectMailProvider('google')} disabled={smartSyncLoading}>
-                      <span className="newSyncGoogleG" aria-hidden="true" />Connect
-                    </button>
+                  <button
+                    type="button"
+                    className={`newSyncConnectBtn ${signedInProvider === 'microsoft' ? 'ms' : ''} is-main-action`}
+                    onClick={() => isPreferredConnected ? runSmartSync() : connectMailProvider(signedInProvider)}
+                    disabled={smartSyncLoading}
+                  >
+                    <span className={getProviderButtonIcon(signedInProvider)} aria-hidden="true" />
+                    {smartSyncLoading ? 'Working…' : isPreferredConnected ? 'Run Smart Sync' : 'Grant read-only mail & calendar access'}
+                  </button>
+
+                  <p className="newSyncSsoHint">
+                    {isPreferredConnected
+                      ? 'Mail and calendar access is active. Run Smart Sync to import job-related signals.'
+                      : 'You will be sent directly to the permission screen for the same account you used to sign in.'}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <label className="newSyncProviderLabel">CHOOSE YOUR EMAIL/CALENDAR</label>
+                  <div className="newSyncDropdownWrap">
+                    <span className={`newSyncDropdownIcon ${selectedProvider}`} aria-hidden="true" />
+                    <select className="newSyncDropdown" value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)}>
+                      <option value="google">Gmail / Google Calendar</option>
+                      <option value="microsoft">Outlook / Hotmail / Microsoft Calendar</option>
+                    </select>
+                    <span className="newSyncDropdownChevron" aria-hidden="true">▾</span>
                   </div>
-                  <div className="newSyncServiceRow">
-                    <span className="newSyncServiceLogo gcal" aria-hidden="true" />
-                    <div className="newSyncServiceText">
-                      <strong>Google Calendar</strong>
-                      <p>Scan interview meetings and recruitment events.</p>
-                    </div>
-                    <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                    <button type="button" className="newSyncConnectBtn" onClick={() => connectMailProvider('google')} disabled={smartSyncLoading}>
-                      <span className="newSyncGoogleG" aria-hidden="true" />Connect
-                    </button>
+
+                  <div className="newSyncServicesList">
+                    {selectedProvider === 'google' ? <>
+                      <div className="newSyncServiceRow">
+                        <span className="newSyncServiceLogo gmail" aria-hidden="true" />
+                        <div className="newSyncServiceText">
+                          <strong>Gmail</strong>
+                          <p>Scan job-related emails like confirmations, replies, and offers.</p>
+                        </div>
+                        <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
+                        <button type="button" className="newSyncConnectBtn" onClick={() => isGoogleConnected ? runSmartSync() : connectMailProvider('google')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Connect'}
+                        </button>
+                      </div>
+                      <div className="newSyncServiceRow">
+                        <span className="newSyncServiceLogo gcal" aria-hidden="true" />
+                        <div className="newSyncServiceText">
+                          <strong>Google Calendar</strong>
+                          <p>Scan interview meetings and recruitment events.</p>
+                        </div>
+                        <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
+                        <button type="button" className="newSyncConnectBtn" onClick={() => isGoogleConnected ? runSmartSync() : connectMailProvider('google')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Connect'}
+                        </button>
+                      </div>
+                    </> : <>
+                      <div className="newSyncServiceRow">
+                        <span className="newSyncServiceLogo outlook" aria-hidden="true" />
+                        <div className="newSyncServiceText">
+                          <strong>Outlook</strong>
+                          <p>Scan job-related emails like confirmations, replies, and offers.</p>
+                        </div>
+                        <span className={`newSyncBadge${isMsConnected ? ' is-connected' : ''}`}>{isMsConnected ? 'Connected' : 'Not connected'}</span>
+                        <button type="button" className="newSyncConnectBtn ms" onClick={() => isMsConnected ? runSmartSync() : connectMailProvider('microsoft')} disabled={smartSyncLoading}>
+                          <span className="newSyncMsIcon" aria-hidden="true" />{isMsConnected ? 'Run Smart Sync' : 'Connect'}
+                        </button>
+                      </div>
+                      <div className="newSyncServiceRow">
+                        <span className="newSyncServiceLogo mscal" aria-hidden="true" />
+                        <div className="newSyncServiceText">
+                          <strong>Microsoft Calendar</strong>
+                          <p>Scan interview meetings and recruitment events.</p>
+                        </div>
+                        <span className={`newSyncBadge${isMsConnected ? ' is-connected' : ''}`}>{isMsConnected ? 'Connected' : 'Not connected'}</span>
+                        <button type="button" className="newSyncConnectBtn ms" onClick={() => isMsConnected ? runSmartSync() : connectMailProvider('microsoft')} disabled={smartSyncLoading}>
+                          <span className="newSyncMsIcon" aria-hidden="true" />{isMsConnected ? 'Run Smart Sync' : 'Connect'}
+                        </button>
+                      </div>
+                    </>}
                   </div>
-                </> : <>
-                  <div className="newSyncServiceRow">
-                    <span className="newSyncServiceLogo outlook" aria-hidden="true" />
-                    <div className="newSyncServiceText">
-                      <strong>Outlook</strong>
-                      <p>Scan job-related emails like confirmations, replies, and offers.</p>
-                    </div>
-                    <span className={`newSyncBadge${isMsConnected ? ' is-connected' : ''}`}>{isMsConnected ? 'Connected' : 'Not connected'}</span>
-                    <button type="button" className="newSyncConnectBtn ms" onClick={() => connectMailProvider('microsoft')} disabled={smartSyncLoading}>
-                      <span className="newSyncMsIcon" aria-hidden="true" />Connect
-                    </button>
-                  </div>
-                  <div className="newSyncServiceRow">
-                    <span className="newSyncServiceLogo mscal" aria-hidden="true" />
-                    <div className="newSyncServiceText">
-                      <strong>Microsoft Calendar</strong>
-                      <p>Scan interview meetings and recruitment events.</p>
-                    </div>
-                    <span className={`newSyncBadge${isMsConnected ? ' is-connected' : ''}`}>{isMsConnected ? 'Connected' : 'Not connected'}</span>
-                    <button type="button" className="newSyncConnectBtn ms" onClick={() => connectMailProvider('microsoft')} disabled={smartSyncLoading}>
-                      <span className="newSyncMsIcon" aria-hidden="true" />Connect
-                    </button>
-                  </div>
-                </>}
-              </div>
+                </>
+              )}
 
               <div className="newSyncPrivacy">
                 <span aria-hidden="true">🛡</span>

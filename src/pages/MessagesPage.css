@@ -156,3 +156,64 @@
   justify-content: center;
   min-height: 54px;
 }
+
+.newSyncSsoCard {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(17, 33, 63, 0.12);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(245,249,255,0.92));
+  box-shadow: 0 18px 44px rgba(17, 33, 63, 0.08);
+}
+
+.newSyncSsoIdentity {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.newSyncSsoIdentity strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.newSyncSsoIdentity p {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.newSyncSsoIdentity em {
+  display: block;
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.newSyncConnectBtn.is-main-action {
+  width: 100%;
+  justify-content: center;
+  min-height: 54px;
+}
+
+.newSyncSsoHint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .newSyncSsoIdentity {
+    grid-template-columns: auto 1fr;
+  }
+
+  .newSyncSsoIdentity .newSyncBadge {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
