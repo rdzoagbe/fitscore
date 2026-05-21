@@ -239,3 +239,35 @@ drop policy if exists "Users can update own CVs" on storage.objects;
 create policy "Users can update own CVs"
   on storage.objects for update
   using (bucket_id = 'cvs' and auth.uid()::text = (storage.foldername(name))[1]);
+
+
+-- ── 10. Smart Sync connections (Outlook / Gmail) ─────────────
+create table if not exists public.job_sync_connections (
+  id                  uuid default gen_random_uuid() primary key,
+  user_id             uuid references auth.users(id) on delete cascade not null,
+  provider            text not null,                      -- 'microsoft' | 'google'
+  status              text not null default 'connected',  -- 'connected' | 'disconnected' | 'error'
+  provider_email      text,
+  access_token        text,
+  refresh_token       text,
+  token_expires_at    timestamp with time zone,
+  scopes              text,
+  last_error          text,
+  last_synced_at      timestamp with time zone,
+  created_at          timestamp with time zone default now(),
+  updated_at          timestamp with time zone default now(),
+  unique (user_id, provider)
+);
+
+create index if not exists job_sync_connections_user_idx
+  on public.job_sync_connections (user_id);
+
+alter table public.job_sync_connections enable row level security;
+
+drop policy if exists "Users can view own sync connections" on public.job_sync_connections;
+create policy "Users can view own sync connections"
+  on public.job_sync_connections for select using (auth.uid() = user_id);
+
+drop policy if exists "Users can manage own sync connections" on public.job_sync_connections;
+create policy "Users can manage own sync connections"
+  on public.job_sync_connections for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -66,6 +66,47 @@ function pageToRoute(page) {
   return routes[page] || '/dashboard'
 }
 
+// Handles the redirect back from any OAuth provider (Google, Microsoft, LinkedIn)
+// Supabase exchanges the code automatically via getSession(); this just shows a spinner.
+function OAuthCallback() {
+  const { user } = useAuth()
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const errorDesc = params.get('error_description') || params.get('error')
+    if (errorDesc) {
+      setError(errorDesc)
+      return
+    }
+    // Supabase picks up the session from the URL hash/code automatically.
+    // Once user is set, redirect to dashboard.
+  }, [])
+
+  useEffect(() => {
+    if (user) {
+      window.history.replaceState({}, '', '/dashboard')
+      window.location.reload()
+    }
+  }, [user])
+
+  if (error) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, padding: 24 }}>
+        <p style={{ fontSize: 14, color: '#ff6b6b', maxWidth: 400, textAlign: 'center' }}>Sign-in error: {error}</p>
+        <a href="/" style={{ color: 'var(--accent)', fontSize: 13 }}>← Back to home</a>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
+      <div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Signing you in…</p>
+    </div>
+  )
+}
+
 function GlobalFooter() {
   return (
     <div style={{ width: 'min(1500px, calc(100% - 56px))', margin: '0 auto', padding: '0 0 96px' }}>
@@ -256,6 +297,7 @@ export default function App() {
   if (loading) return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
 
   const path = window.location.pathname
+  if (path === '/auth/callback') return <OAuthCallback />
   if (path === '/privacy') return <PageWithFooter><PrivacyPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/terms') return <PageWithFooter><TermsPage onBack={() => window.history.back()} /></PageWithFooter>
   if (path === '/contact' || path === '/support') return <PageWithFooter><ContactPage onBack={() => window.history.back()} /></PageWithFooter>

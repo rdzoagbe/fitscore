@@ -3,6 +3,22 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { useTheme } from '../context/ThemeContext'
 
+function getDisplayName(user) {
+  return (
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split('@')?.[0] ||
+    'User'
+  )
+}
+
+function getInitials(user) {
+  const name = getDisplayName(user)
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
+}
+
 export default function UserMenu({ onViewDashboard }) {
   const { user, signOut } = useAuth()
   const { t, lang, changeLang, languages } = useLang()
@@ -16,8 +32,8 @@ export default function UserMenu({ onViewDashboard }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const initials = (user?.email || 'U').slice(0, 2).toUpperCase()
-  const displayName = user?.email?.split('@')[0] || 'User'
+  const initials = getInitials(user)
+  const displayName = getDisplayName(user)
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
