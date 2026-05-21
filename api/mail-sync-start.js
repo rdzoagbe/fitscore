@@ -79,7 +79,7 @@ function signState(payload) {
   return `${body}.${sig}`
 }
 
-function providerConfig(provider, appUrl) {
+function providerConfig(provider, appUrl, loginHint) {
   if (provider === 'google') {
     const googleSyncEnabled = String(process.env.GOOGLE_SYNC_ENABLED || '').toLowerCase() === 'true'
 
@@ -101,7 +101,12 @@ function providerConfig(provider, appUrl) {
       clientId: process.env.GOOGLE_CLIENT_ID,
       redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`,
       authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      params: { access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' }
+      params: {
+        access_type: 'offline',
+        prompt: 'consent',
+        include_granted_scopes: 'true',
+        ...(loginHint ? { login_hint: loginHint } : {})
+      }
     }
   }
   if (provider === 'microsoft') {
@@ -116,7 +121,12 @@ function providerConfig(provider, appUrl) {
       clientId: process.env.MICROSOFT_CLIENT_ID,
       redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`,
       authUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
-      params: { response_mode: 'query', prompt: 'select_account' }
+      params: {
+        response_mode: 'query',
+        // With login_hint we go straight to consent; without it let the user pick their account
+        prompt: loginHint ? 'consent' : 'select_account',
+        ...(loginHint ? { login_hint: loginHint } : {})
+      }
     }
   }
   const e = new Error('Unsupported mail provider.')
@@ -131,10 +141,11 @@ export default async function handler(req, res) {
     const provider = String(req.body?.provider || req.query?.provider || '').toLowerCase()
     const loginHint = String(req.body?.loginHint || req.query?.login_hint || req.query?.loginHint || '').trim()
     if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Choose google or microsoft.', code: 'PROVIDER_REQUIRED' })
+    const loginHint = req.body?.login_hint ? String(req.body.login_hint).trim() : null
     const supabase = createServerSupabaseClient()
     const user = await requireUser(req, supabase)
     const appUrl = getAppUrl(req)
-    const config = providerConfig(provider, appUrl)
+    const config = providerConfig(provider, appUrl, loginHint)
     const state = signState({ user_id: user.id, email: user.email || null, ts: Date.now(), source: 'smart_tracking', provider })
     const params = new URLSearchParams({
       client_id: config.clientId,
