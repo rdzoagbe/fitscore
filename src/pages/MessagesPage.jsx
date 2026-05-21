@@ -147,6 +147,19 @@ export default function MessagesPage({ setPage }) {
     if (ssoProvider) setSelectedProvider(ssoProvider)
   }, [ssoProvider])
 
+  // Load existing sync connections so badges show correctly on page open / refresh
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('job_sync_connections')
+      .select('provider')
+      .eq('user_id', user.id)
+      .eq('status', 'connected')
+      .then(({ data }) => {
+        if (data?.length) setConnectedProviders(new Set(data.map(c => c.provider)))
+      })
+  }, [user?.id])
+
   useEffect(() => {
     let active = true
     async function loadThreads() {
