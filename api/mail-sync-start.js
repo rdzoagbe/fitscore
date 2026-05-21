@@ -5,7 +5,9 @@ const PROVIDERS = {
   google: {
     id: 'google',
     label: 'Google',
-    scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.readonly', 'https://www.googleapis.com/auth/calendar.readonly']
+    // gmail.readonly is RESTRICTED — Google blocks it with 400 for unverified apps, no bypass possible.
+    // gmail.metadata is SENSITIVE — shows unverified warning but users can proceed. Returns headers + snippet.
+    scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/gmail.metadata', 'https://www.googleapis.com/auth/calendar.readonly']
   },
   microsoft: {
     id: 'microsoft',

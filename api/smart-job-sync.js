@@ -443,8 +443,10 @@ async function scanGoogle(accessToken) {
 
     for (const msg of (list.messages || []).slice(0, 25)) {
       try {
+        // gmail.metadata scope: use format=metadata — returns headers + snippet, no body.
+        // Subject/From/Date come from headers; snippet (≤200 chars) is enough for classification.
         const detail = await getJson(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
           accessToken
         )
 
@@ -456,7 +458,6 @@ async function scanGoogle(accessToken) {
         const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
         const sender = parseFromHeader(fromRaw)
         const snippet = detail.snippet || ''
-        const body = cleanBody(extractGmailBody(detail.payload), 1800)
         const platform = detectPlatform(sender.name, sender.email)
         const company = extractCompany(sender.name, sender.email, subject)
 
@@ -467,7 +468,7 @@ async function scanGoogle(accessToken) {
           from: sender.email || sender.name,
           date,
           snippet,
-          body,
+          body: snippet, // metadata scope: no body available; snippet is sufficient for classification
           platform,
           company
         }))
