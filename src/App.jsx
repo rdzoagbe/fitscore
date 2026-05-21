@@ -107,10 +107,10 @@ export default function App() {
     if (user && hasAcceptedCurrentTerms(user) && !localStorage.getItem('fitscore_onboarded')) setShowOnboarding(true)
   }, [user])
 
-  if (loading) return <AppLoading />
-
   const path = window.location.pathname
   if (path === '/auth/callback') return <OAuthCallback />
+
+  if (loading) return <AppLoading />
   if (path === '/privacy') return <Suspense fallback={<AppLoading />}><PrivacyPage onBack={() => window.history.back()} /></Suspense>
   if (path === '/terms') return <Suspense fallback={<AppLoading />}><TermsPage onBack={() => window.history.back()} /></Suspense>
   if (path === '/legal') return <Suspense fallback={<AppLoading />}><LegalNoticePage onBack={() => window.history.back()} /></Suspense>
