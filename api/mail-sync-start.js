@@ -119,6 +119,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     const provider = String(req.body?.provider || req.query?.provider || '').toLowerCase()
+    const loginHint = String(req.body?.loginHint || req.query?.login_hint || req.query?.loginHint || '').trim()
     if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Choose google or microsoft.', code: 'PROVIDER_REQUIRED' })
     const supabase = createServerSupabaseClient()
     const user = await requireUser(req, supabase)
@@ -133,7 +134,10 @@ export default async function handler(req, res) {
       state,
       ...config.params
     })
-    return res.status(200).json({ success: true, provider, url: `${config.authUrl}?${params.toString()}` })
+
+    if (loginHint) params.set('login_hint', loginHint)
+
+    return res.status(200).json({ success: true, provider, loginHint: Boolean(loginHint), url: `${config.authUrl}?${params.toString()}` })
   } catch (e) {
     console.error('Mail sync start error:', e)
     return res.status(e.statusCode || 500).json({ error: e.message || 'Could not start mail sync.', code: e.code || 'MAIL_SYNC_START_FAILED' })
