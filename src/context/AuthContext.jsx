@@ -63,7 +63,7 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = () => supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/auth/callback` }
+    options: { redirectTo: window.location.origin }
   })
 
   const signInWithMicrosoft = () => supabase.auth.signInWithOAuth({
@@ -76,7 +76,7 @@ export function AuthProvider({ children }) {
 
   const signInWithLinkedIn = () => supabase.auth.signInWithOAuth({
     provider: 'linkedin_oidc',
-    options: { redirectTo: `${window.location.origin}/auth/callback` }
+    options: { redirectTo: window.location.origin }
   })
 
   const signOut = () => supabase.auth.signOut()
