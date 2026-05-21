@@ -48,3 +48,76 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── NEW SYNC PANEL ─────────────────────────────────────────────────── */
+.newSyncPanel{margin-bottom:18px;padding:36px 36px 28px;border:1px solid rgba(199,211,234,.75);background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);box-shadow:0 24px 70px rgba(15,30,60,.08);border-radius:30px;color:#06143a;display:grid;gap:28px;overflow:hidden}
+.newSyncHeader{max-width:640px}
+.newSyncHeader p{margin:0 0 8px;color:#0f62e6;font-size:11px;font-weight:950;letter-spacing:.13em;text-transform:uppercase}
+.newSyncHeader h2{font-family:Georgia,Newsreader,serif;font-size:clamp(30px,4.5vw,50px);line-height:.96;font-weight:700;letter-spacing:-.06em;margin:0 0 10px;color:#06143a}
+.newSyncHeader span{display:block;color:#46557f;font-size:15px;line-height:1.65}
+.newSyncGrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.newSyncCol{border:1px solid rgba(200,211,231,.9);background:#fff;border-radius:22px;padding:24px 22px;display:grid;gap:18px}
+.newSyncColHead{display:flex;gap:14px;align-items:flex-start}
+.newSyncColHead>div{min-width:0}
+.newSyncColHead>div strong{display:block;color:#06143a;font-size:17px;font-weight:950;letter-spacing:-.03em;margin-bottom:5px}
+.newSyncColHead>div p{margin:0;color:#46557f;font-size:13px;line-height:1.5}
+.newSyncStepNum{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#06143a;color:#fff;font-size:15px;font-weight:950;display:grid;place-items:center;line-height:1}
+.newSyncProviderLabel{display:block;font-size:10px;font-weight:950;letter-spacing:.14em;text-transform:uppercase;color:#7b87a5;margin-bottom:-8px}
+.newSyncDropdownWrap{display:flex;align-items:center;gap:10px;border:1px solid rgba(200,211,231,.9);background:#f8fbff;border-radius:14px;padding:0 14px;height:52px}
+.newSyncDropdownIcon{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:block;background:#eaf2ff}
+.newSyncDropdownIcon.google{background:conic-gradient(#4285f4 0 25%,#34a853 0 50%,#fbbc05 0 75%,#ea4335 0)}
+.newSyncDropdownIcon.microsoft{background:conic-gradient(#7fba00 0 25%,#00a4ef 0 50%,#ffb900 0 75%,#f25022 0);border-radius:3px}
+.newSyncDropdown{flex:1;min-width:0;background:transparent;border:0;font:inherit;font-size:14px;font-weight:700;color:#06143a;-webkit-appearance:none;appearance:none;cursor:pointer;outline:none}
+.newSyncDropdownChevron{flex-shrink:0;color:#7b87a5;font-size:16px;pointer-events:none}
+.newSyncServicesList{display:grid;gap:10px}
+.newSyncServiceRow{display:grid;grid-template-columns:36px minmax(0,1fr) auto auto;gap:10px 12px;align-items:center;border:1px solid rgba(200,211,231,.9);border-radius:16px;padding:14px;background:#f8fbff}
+.newSyncServiceLogo{width:34px;height:34px;border-radius:8px;display:block;flex-shrink:0}
+.newSyncServiceLogo.gmail{background:linear-gradient(135deg,#ea4335 0%,#c5221f 100%)}
+.newSyncServiceLogo.gcal{background:conic-gradient(#4285f4 0 25%,#34a853 0 50%,#fbbc05 0 75%,#ea4335 0);border-radius:50%}
+.newSyncServiceLogo.outlook{background:linear-gradient(135deg,#0078d4 0%,#106ebe 100%)}
+.newSyncServiceLogo.mscal{background:conic-gradient(#7fba00 0 25%,#00a4ef 0 50%,#ffb900 0 75%,#f25022 0);border-radius:4px}
+.newSyncServiceText{min-width:0}
+.newSyncServiceText strong{display:block;color:#06143a;font-size:14px;font-weight:900;letter-spacing:-.02em}
+.newSyncServiceText p{margin:0;color:#46557f;font-size:12px;line-height:1.4}
+.newSyncBadge{display:inline-flex;align-items:center;min-height:24px;border-radius:999px;padding:0 10px;font-size:11px;font-weight:900;white-space:nowrap;border:1px solid rgba(200,211,231,.9);background:#fff;color:#7b87a5}
+.newSyncBadge.is-connected{border-color:rgba(73,173,104,.3);background:#f0faf4;color:#2e8a55}
+.newSyncConnectBtn{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(200,211,231,.9);background:#fff;border-radius:999px;padding:0 14px;min-height:36px;font:inherit;font-size:13px;font-weight:900;color:#06143a;cursor:pointer;white-space:nowrap}
+.newSyncConnectBtn:hover:not(:disabled){border-color:rgba(15,98,230,.3);color:#0f62e6}
+.newSyncConnectBtn:disabled{opacity:.55;cursor:not-allowed}
+.newSyncConnectBtn.ms{color:#0078d4;border-color:rgba(0,120,212,.2)}
+.newSyncGoogleG{width:16px;height:16px;border-radius:50%;background:conic-gradient(#4285f4 0 25%,#34a853 0 50%,#fbbc05 0 75%,#ea4335 0);display:block;flex-shrink:0}
+.newSyncMsIcon{width:16px;height:16px;background:conic-gradient(#7fba00 0 25%,#00a4ef 0 50%,#ffb900 0 75%,#f25022 0);border-radius:2px;display:block;flex-shrink:0}
+.newSyncPrivacy{display:flex;gap:10px;align-items:flex-start;background:#f8fbff;border:1px solid rgba(200,211,231,.7);border-radius:14px;padding:12px 14px;font-size:13px;color:#46557f}
+.newSyncPrivacy p{margin:0;line-height:1.5}
+.newSyncReadyCard{border:1px solid rgba(164,202,183,.55);background:linear-gradient(135deg,#f8fffb,#f8fbff);border-radius:18px;padding:18px}
+.newSyncReadyTop{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.newSyncReadyTop strong{color:#06143a;font-size:16px;font-weight:950;letter-spacing:-.03em}
+.newSyncReadyCircle{width:34px;height:34px;border-radius:50%;background:#49ad68;color:#fff;font-size:18px;font-weight:950;display:grid;place-items:center;flex-shrink:0}
+.newSyncReadyList{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.newSyncReadyList li{display:flex;align-items:center;gap:9px;font-size:13px;color:#3f4d73;line-height:1.4}
+.newSyncReadyCheck{width:20px;height:20px;border-radius:50%;background:#49ad68;color:#fff;font-size:11px;font-weight:950;display:grid;place-items:center;flex-shrink:0}
+.newSyncRunBtn{width:100%;border:0;border-radius:999px;background:linear-gradient(135deg,#1265f1,#075bd8);color:#fff;font:inherit;font-weight:950;font-size:16px;min-height:56px;padding:0 24px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 14px 28px rgba(15,98,230,.28)}
+.newSyncRunBtn:disabled{opacity:.55;cursor:not-allowed}
+.newSyncLastSync{margin:0;display:flex;align-items:center;gap:7px;color:#7b87a5;font-size:13px;font-weight:700}
+.newSyncDetects{border-top:1px solid rgba(200,211,231,.7);padding-top:20px}
+.newSyncDetects>strong{display:block;color:#06143a;font-size:15px;font-weight:950;letter-spacing:-.02em;margin-bottom:14px}
+.newSyncDetectsGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.newSyncDetectCard{display:flex;gap:14px;align-items:flex-start;border:1px solid rgba(200,211,231,.9);background:#fff;border-radius:18px;padding:18px}
+.newSyncDetectCard>div strong{display:block;color:#06143a;font-size:14px;font-weight:950;margin-bottom:5px}
+.newSyncDetectCard>div p{margin:0;color:#46557f;font-size:13px;line-height:1.5}
+.newSyncDetectIcon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.newSyncDetectIcon.email{background:#fff0f0;color:#ea4335}
+.newSyncDetectIcon.cal{background:#eaf6ff;color:#0f62e6}
+.newSyncTip{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(15,98,230,.14);background:#f3f7ff;border-radius:18px;padding:16px 18px;font-size:13px;color:#365f8d}
+.newSyncTip p{margin:0;line-height:1.55}
+.newSyncResults{margin-top:8px}
+
+@media(max-width:980px){.newSyncGrid{grid-template-columns:1fr}.newSyncDetectsGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:680px){
+  .newSyncPanel{border-radius:24px;padding:22px 18px 20px}
+  .newSyncServiceRow{grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto auto}
+  .newSyncServiceRow .newSyncBadge{grid-column:2;justify-self:start}
+  .newSyncServiceRow .newSyncConnectBtn{grid-column:1/-1}
+  .newSyncDetectsGrid{grid-template-columns:1fr}
+}
+@media(max-width:420px){.newSyncDetectsGrid{grid-template-columns:1fr}}
