@@ -212,6 +212,128 @@ function openToken(value, provider) {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8')
 }
 
+function sealToken(value, provider) {
+  if (!value) return null
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv('aes-256-gcm', keyForProvider(provider), iv)
+  const encrypted = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return Buffer.concat([iv, tag, encrypted]).toString('base64')
+}
+
+function tokenExpiresSoon(tokenExpiresAt) {
+  if (!tokenExpiresAt) return false
+  const expiresAt = new Date(tokenExpiresAt).getTime()
+  if (!Number.isFinite(expiresAt)) return true
+  return expiresAt - Date.now() < 5 * 60 * 1000
+}
+
+function providerOAuthConfig(provider) {
+  if (provider === 'microsoft') {
+    const tenant = process.env.MICROSOFT_TENANT_ID || 'common'
+    return {
+      tokenUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
+      clientId: process.env.MICROSOFT_CLIENT_ID,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET
+    }
+  }
+
+  if (provider === 'google') {
+    return {
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET
+    }
+  }
+
+  throw new Error(`Unsupported provider for refresh: ${provider}`)
+}
+
+async function refreshProviderToken(provider, refreshToken) {
+  const config = providerOAuthConfig(provider)
+  if (!config.clientId || !config.clientSecret) {
+    throw new Error(`${provider} OAuth client is not configured for token refresh.`)
+  }
+
+  if (!refreshToken) {
+    throw new Error(`${provider} refresh token is missing. Reconnect Smart Sync.`)
+  }
+
+  const response = await fetch(config.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok || !data?.access_token) {
+    throw new Error(data?.error_description || data?.error || `${provider} token refresh failed.`)
+  }
+
+  return data
+}
+
+async function updateConnectionError(supabase, connectionId, message) {
+  if (!connectionId) return
+  await supabase
+    .from('job_sync_connections')
+    .update({
+      last_error: String(message || 'Smart Sync failed.'),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', connectionId)
+}
+
+async function markConnectionSynced(supabase, connectionId) {
+  if (!connectionId) return
+  const now = new Date().toISOString()
+  await supabase
+    .from('job_sync_connections')
+    .update({
+      last_sync_at: now,
+      last_error: null,
+      updated_at: now
+    })
+    .eq('id', connectionId)
+}
+
+async function getUsableAccessToken(supabase, connection) {
+  const provider = connection.provider
+  let accessToken = openToken(connection.access_token_encrypted, provider)
+
+  if (!tokenExpiresSoon(connection.token_expires_at)) {
+    return accessToken
+  }
+
+  const refreshToken = openToken(connection.refresh_token_encrypted, provider)
+  const refreshed = await refreshProviderToken(provider, refreshToken)
+  accessToken = refreshed.access_token
+
+  const updatePayload = {
+    access_token_encrypted: sealToken(refreshed.access_token, provider),
+    token_expires_at: refreshed.expires_in ? new Date(Date.now() + Number(refreshed.expires_in) * 1000).toISOString() : null,
+    last_error: null,
+    updated_at: new Date().toISOString()
+  }
+
+  if (refreshed.refresh_token) {
+    updatePayload.refresh_token_encrypted = sealToken(refreshed.refresh_token, provider)
+  }
+
+  await supabase
+    .from('job_sync_connections')
+    .update(updatePayload)
+    .eq('id', connection.id)
+
+  return accessToken
+}
+
 async function getJson(url, accessToken) {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
   const text = await response.text()
@@ -463,7 +585,7 @@ export default async function handler(req, res) {
 
     const { data: connections, error } = await supabase
       .from('job_sync_connections')
-      .select('provider,status,provider_email,access_token_encrypted,last_sync_at,last_error,updated_at')
+      .select('id,provider,status,provider_email,access_token_encrypted,refresh_token_encrypted,token_expires_at,last_sync_at,last_error,updated_at')
       .eq('user_id', user.id)
       .eq('status', 'connected')
       .in('provider', ['google', 'microsoft'])
@@ -499,13 +621,22 @@ export default async function handler(req, res) {
 
     for (const connection of connections) {
       try {
-        const token = openToken(connection.access_token_encrypted, connection.provider)
+        const token = await getUsableAccessToken(supabase, connection)
         const scan = connection.provider === 'microsoft' ? await scanMicrosoft(token) : await scanGoogle(token)
+
         emails = emails.concat(scan.emails)
         calendar = calendar.concat(scan.calendar)
-        errors.push(...scan.errors)
+
+        if (scan.errors?.length) {
+          errors.push(...scan.errors.map(message => `${connection.provider}: ${message}`))
+          await updateConnectionError(supabase, connection.id, scan.errors.join(' | '))
+        } else {
+          await markConnectionSynced(supabase, connection.id)
+        }
       } catch (error) {
-        errors.push(`${connection.provider}: ${error.message}`)
+        const message = `${connection.provider}: ${error.message}`
+        errors.push(message)
+        await updateConnectionError(supabase, connection.id, error.message)
       }
     }
 
@@ -513,6 +644,7 @@ export default async function handler(req, res) {
       success: errors.length === 0,
       connected: true,
       providers: connections.map(c => c.provider),
+      providerEmails: connections.map(c => ({ provider: c.provider, email: c.provider_email || null })),
       scanned: emails.length + calendar.length,
       eventsStored: 0,
       analysesUpdated: 0,
