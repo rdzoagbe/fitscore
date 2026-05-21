@@ -47,6 +47,40 @@ function AppLoading() {
   return <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 32, height: 32, border: '2px solid var(--border)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} /></div>
 }
 
+function OAuthCallback() {
+  useEffect(() => {
+    let cancelled = false
+
+    const completeOAuth = async () => {
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
+
+      try {
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code)
+        } else {
+          await supabase.auth.getSession()
+        }
+      } catch (error) {
+        console.error('OAuth callback failed:', error)
+      }
+
+      if (!cancelled) {
+        window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
+        window.location.reload()
+      }
+    }
+
+    completeOAuth()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return <AppLoading />
+}
+
 export default function App() {
   const { user, loading } = useAuth()
   const [page, setPageState] = useState(() => getPageFromPath() || 'dashboard')
