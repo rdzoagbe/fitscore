@@ -34,7 +34,7 @@ const PAGE_TO_PATH = {
 }
 
 const PATH_TO_PAGE = Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page]))
-const PUBLIC_PATHS = new Set(['/privacy', '/terms', '/legal'])
+const PUBLIC_PATHS = new Set(['/privacy', '/terms', '/legal', '/auth/callback'])
 
 function getPageFromPath() {
   const path = window.location.pathname || '/'

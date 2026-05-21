@@ -54,28 +54,28 @@ export function AuthProvider({ children }) {
   const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
 
   const signInWithGoogle = (legalSource = 'signup_google') => supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin,
-      data: legalAcceptancePayload(legalSource)
-    }
-  })
+  provider: 'google',
+  options: {
+    redirectTo: `${window.location.origin}/auth/callback`,
+    data: legalAcceptancePayload(legalSource)
+  }
+})
 
-  const signInWithMicrosoft = (legalSource = 'signup_microsoft') => supabase.auth.signInWithOAuth({
-    provider: 'azure',
-    options: {
-      redirectTo: window.location.origin,
-      data: legalAcceptancePayload(legalSource)
-    }
-  })
+const signInWithMicrosoft = (legalSource = 'signup_microsoft') => supabase.auth.signInWithOAuth({
+  provider: 'azure',
+  options: {
+    redirectTo: `${window.location.origin}/auth/callback`,
+    data: legalAcceptancePayload(legalSource)
+  }
+})
 
-  const signInWithLinkedIn = (legalSource = 'signup_linkedin') => supabase.auth.signInWithOAuth({
-    provider: 'linkedin_oidc',
-    options: {
-      redirectTo: window.location.origin,
-      data: legalAcceptancePayload(legalSource)
-    }
-  })
+const signInWithLinkedIn = (legalSource = 'signup_linkedin') => supabase.auth.signInWithOAuth({
+  provider: 'linkedin_oidc',
+  options: {
+    redirectTo: `${window.location.origin}/auth/callback`,
+    data: legalAcceptancePayload(legalSource)
+  }
+})
 
   const acceptCurrentTerms = async (source = 'terms_gate') => {
     const { data, error } = await supabase.auth.updateUser({ data: legalAcceptancePayload(source) })
