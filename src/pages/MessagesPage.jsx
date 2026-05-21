@@ -361,6 +361,9 @@ export default function MessagesPage({ setPage }) {
 
                   <div className="newSyncServicesList">
                     {selectedProvider === 'google' ? <>
+                      <div className="newSyncProviderWarning">
+                        Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for live testing.
+                      </div>
                       <div className="newSyncServiceRow">
                         <span className="newSyncServiceLogo gmail" aria-hidden="true" />
                         <div className="newSyncServiceText">
@@ -368,8 +371,8 @@ export default function MessagesPage({ setPage }) {
                           <p>Scan job-related emails like confirmations, replies, and offers.</p>
                         </div>
                         <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                        <button type="button" className="newSyncConnectBtn" onClick={() => isGoogleConnected ? runSmartSync() : connectMailProvider('google')} disabled={smartSyncLoading}>
-                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Connect'}
+                        <button type="button" className="newSyncConnectBtn" onClick={() => setSyncNotice('Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for now.')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Unavailable'}
                         </button>
                       </div>
                       <div className="newSyncServiceRow">
@@ -379,8 +382,8 @@ export default function MessagesPage({ setPage }) {
                           <p>Scan interview meetings and recruitment events.</p>
                         </div>
                         <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                        <button type="button" className="newSyncConnectBtn" onClick={() => isGoogleConnected ? runSmartSync() : connectMailProvider('google')} disabled={smartSyncLoading}>
-                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Connect'}
+                        <button type="button" className="newSyncConnectBtn" onClick={() => setSyncNotice('Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for now.')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Unavailable'}
                         </button>
                       </div>
                     </> : <>

@@ -27,7 +27,18 @@ export const translations = {
     saved_on_device: 'saved on device',
     run_ats: 'Run ATS check →',
     new: 'New',
-    history: 'History'
+    history: 'History',
+    onb_step1_title: 'Connect your workspace',
+    onb_step1_desc: 'Link your account and prepare Joblytics to track your job-search progress.',
+    onb_step2_title: 'Analyze your CV',
+    onb_step2_desc: 'Upload your CV and compare it with real job offers.',
+    onb_step3_title: 'Track your applications',
+    onb_step3_desc: 'Keep interviews, replies, rejections, and offers in one place.',
+    onb_step4_title: 'Improve every week',
+    onb_step4_desc: 'Use Smart Sync and CV Coach to build a stronger job-search rhythm.',
+    onb_next: 'Next',
+    onb_skip: 'Skip',
+    onb_done: 'Done'
   },
   fr: {
     tagline: 'SACHEZ AVANT DE POSTULER',
@@ -52,6 +63,17 @@ export const translations = {
     saved_on_device: 'enregistré sur l’appareil',
     run_ats: 'Lancer l’analyse ATS →',
     new: 'Nouveau',
-    history: 'Historique'
+    history: 'Historique',
+    onb_step1_title: 'Connectez votre espace',
+    onb_step1_desc: 'Associez votre compte et préparez Joblytics à suivre votre recherche d’emploi.',
+    onb_step2_title: 'Analysez votre CV',
+    onb_step2_desc: 'Importez votre CV et comparez-le à de vraies offres.',
+    onb_step3_title: 'Suivez vos candidatures',
+    onb_step3_desc: 'Centralisez les entretiens, réponses, refus et offres.',
+    onb_step4_title: 'Progressez chaque semaine',
+    onb_step4_desc: 'Utilisez Smart Sync et CV Coach pour améliorer votre rythme de recherche.',
+    onb_next: 'Suivant',
+    onb_skip: 'Ignorer',
+    onb_done: 'Terminer'
   }
 }

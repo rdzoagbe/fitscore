@@ -81,12 +81,22 @@ function signState(payload) {
 
 function providerConfig(provider, appUrl) {
   if (provider === 'google') {
+    const googleSyncEnabled = String(process.env.GOOGLE_SYNC_ENABLED || '').toLowerCase() === 'true'
+
+    if (!googleSyncEnabled) {
+      const e = new Error('Google mail and calendar sync is temporarily unavailable while app verification is being completed. Please use Outlook/Microsoft sync for now.')
+      e.statusCode = 503
+      e.code = 'GOOGLE_SYNC_VERIFICATION_REQUIRED'
+      throw e
+    }
+
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       const e = new Error('Google sync is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel.')
       e.statusCode = 503
       e.code = 'GOOGLE_OAUTH_NOT_CONFIGURED'
       throw e
     }
+
     return {
       clientId: process.env.GOOGLE_CLIENT_ID,
       redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`,
@@ -104,7 +114,7 @@ function providerConfig(provider, appUrl) {
     const tenant = process.env.MICROSOFT_TENANT_ID || 'common'
     return {
       clientId: process.env.MICROSOFT_CLIENT_ID,
-      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`,
+      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`,
       authUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
       params: { response_mode: 'query', prompt: 'select_account' }
     }
