@@ -79,7 +79,14 @@ export default async function handler(req, res) {
     const user = await requireUser(req, supabase)
     const appUrl = getAppUrl(req)
     const redirectUri = process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`
-    const state = signState({ user_id: user.id, email: user.email || null, ts: Date.now(), source: 'smart_tracking_microsoft' })
+
+    const state = signState({
+      user_id: user.id,
+      email: user.email || null,
+      ts: Date.now(),
+      source: 'smart_tracking_microsoft',
+      provider: 'microsoft'
+    })
 
     const params = new URLSearchParams({
       client_id: process.env.MICROSOFT_CLIENT_ID,

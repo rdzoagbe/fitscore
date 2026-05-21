@@ -37,9 +37,11 @@ function verifyState(state) {
   const secret = providerStateSecret(provider)
   if (!secret) throw new Error(`${provider || 'Provider'} OAuth state secret is not configured.`)
   const expected = crypto.createHmac('sha256', secret).update(body).digest('base64url')
-  const received = Buffer.from(signature)
-  const expectedBuffer = Buffer.from(expected)
-  if (received.length !== expectedBuffer.length || !crypto.timingSafeEqual(received, expectedBuffer)) throw new Error('Sync authorization state could not be verified.')
+  const receivedBuf = Buffer.from(signature)
+  const expectedBuf = Buffer.from(expected)
+  if (receivedBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(receivedBuf, expectedBuf)) {
+    throw new Error('Sync authorization state could not be verified.')
+  }
   if (!payload.user_id || !provider) throw new Error('Sync authorization state is missing required information.')
   if (payload.ts && Date.now() - Number(payload.ts) > 15 * 60 * 1000) throw new Error('Sync authorization request expired. Please try again.')
   return payload
@@ -128,6 +130,7 @@ async function saveConnection({ supabase, provider, statePayload, tokenData, pro
   const encryptedAccess = encryptToken(tokenData.access_token, provider)
   const encryptedRefresh = tokenData.refresh_token ? encryptToken(tokenData.refresh_token, provider) : null
   const expiresAt = tokenData.expires_in ? new Date(Date.now() + Number(tokenData.expires_in) * 1000).toISOString() : null
+  const scopes = String(tokenData.scope || '').split(/\s+/).filter(Boolean)
   const now = new Date().toISOString()
   const basePayload = {
     user_id: statePayload.user_id,
@@ -135,7 +138,7 @@ async function saveConnection({ supabase, provider, statePayload, tokenData, pro
     provider_email: profile.email || statePayload.email || null,
     access_token_encrypted: encryptedAccess,
     token_expires_at: expiresAt,
-    scopes: tokenData.scope || null,
+    scopes,
     status: 'connected',
     last_error: null,
     metadata: {
@@ -166,6 +169,7 @@ async function saveConnection({ supabase, provider, statePayload, tokenData, pro
   const insertPayload = {
     ...basePayload,
     refresh_token_encrypted: encryptedRefresh,
+    connected_at: now,
     created_at: now
   }
   const { data, error } = await supabase.from('job_sync_connections').insert(insertPayload).select('id').single()
