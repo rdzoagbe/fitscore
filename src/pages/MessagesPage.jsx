@@ -139,6 +139,35 @@ export default function MessagesPage({ setPage }) {
     setLoadingMessages(false)
   }
 
+  const connectMailProvider = async provider => {
+    setSmartSyncLoading(true)
+    setSyncMessage('')
+    setSyncNotice('')
+    setError('')
+    try {
+      const token = await getFreshAccessToken(session)
+      if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
+
+      const res = await fetch('/api/mail-sync-start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ provider })
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.url) throw new Error(data?.error || `Could not start ${provider} sync.`)
+
+      window.location.href = data.url
+    } catch (e) {
+      setSyncNotice(e.message || t('smart_sync_failed', 'Smart Sync could not complete yet.'))
+    } finally {
+      setSmartSyncLoading(false)
+    }
+  }
+
   const runSmartSync = async () => {
     setSmartSyncLoading(true)
     setSyncMessage('')
@@ -237,6 +266,17 @@ export default function MessagesPage({ setPage }) {
             <div className="syncMetric"><strong>{syncDisplay.calendar}</strong><span>{t('smart_sync_calendar_interviews', 'calendar interviews')}</span></div>
             <div className="syncMetric"><strong>{syncDisplay.updated}</strong><span>{t('smart_sync_jobs_updated', 'jobs updated')}</span></div>
           </div>
+
+          {!hasRealSync && (
+            <div className="syncConnectActions">
+              <button type="button" className="runSmartButton syncAgainButton" onClick={() => connectMailProvider('microsoft')} disabled={smartSyncLoading}>
+                <span aria-hidden="true">▣</span>{smartSyncLoading ? t('smart_sync_working', 'Working...') : 'Connect Outlook / Hotmail'}
+              </button>
+              <button type="button" className="secondarySyncButton" onClick={() => connectMailProvider('google')} disabled={smartSyncLoading}>
+                <span aria-hidden="true">✉</span>Connect Gmail / Google Calendar
+              </button>
+            </div>
+          )}
 
           <button type="button" className="runSmartButton syncAgainButton" onClick={runSmartSync} disabled={smartSyncLoading}><span aria-hidden="true">↻</span>{smartSyncLoading ? t('smart_sync_working', 'Working...') : t('smart_sync_run_again', 'Run Smart Sync again')}</button>
 
