@@ -411,42 +411,22 @@ export default function MessagesPage({ setPage }) {
                 </>
               )}
 
+              <button type="button" className="newSyncRunBtn is-inline" onClick={runSmartSync} disabled={smartSyncLoading}>
+                <span aria-hidden="true">↻</span>
+                {smartSyncLoading ? 'Working…' : 'Run Smart Sync Now'}
+              </button>
+
+              <p className="newSyncLastSync is-inline">
+                <span aria-hidden="true">🕐</span> Last sync: {hasRealSync ? 'Just now' : 'Never'}
+              </p>
+
               <div className="newSyncPrivacy">
                 <span aria-hidden="true">🛡</span>
                 <p>Your privacy is our priority. We use read-only access and never modify, send, or store your email or calendar data.</p>
               </div>
             </div>
 
-            <div className="newSyncCol">
-              <div className="newSyncColHead">
-                <span className="newSyncStepNum">2.</span>
-                <div>
-                  <strong>Run Smart Sync</strong>
-                  <p>After connecting your accounts, scan job-related emails and calendar events to update your History.</p>
-                </div>
-              </div>
 
-              <div className="newSyncReadyCard">
-                <div className="newSyncReadyTop">
-                  <span className="newSyncReadyCircle" aria-hidden="true">✓</span>
-                  <strong>Ready to sync</strong>
-                </div>
-                <ul className="newSyncReadyList">
-                  <li><span className="newSyncReadyCheck" aria-hidden="true">✓</span>Connect your email and calendar account</li>
-                  <li><span className="newSyncReadyCheck" aria-hidden="true">✓</span>Run Smart Sync to update your History</li>
-                  <li><span className="newSyncReadyCheck" aria-hidden="true">✓</span>Statuses update automatically</li>
-                </ul>
-              </div>
-
-              <button type="button" className="newSyncRunBtn" onClick={runSmartSync} disabled={smartSyncLoading}>
-                <span aria-hidden="true">↻</span>
-                {smartSyncLoading ? 'Working…' : 'Run Smart Sync Now'}
-              </button>
-
-              <p className="newSyncLastSync">
-                <span aria-hidden="true">🕐</span> Last sync: {hasRealSync ? 'Just now' : 'Never'}
-              </p>
-            </div>
           </div>
 
           <div className="newSyncDetects">

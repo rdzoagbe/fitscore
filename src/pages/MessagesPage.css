@@ -217,3 +217,21 @@
     justify-self: start;
   }
 }
+
+/* Smart Sync simplified one-step layout */
+.newSyncGrid {
+  grid-template-columns: 1fr;
+}
+
+.newSyncGrid > .newSyncCol {
+  width: 100%;
+}
+
+.newSyncRunBtn.is-inline {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.newSyncLastSync.is-inline {
+  margin: 10px 0 0;
+}
