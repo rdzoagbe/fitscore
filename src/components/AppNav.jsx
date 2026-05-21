@@ -32,11 +32,29 @@ const mobileNavItems = [
 ]
 
 function getDisplayName(user) {
-  return user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')?.[0] || 'User'
+  const metadata = user?.user_metadata || {}
+  const email =
+    user?.email ||
+    metadata.email ||
+    metadata.preferred_username ||
+    metadata.upn ||
+    metadata.user_name ||
+    ''
+
+  return (
+    metadata.full_name ||
+    metadata.name ||
+    metadata.display_name ||
+    metadata.preferred_username ||
+    metadata.upn ||
+    metadata.user_name ||
+    email?.split('@')?.[0] ||
+    'User'
+  )
 }
 
 function getInitials(name) {
-  return name.split(/[.\s_-]+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U'
+  return String(name || 'User').split(/[.\s_-]+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U'
 }
 
 export default function AppNav({ page, setPage, onLogoClick }) {
