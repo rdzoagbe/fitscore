@@ -137,6 +137,29 @@ export default function MessagesPage({ setPage }) {
   const [selectedProvider, setSelectedProvider] = useState('google')
   const [connectedProviders, setConnectedProviders] = useState(new Set())
 
+  // Detect which provider the user used to sign in (google / microsoft / null for email+password)
+  const ssoProvider = user?.app_metadata?.provider === 'google' ? 'google'
+    : (user?.app_metadata?.provider === 'azure' || user?.app_metadata?.provider === 'microsoft') ? 'microsoft'
+    : null
+
+  // Auto-select the SSO provider tab when the user first loads
+  useEffect(() => {
+    if (ssoProvider) setSelectedProvider(ssoProvider)
+  }, [ssoProvider])
+
+  // Load existing sync connections so badges show correctly on page open / refresh
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('job_sync_connections')
+      .select('provider')
+      .eq('user_id', user.id)
+      .eq('status', 'connected')
+      .then(({ data }) => {
+        if (data?.length) setConnectedProviders(new Set(data.map(c => c.provider)))
+      })
+  }, [user?.id])
+
   useEffect(() => {
     let active = true
     async function loadThreads() {
@@ -195,10 +218,12 @@ export default function MessagesPage({ setPage }) {
     try {
       const token = await getFreshAccessToken(session)
       if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
+      // Pass login_hint when connecting the same provider the user signed in with — skips account picker
+      const loginHint = (provider === ssoProvider && user?.email) ? user.email : null
       const res = await fetch('/api/mail-sync-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ provider, loginHint: getAccountEmail(user) || undefined })
+        body: JSON.stringify({ provider, login_hint: getAccountEmail(user) || undefined })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data?.url) throw new Error(data?.error || `Could not start ${provider} sync.`)
@@ -361,9 +386,6 @@ export default function MessagesPage({ setPage }) {
 
                   <div className="newSyncServicesList">
                     {selectedProvider === 'google' ? <>
-                      <div className="newSyncProviderWarning">
-                        Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for live testing.
-                      </div>
                       <div className="newSyncServiceRow">
                         <span className="newSyncServiceLogo gmail" aria-hidden="true" />
                         <div className="newSyncServiceText">
@@ -371,8 +393,8 @@ export default function MessagesPage({ setPage }) {
                           <p>Scan job-related emails like confirmations, replies, and offers.</p>
                         </div>
                         <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                        <button type="button" className="newSyncConnectBtn" onClick={() => setSyncNotice('Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for now.')} disabled={smartSyncLoading}>
-                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Unavailable'}
+                        <button type="button" className="newSyncConnectBtn" onClick={() => connectMailProvider('google')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />Connect
                         </button>
                       </div>
                       <div className="newSyncServiceRow">
@@ -382,8 +404,8 @@ export default function MessagesPage({ setPage }) {
                           <p>Scan interview meetings and recruitment events.</p>
                         </div>
                         <span className={`newSyncBadge${isGoogleConnected ? ' is-connected' : ''}`}>{isGoogleConnected ? 'Connected' : 'Not connected'}</span>
-                        <button type="button" className="newSyncConnectBtn" onClick={() => setSyncNotice('Google mail/calendar sync is temporarily unavailable while app verification is completed. Please use Outlook / Microsoft Calendar for now.')} disabled={smartSyncLoading}>
-                          <span className="newSyncGoogleG" aria-hidden="true" />{isGoogleConnected ? 'Run Smart Sync' : 'Unavailable'}
+                        <button type="button" className="newSyncConnectBtn" onClick={() => connectMailProvider('google')} disabled={smartSyncLoading}>
+                          <span className="newSyncGoogleG" aria-hidden="true" />Connect
                         </button>
                       </div>
                     </> : <>
