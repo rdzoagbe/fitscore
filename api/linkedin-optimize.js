@@ -9,7 +9,7 @@
   is missing, it returns a deterministic rule-based analysis so the frontend can still be tested.
 */
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
+const DEFAULT_MODEL = 'claude-sonnet-4-6'
 const MAX = {
   headline: 220,
   about: 3000,

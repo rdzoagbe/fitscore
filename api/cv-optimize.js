@@ -124,7 +124,7 @@ CRITICAL RULES:
 - Maximum 8 technical skills, 5 soft skills`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 3500,
       temperature: 0.3,
       messages: [{ role: 'user', content: prompt }]

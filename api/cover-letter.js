@@ -112,7 +112,7 @@ INSTRUCTIONS:
 - Return ONLY the paragraphs separated by blank lines. No preamble, no headers, no signature.`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: lengthSpec.maxTokens,
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }]

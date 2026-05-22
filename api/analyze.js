@@ -414,7 +414,7 @@ export default async function handler(req, res) {
     }
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4200,
       temperature: 0,
       system: SYSTEM,

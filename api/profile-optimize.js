@@ -231,7 +231,7 @@ export default async function handler(req, res) {
     const usage = await checkUsageLimit({ supabase, req, user, eventType: 'profile_optimize' })
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2200,
       temperature: 0.2,
       system: SYSTEM,
