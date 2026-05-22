@@ -83,15 +83,6 @@ function signState(payload) {
 
 function providerConfig(provider, appUrl, loginHint) {
   if (provider === 'google') {
-    const googleSyncEnabled = String(process.env.GOOGLE_SYNC_ENABLED || '').toLowerCase() === 'true'
-
-    if (!googleSyncEnabled) {
-      const e = new Error('Google mail and calendar sync is temporarily unavailable while app verification is being completed. Please use Outlook/Microsoft sync for now.')
-      e.statusCode = 503
-      e.code = 'GOOGLE_SYNC_VERIFICATION_REQUIRED'
-      throw e
-    }
-
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       const e = new Error('Google sync is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Vercel.')
       e.statusCode = 503

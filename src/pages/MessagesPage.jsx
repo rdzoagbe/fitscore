@@ -9,8 +9,7 @@ function formatDate(value) {
   try { return new Date(value).toLocaleString() } catch { return value }
 }
 
-async function getFreshAccessToken(session) {
-  if (session?.access_token) return session.access_token
+async function getFreshAccessToken() {
   const { data } = await supabase.auth.getSession()
   return data?.session?.access_token || null
 }
@@ -216,10 +215,8 @@ export default function MessagesPage({ setPage }) {
     setSyncNotice('')
     setError('')
     try {
-      const token = await getFreshAccessToken(session)
+      const token = await getFreshAccessToken()
       if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
-      // Pass login_hint when connecting the same provider the user signed in with — skips account picker
-      const loginHint = (provider === ssoProvider && user?.email) ? user.email : null
       const res = await fetch('/api/mail-sync-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -241,7 +238,7 @@ export default function MessagesPage({ setPage }) {
     setSyncNotice('')
     setError('')
     try {
-      const token = await getFreshAccessToken(session)
+      const token = await getFreshAccessToken()
       if (!token) throw new Error(t('messages_signin_required', 'Please sign in first.'))
       const res = await fetch('/api/smart-job-sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } })
       const data = await res.json().catch(() => ({}))
@@ -289,7 +286,7 @@ export default function MessagesPage({ setPage }) {
     setError('')
     setReplySuccess('')
     try {
-      const token = await getFreshAccessToken(session)
+      const token = await getFreshAccessToken()
       if (!token) throw new Error(t('messages_signin_required', 'Please sign in to reply.'))
       const res = await fetch('/api/support-reply', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ threadId: selected.id, message: body }) })
       const data = await res.json().catch(() => ({}))
