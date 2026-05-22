@@ -141,9 +141,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     const provider = String(req.body?.provider || req.query?.provider || '').toLowerCase()
-    const loginHint = String(req.body?.loginHint || req.query?.login_hint || req.query?.loginHint || '').trim()
     if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Choose google or microsoft.', code: 'PROVIDER_REQUIRED' })
-    const loginHint = req.body?.login_hint ? String(req.body.login_hint).trim() : null
+    const loginHint = String(req.body?.login_hint || req.body?.loginHint || req.query?.login_hint || req.query?.loginHint || '').trim() || null
     const supabase = createServerSupabaseClient()
     const user = await requireUser(req, supabase)
     const appUrl = getAppUrl(req)
