@@ -80,7 +80,8 @@ export default async function handler(req, res) {
   const appUrl = getAppUrl(req)
 
   try {
-    const { code, state, error } = req.query || {}
+    const { code, state, error, ping } = req.query || {}
+    if (ping === '1') return res.status(200).json({ ok: true, fn: 'google-sync-callback' })
     if (error) return res.redirect(`${appUrl}/messages?sync=cancelled&reason=${encodeURIComponent(error)}`)
     if (!code || !state) return res.redirect(`${appUrl}/messages?sync=failed&reason=missing_oauth_code`)
 
