@@ -44,6 +44,49 @@ function isNoiseSubject(subject = '') {
   return NOISE_SUBJECT_PATTERNS.some(pattern => pattern.test(subject))
 }
 
+const NOISE_SENDER_PATTERNS = [
+  /vercel/i,
+  /github/i,
+  /gitlab/i,
+  /bitbucket/i,
+  /netlify/i,
+  /railway/i,
+  /render\.com/i,
+  /cloudflare/i,
+  /supabase/i,
+  /stripe/i,
+  /sentry/i,
+  /dependabot/i,
+  /notifications@/i,
+  /no-?reply@github/i,
+  /noreply@github/i
+]
+
+const NOISE_TEXT_PATTERNS = [
+  /\bdeploy(?:ment|ed)?\b/i,
+  /\bproduction deployment\b/i,
+  /\bpreview deployment\b/i,
+  /\bbuild failed\b/i,
+  /\bbuild succeeded\b/i,
+  /\bworkflow run\b/i,
+  /\bpull request\b/i,
+  /\bcommit\b/i,
+  /\bchore:/i,
+  /\bfix:/i,
+  /\bmerge pull request\b/i,
+  /\bbranch\b/i,
+  /\brepository\b/i
+]
+
+function isNoiseSender(senderName = '', senderEmail = '') {
+  const value = `${senderName} ${senderEmail}`
+  return NOISE_SENDER_PATTERNS.some(pattern => pattern.test(value))
+}
+
+function isNoiseJobText(text = '') {
+  return NOISE_TEXT_PATTERNS.some(pattern => pattern.test(String(text || '')))
+}
+
 function parseFromHeader(fromValue = '') {
   const raw = String(fromValue || 'Unknown')
   const match = raw.match(/<(.*?)>/)
@@ -405,16 +448,20 @@ async function scanGoogle(accessToken) {
         diagnostics.gmailFetched += 1
         const headers = detail.payload?.headers || []
         const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
-        if (isNoiseSubject(subject)) {
-          diagnostics.gmailNoiseSkipped += 1
-          continue
-        }
-
         const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
         const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
         const sender = parseFromHeader(fromRaw)
         const snippet = detail.snippet || ''
         const jobSignalText = `${subject} ${snippet}`
+
+        if (
+          isNoiseSubject(subject) ||
+          isNoiseSender(sender.name, sender.email) ||
+          isNoiseJobText(jobSignalText)
+        ) {
+          diagnostics.gmailNoiseSkipped += 1
+          continue
+        }
         if (
           !containsAny(jobSignalText, REFUS_KW) &&
           !containsAny(jobSignalText, ENTRETIEN_KW) &&
