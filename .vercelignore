@@ -5,6 +5,7 @@
 #           profile-optimize, smart-job-sync, stripe-webhook, support-reply,
 #           system-check
 
+api/lib/
 api/cover-letter.js
 api/create-checkout-v2.js
 api/cv-optimize.js
