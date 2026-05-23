@@ -1,5 +1,12 @@
 {
   "rewrites": [
+    { "source": "/api/auth/linkedin/me", "destination": "/api/linkedin-optimize?_action=auth_me" },
+    { "source": "/api/auth/linkedin/logout", "destination": "/api/linkedin-optimize?_action=auth_logout" },
+    { "source": "/api/auth/linkedin/start", "destination": "/api/linkedin-optimize?_action=auth_start" },
+    { "source": "/api/auth/linkedin/callback", "destination": "/api/linkedin-optimize?_action=auth_callback" },
+    { "source": "/api/linkedin-dma/start", "destination": "/api/linkedin-optimize?_action=dma_start" },
+    { "source": "/api/linkedin-dma/callback", "destination": "/api/linkedin-optimize?_action=dma_callback" },
+    { "source": "/api/linkedin-dma/import", "destination": "/api/linkedin-optimize?_action=dma_import" },
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"

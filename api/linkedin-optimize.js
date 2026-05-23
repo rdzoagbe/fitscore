@@ -519,7 +519,149 @@ async function handlePdfExtract(req, res) {
   }
 }
 
+import crypto from 'node:crypto'
+
+function parseCookiesStr(header = '') {
+  return Object.fromEntries(header.split(';').map(p => { const i = p.indexOf('='); if (i === -1) return null; return [p.slice(0, i).trim(), decodeURIComponent(p.slice(i + 1).trim())] }).filter(Boolean))
+}
+function serializeCookie(name, value, opts = {}) {
+  const parts = [`${name}=${encodeURIComponent(value)}`]
+  if (opts.maxAge != null) parts.push(`Max-Age=${opts.maxAge}`)
+  if (opts.path) parts.push(`Path=${opts.path}`)
+  if (opts.httpOnly) parts.push('HttpOnly')
+  if (opts.secure) parts.push('Secure')
+  if (opts.sameSite) parts.push(`SameSite=${opts.sameSite}`)
+  return parts.join('; ')
+}
+function signCookie(value, secret) { return crypto.createHmac('sha256', secret).update(value).digest('base64url') }
+function readSignedCookie(value, secret) {
+  if (!value || !secret) return null
+  const [body, sig] = value.split('.')
+  if (!body || !sig) return null
+  const expected = signCookie(body, secret)
+  if (Buffer.from(sig).length !== Buffer.from(expected).length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null
+  try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) } catch { return null }
+}
+function makeSignedCookie(payload, secret) { const body = Buffer.from(JSON.stringify(payload)).toString('base64url'); return `${body}.${signCookie(body, secret)}` }
+function getOriginFromReq(req) { const proto = req.headers['x-forwarded-proto'] || 'https'; const host = req.headers['x-forwarded-host'] || req.headers.host; return `${proto}://${host}` }
+
+async function handleLinkedInMe(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ success: false, error: 'Method not allowed' })
+  const secret = process.env.LINKEDIN_COOKIE_SECRET || process.env.LINKEDIN_CLIENT_SECRET
+  const profile = readSignedCookie(parseCookiesStr(req.headers.cookie || '').linkedin_identity, secret)
+  return res.status(200).json({ success: true, connected: Boolean(profile), profile: profile || null })
+}
+
+async function handleLinkedInLogout(req, res) {
+  const secure = (req.headers['x-forwarded-proto'] || 'https') === 'https'
+  res.setHeader('Set-Cookie', [
+    serializeCookie('linkedin_identity', '', { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: 0 }),
+    serializeCookie('linkedin_oauth_state', '', { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: 0 })
+  ])
+  return res.status(200).json({ success: true, connected: false })
+}
+
+async function handleLinkedInStart(req, res) {
+  if (req.method !== 'GET') { res.statusCode = 405; return res.end('Method not allowed') }
+  const clientId = process.env.LINKEDIN_CLIENT_ID
+  if (!clientId) { res.statusCode = 500; return res.end('Missing LINKEDIN_CLIENT_ID') }
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || `${getOriginFromReq(req)}/api/auth/linkedin/callback`
+  const state = crypto.randomBytes(24).toString('hex')
+  const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization')
+  authUrl.searchParams.set('response_type', 'code')
+  authUrl.searchParams.set('client_id', clientId)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  authUrl.searchParams.set('state', state)
+  authUrl.searchParams.set('scope', 'openid profile email')
+  const secure = (req.headers['x-forwarded-proto'] || 'https') === 'https'
+  res.setHeader('Set-Cookie', serializeCookie('linkedin_oauth_state', state, { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: 600 }))
+  res.statusCode = 302; res.setHeader('Location', authUrl.toString()); return res.end()
+}
+
+async function handleLinkedInCallback(req, res) {
+  if (req.method !== 'GET') { res.statusCode = 405; return res.end('Method not allowed') }
+  const failUrl = path => { res.statusCode = 302; res.setHeader('Location', path); return res.end() }
+  const { code, state, error, error_description } = req.query || {}
+  if (error) return failUrl(`/linkedin?linkedin=error&message=${encodeURIComponent(error_description || error)}`)
+  const cookies = parseCookiesStr(req.headers.cookie || '')
+  if (!state || !cookies.linkedin_oauth_state || state !== cookies.linkedin_oauth_state) return failUrl('/linkedin?linkedin=error&message=state_mismatch')
+  const clientId = process.env.LINKEDIN_CLIENT_ID, clientSecret = process.env.LINKEDIN_CLIENT_SECRET
+  const cookieSecret = process.env.LINKEDIN_COOKIE_SECRET || clientSecret
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || `${getOriginFromReq(req)}/api/auth/linkedin/callback`
+  if (!clientId || !clientSecret || !code) return failUrl('/linkedin?linkedin=error&message=missing_config')
+  const tokenResp = await fetch('https://www.linkedin.com/oauth/v2/accessToken', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri, client_id: clientId, client_secret: clientSecret }) })
+  const tokenData = await tokenResp.json().catch(() => ({}))
+  if (!tokenResp.ok || !tokenData.access_token) return failUrl(`/linkedin?linkedin=error&message=${encodeURIComponent(tokenData.error_description || 'token_failed')}`)
+  const userResp = await fetch('https://api.linkedin.com/v2/userinfo', { headers: { Authorization: `Bearer ${tokenData.access_token}` } })
+  const userInfo = await userResp.json().catch(() => ({}))
+  if (!userResp.ok || !userInfo.sub) return failUrl('/linkedin?linkedin=error&message=userinfo_failed')
+  const profile = { provider: 'linkedin', sub: userInfo.sub, name: userInfo.name || `${userInfo.given_name || ''} ${userInfo.family_name || ''}`.trim(), email: userInfo.email || '', picture: userInfo.picture || '', connected_at: new Date().toISOString() }
+  const secure = (req.headers['x-forwarded-proto'] || 'https') === 'https'
+  res.setHeader('Set-Cookie', [serializeCookie('linkedin_oauth_state', '', { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: 0 }), serializeCookie('linkedin_identity', makeSignedCookie(profile, cookieSecret), { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: 60 * 60 * 24 * 30 })])
+  res.statusCode = 302; res.setHeader('Location', process.env.LINKEDIN_SUCCESS_REDIRECT || '/linkedin?linkedin=connected'); return res.end()
+}
+
+async function handleDmaStart(req, res) {
+  const clientId = process.env.LINKEDIN_DMA_CLIENT_ID || process.env.LINKEDIN_CLIENT_ID
+  const redirectUri = process.env.LINKEDIN_DMA_REDIRECT_URI || `${getOriginFromReq(req)}/api/linkedin-dma/callback`
+  if (!clientId) return res.status(500).json({ success: false, error: 'Missing LINKEDIN_CLIENT_ID in Vercel.' })
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36)
+  res.setHeader('Set-Cookie', `linkedin_dma_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`)
+  const url = new URL('https://www.linkedin.com/oauth/v2/authorization')
+  url.searchParams.set('response_type', 'code'); url.searchParams.set('client_id', clientId); url.searchParams.set('redirect_uri', redirectUri); url.searchParams.set('state', state); url.searchParams.set('scope', process.env.LINKEDIN_DMA_SCOPE || 'r_dma_portability_3rd_party')
+  res.writeHead(302, { Location: url.toString() }); return res.end()
+}
+
+async function handleDmaCallback(req, res) {
+  const redir = loc => { res.writeHead(302, { Location: loc }); return res.end() }
+  try {
+    const reqUrl = new URL(req.url, `https://${req.headers.host || 'joblytics-ai.com'}`)
+    const code = reqUrl.searchParams.get('code'), state = reqUrl.searchParams.get('state'), error = reqUrl.searchParams.get('error')
+    if (error) return redir(`/linkedin?linkedin_dma_error=${encodeURIComponent(reqUrl.searchParams.get('error_description') || error)}`)
+    if (!code) return redir('/linkedin?linkedin_dma_error=missing_code')
+    const cookies = parseCookiesStr(req.headers.cookie || '')
+    if (!state || !cookies.linkedin_dma_state || state !== cookies.linkedin_dma_state) return redir('/linkedin?linkedin_dma_error=invalid_state')
+    const clientId = process.env.LINKEDIN_DMA_CLIENT_ID || process.env.LINKEDIN_CLIENT_ID, clientSecret = process.env.LINKEDIN_DMA_CLIENT_SECRET || process.env.LINKEDIN_CLIENT_SECRET
+    const redirectUri = process.env.LINKEDIN_DMA_REDIRECT_URI || `${getOriginFromReq(req)}/api/linkedin-dma/callback`
+    if (!clientId || !clientSecret) return res.status(500).json({ success: false, error: 'Missing LinkedIn DMA credentials.' })
+    const tokenResp = await fetch('https://www.linkedin.com/oauth/v2/accessToken', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri, client_id: clientId, client_secret: clientSecret }) })
+    const tokenData = await tokenResp.json().catch(() => ({}))
+    if (!tokenResp.ok || !tokenData.access_token) return redir(`/linkedin?linkedin_dma_error=${encodeURIComponent(tokenData.error_description || 'token_failed')}`)
+    const maxAge = Number(tokenData.expires_in || 5184000)
+    res.setHeader('Set-Cookie', ['linkedin_dma_state=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0', `linkedin_dma_access=${encodeURIComponent(tokenData.access_token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`])
+    return redir('/linkedin?linkedin_dma=connected')
+  } catch (err) { return redir(`/linkedin?linkedin_dma_error=${encodeURIComponent(err.message || 'callback_failed')}`) }
+}
+
+async function handleDmaImport(req, res) {
+  try {
+    const token = parseCookiesStr(req.headers.cookie || '').linkedin_dma_access
+    if (!token) return res.status(401).json({ success: false, error: 'No LinkedIn DMA access token found. Click "Import full LinkedIn profile" first.' })
+    const hdrs = { Authorization: `Bearer ${token}`, 'LinkedIn-Version': process.env.LINKEDIN_DMA_API_VERSION || '202312', 'X-Restli-Protocol-Version': '2.0.0', 'Content-Type': 'application/json' }
+    await fetch('https://api.linkedin.com/rest/memberAuthorizations', { method: 'POST', headers: hdrs, body: '{}' }).catch(() => {})
+    const reqUrl = new URL(req.url, `https://${req.headers.host || 'joblytics-ai.com'}`)
+    const domains = (reqUrl.searchParams.get('domains') || 'PROFILE,POSITIONS,EDUCATION,SKILLS,CERTIFICATIONS').split(',').map(d => d.trim()).filter(Boolean)
+    const results = await Promise.all(domains.map(async domain => {
+      const url = new URL('https://api.linkedin.com/rest/memberSnapshotData'); url.searchParams.set('q', 'criteria'); url.searchParams.set('domain', domain); url.searchParams.set('start', '0'); url.searchParams.set('count', '100')
+      const r = await fetch(url.toString(), { headers: hdrs }); const data = await r.json().catch(() => ({}))
+      return r.ok ? { domain, success: true, data } : { domain, success: false, error: data?.message || `LinkedIn returned ${r.status}` }
+    }))
+    const profileText = results.map(r => r.success ? `## ${r.domain}\n${(r.data?.elements || []).map((e, i) => `### Item ${i+1}\n${JSON.stringify(e.snapshotData || e, null, 2)}`).join('\n\n')}` : `## ${r.domain}\nUnable to import: ${r.error}`).join('\n\n')
+    if (!results.some(r => r.success)) return res.status(502).json({ success: false, error: 'No LinkedIn data available yet. Try again in 10 minutes.', results })
+    return res.status(200).json({ success: true, domains, profileText, results })
+  } catch (err) { return res.status(500).json({ success: false, error: err.message || 'LinkedIn DMA import failed.' }) }
+}
+
 export default async function handler(req, res) {
+  const action = req.query._action
+  if (action === 'auth_me') return handleLinkedInMe(req, res)
+  if (action === 'auth_logout') return handleLinkedInLogout(req, res)
+  if (action === 'auth_start') return handleLinkedInStart(req, res)
+  if (action === 'auth_callback') return handleLinkedInCallback(req, res)
+  if (action === 'dma_start') return handleDmaStart(req, res)
+  if (action === 'dma_callback') return handleDmaCallback(req, res)
+  if (action === 'dma_import') return handleDmaImport(req, res)
+
   setCors(res)
 
   if (req.method === 'OPTIONS') return res.status(204).end?.()
