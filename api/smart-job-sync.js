@@ -373,17 +373,27 @@ async function scanGoogle(accessToken) {
   const emails = []
   const calendar = []
   const errors = []
+  const diagnostics = {
+    gmailListed: 0,
+    gmailFetched: 0,
+    gmailNoiseSkipped: 0,
+    gmailKeywordSkipped: 0,
+    googleCalendarListed: 0,
+    googleCalendarKeywordSkipped: 0
+  }
   const { isoStart, isoNow } = monthWindow()
 
   try {
     // gmail.metadata scope does NOT support the Gmail `q` search parameter.
     // List recent messages first, then filter job-related signals locally from headers/snippet.
     const list = await getJson(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=80`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=200`,
       accessToken
     )
 
-    for (const msg of (list.messages || []).slice(0, 25)) {
+    diagnostics.gmailListed = (list.messages || []).length
+
+    for (const msg of (list.messages || []).slice(0, 120)) {
       try {
         // gmail.metadata scope: use format=metadata — returns headers + snippet, no body.
         // Subject/From/Date come from headers; snippet (≤200 chars) is enough for classification.
@@ -392,9 +402,13 @@ async function scanGoogle(accessToken) {
           accessToken
         )
 
+        diagnostics.gmailFetched += 1
         const headers = detail.payload?.headers || []
         const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
-        if (isNoiseSubject(subject)) continue
+        if (isNoiseSubject(subject)) {
+          diagnostics.gmailNoiseSkipped += 1
+          continue
+        }
 
         const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
         const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
@@ -405,8 +419,12 @@ async function scanGoogle(accessToken) {
           !containsAny(jobSignalText, REFUS_KW) &&
           !containsAny(jobSignalText, ENTRETIEN_KW) &&
           !containsAny(jobSignalText, EN_COURS_KW) &&
-          !containsAny(jobSignalText, OFFER_KW)
-        ) continue
+          !containsAny(jobSignalText, OFFER_KW) &&
+          !containsAny(jobSignalText, ['application', 'candidature', 'recruiter', 'recrutement', 'career', 'careers', 'job', 'jobs', 'talent', 'hiring', 'poste', 'opportunité', 'opportunity'])
+        ) {
+          diagnostics.gmailKeywordSkipped += 1
+          continue
+        }
 
         const platform = detectPlatform(sender.name, sender.email)
         const company = extractCompany(sender.name, sender.email, subject)
@@ -436,13 +454,18 @@ async function scanGoogle(accessToken) {
       accessToken
     )
 
+    diagnostics.googleCalendarListed = (events.items || []).length
+
     for (const event of (events.items || [])) {
       const attendees = (event.attendees || []).map(a => a.email).filter(Boolean).join(', ')
       const summary = event.summary || ''
       const description = event.description || ''
       const location = event.location || ''
 
-      if (!eventIsInterview(summary, description, location, attendees)) continue
+      if (!eventIsInterview(summary, description, location, attendees)) {
+        diagnostics.googleCalendarKeywordSkipped += 1
+        continue
+      }
 
       const company = extractCompany('', attendees.split(',')[0] || '', summary)
       calendar.push(buildCalendar({
@@ -460,7 +483,7 @@ async function scanGoogle(accessToken) {
     errors.push(`google-calendar: ${error.message}`)
   }
 
-  return { emails, calendar, errors }
+  return { emails, calendar, errors, diagnostics }
 }
 
 async function scanMicrosoft(accessToken) {
@@ -591,6 +614,7 @@ export default async function handler(req, res) {
     let emails = []
     let calendar = []
     const errors = []
+    const diagnostics = {}
 
     for (const connection of connections) {
       try {
@@ -599,6 +623,7 @@ export default async function handler(req, res) {
 
         emails = emails.concat(scan.emails)
         calendar = calendar.concat(scan.calendar)
+        if (scan.diagnostics) diagnostics[connection.provider] = scan.diagnostics
 
         if (scan.errors?.length) {
           errors.push(...scan.errors.map(message => `${connection.provider}: ${message}`))
@@ -643,6 +668,7 @@ export default async function handler(req, res) {
       emails,
       calendar,
       errors,
+      diagnostics,
       monthWindow: monthWindow(),
       message: errors.length
         ? 'Smart Sync scanned the current month with warnings.'
