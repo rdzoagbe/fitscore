@@ -1,4 +1,16 @@
 {
+  "redirects": [
+    {
+      "source": "/api/mail-sync-callback",
+      "destination": "/api/google-sync-callback",
+      "permanent": false
+    },
+    {
+      "source": "/api/sync-callback",
+      "destination": "/api/google-sync-callback",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     { "source": "/api/sync-settings", "destination": "/api/mail-sync-start?_action=sync_settings" },
     { "source": "/api/auth/linkedin/me", "destination": "/api/linkedin-optimize?_action=auth_me" },
