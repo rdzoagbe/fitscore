@@ -102,7 +102,7 @@ function getProviderConfig(provider, appUrl) {
       profileUrl: 'https://graph.microsoft.com/v1.0/me',
       clientId: process.env.MICROSOFT_CLIENT_ID,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`
+      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`
     }
   }
   throw new Error('Unsupported sync provider.')
@@ -190,26 +190,17 @@ async function saveConnection({ supabase, provider, statePayload, tokenData, pro
   return data?.id
 }
 
-
-function getQuery(req, appUrl) {
-  const url = new URL(req.url || '', appUrl)
-  const query = Object.fromEntries(url.searchParams.entries())
-  return { ...(req.query || {}), ...query }
-}
-
 export default async function handler(req, res) {
   const appUrl = getAppUrl(req)
-  const query = getQuery(req, appUrl)
-
   try {
-    const oauthError = query.error
+    const oauthError = req.query?.error
     if (oauthError) {
-      return redirectToMessages(req, res, { sync: 'failed', provider: 'microsoft', reason: query.error_description || oauthError })
+      return redirectToMessages(req, res, { sync: 'failed', reason: req.query?.error_description || oauthError })
     }
 
-    const code = query.code
-    const state = query.state
-    if (!code || !state) return redirectToMessages(req, res, { sync: 'failed', provider: 'microsoft', reason: 'missing_oauth_code' })
+    const code = req.query?.code
+    const state = req.query?.state
+    if (!code || !state) return redirectToMessages(req, res, { sync: 'failed', reason: 'Missing authorization response.' })
 
     const supabase = createAdminSupabaseClient()
     if (!supabase) throw new Error('Supabase service role is not configured.')
