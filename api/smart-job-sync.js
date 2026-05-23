@@ -261,9 +261,15 @@ async function refreshProviderToken(provider, refreshToken) {
   return data
 }
 
+function isAuthError(message) {
+  return /invalid.*(grant|token|client|secret|credential)|unauthorized|revoked|401|403/i.test(String(message || ''))
+}
+
 async function updateConnectionError(supabase, connectionId, message) {
   if (!connectionId) return
-  await supabase.from('job_sync_connections').update({ last_error: String(message || 'Smart Sync failed.'), updated_at: new Date().toISOString() }).eq('id', connectionId)
+  const update = { last_error: String(message || 'Smart Sync failed.'), updated_at: new Date().toISOString() }
+  if (isAuthError(message)) update.status = 'error'
+  await supabase.from('job_sync_connections').update(update).eq('id', connectionId)
 }
 
 async function markConnectionSynced(supabase, connectionId) {
@@ -595,6 +601,19 @@ export default async function handler(req, res) {
         errors.push(message)
         await updateConnectionError(supabase, connection.id, error.message)
       }
+    }
+
+    const authErrorCount = errors.filter(isAuthError).length
+    if (authErrorCount > 0 && authErrorCount >= connections.length) {
+      return res.status(200).json({
+        success: false,
+        connected: false,
+        code: 'SYNC_REAUTH_REQUIRED',
+        error: 'Your sync connection was revoked. Please reconnect your account.',
+        emails: [],
+        calendar: [],
+        breakdown: { emailSignals: 0, calendarSignals: 0, emailEvents: 0, calendarEvents: 0 }
+      })
     }
 
     return res.status(200).json({

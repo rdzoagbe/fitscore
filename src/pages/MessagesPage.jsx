@@ -248,7 +248,22 @@ export default function MessagesPage({ setPage }) {
         setSyncNotice(t('smart_sync_setup_pending', 'Connect an account above first, then run Smart Sync.'))
         return
       }
+      if (data?.code === 'SYNC_REAUTH_REQUIRED') {
+        setConnectedProviders(new Set())
+        setHasRealSync(false)
+        setSyncResult(emptySyncResult())
+        setSyncNotice('Your account connection was revoked. Click "Grant read-only mail & calendar access" to reconnect.')
+        return
+      }
       if (!res.ok) throw new Error(data?.error || `Smart sync failed (${res.status})`)
+      if (data?.errors?.length && !data?.emails?.length && !data?.calendar?.length) {
+        const { data: freshConns } = await supabase.from('job_sync_connections').select('provider').eq('user_id', user.id).eq('status', 'connected')
+        setConnectedProviders(new Set((freshConns || []).map(c => c.provider)))
+        setSyncNotice(`Sync error: ${data.errors[0]}`)
+        setHasRealSync(false)
+        setSyncResult(emptySyncResult())
+        return
+      }
       const breakdown = data.breakdown || {}
       const emails = Array.isArray(data.emails) ? data.emails.map(item => normalizeEmail(item, false)) : []
       const calendar = Array.isArray(data.calendar) ? data.calendar.map(item => normalizeCalendar(item, false)) : []
