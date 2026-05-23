@@ -97,7 +97,6 @@ function providerConfig(provider, appUrl, loginHint) {
       params: {
         access_type: 'offline',
         prompt: 'consent',
-        include_granted_scopes: 'true',
         ...(loginHint ? { login_hint: loginHint } : {})
       }
     }
