@@ -371,16 +371,16 @@ export default function MessagesPage({ setPage }) {
                   <button
                     type="button"
                     className={`newSyncConnectBtn ${signedInProvider === 'microsoft' ? 'ms' : ''} is-main-action`}
-                    onClick={() => isPreferredConnected ? runSmartSync() : connectMailProvider(signedInProvider)}
+                    onClick={() => connectMailProvider(signedInProvider)}
                     disabled={smartSyncLoading}
                   >
                     <span className={getProviderButtonIcon(signedInProvider)} aria-hidden="true" />
-                    {smartSyncLoading ? 'Working…' : isPreferredConnected ? 'Run Smart Sync' : 'Grant read-only mail & calendar access'}
+                    {smartSyncLoading ? 'Working…' : 'Grant read-only mail & calendar access'}
                   </button>
 
                   <p className="newSyncSsoHint">
                     {isPreferredConnected
-                      ? 'Mail and calendar access is active. Run Smart Sync to import job-related signals.'
+                      ? 'Mail and calendar access is active. You can refresh permission here or run Smart Sync below.'
                       : 'You will be sent directly to the permission screen for the same account you used to sign in.'}
                   </p>
                 </div>
