@@ -387,13 +387,13 @@ async function scanGoogle(accessToken) {
     // gmail.metadata scope does NOT support the Gmail `q` search parameter.
     // List recent messages first, then filter job-related signals locally from headers/snippet.
     const list = await getJson(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=200`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=40`,
       accessToken
     )
 
     diagnostics.gmailListed = (list.messages || []).length
 
-    for (const msg of (list.messages || []).slice(0, 120)) {
+    for (const msg of (list.messages || []).slice(0, 25)) {
       try {
         // gmail.metadata scope: use format=metadata — returns headers + snippet, no body.
         // Subject/From/Date come from headers; snippet (≤200 chars) is enough for classification.
