@@ -67,6 +67,21 @@ function getAppUrl(req) {
   return `${proto}://${host}`.replace(/\/$/, '')
 }
 
+function getQuery(req) {
+  try {
+    const proto = req.headers['x-forwarded-proto'] || 'https'
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost'
+    const url = new URL(req.url || '', `${proto}://${host}`)
+    return { ...(req.query || {}), ...Object.fromEntries(url.searchParams.entries()) }
+  } catch {
+    return req.query || {}
+  }
+}
+
+function cleanEnv(value) {
+  return String(value || '').trim()
+}
+
 function stateSecret(provider) {
   return provider === 'microsoft'
     ? (process.env.MICROSOFT_OAUTH_STATE_SECRET || process.env.GOOGLE_OAUTH_STATE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.STRIPE_SECRET_KEY)
@@ -91,8 +106,8 @@ function providerConfig(provider, appUrl, loginHint) {
     }
 
     return {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/google-sync-callback`,
+      clientId: cleanEnv(process.env.GOOGLE_CLIENT_ID),
+      redirectUri: cleanEnv(process.env.GOOGLE_REDIRECT_URI) || `${appUrl}/api/google-sync-callback`,
       authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
       params: {
         access_type: 'offline',
@@ -110,8 +125,8 @@ function providerConfig(provider, appUrl, loginHint) {
     }
     const tenant = process.env.MICROSOFT_TENANT_ID || 'common'
     return {
-      clientId: process.env.MICROSOFT_CLIENT_ID,
-      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`,
+      clientId: cleanEnv(process.env.MICROSOFT_CLIENT_ID),
+      redirectUri: cleanEnv(process.env.MICROSOFT_REDIRECT_URI) || `${appUrl}/api/microsoft-sync-callback`,
       authUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
       params: {
         response_mode: 'query',
@@ -166,12 +181,16 @@ async function handleSyncSettings(req, res) {
 }
 
 export default async function handler(req, res) {
-  if (req.query._action === 'sync_settings') return handleSyncSettings(req, res)
+  const query = getQuery(req)
+
+  if (query._action === 'sync_settings') return handleSyncSettings(req, res)
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
   try {
-    const provider = String(req.body?.provider || req.query?.provider || '').toLowerCase()
+    const provider = String(req.body?.provider || query.provider || '').toLowerCase()
     if (!PROVIDERS[provider]) return res.status(400).json({ error: 'Choose google or microsoft.', code: 'PROVIDER_REQUIRED' })
-    const loginHint = String(req.body?.login_hint || req.body?.loginHint || req.query?.login_hint || req.query?.loginHint || '').trim() || null
+    const loginHint = String(req.body?.login_hint || req.body?.loginHint || query.login_hint || query.loginHint || '').trim() || null
     const supabase = createServerSupabaseClient()
     const user = await requireUser(req, supabase)
     const appUrl = getAppUrl(req)
