@@ -127,7 +127,46 @@ function providerConfig(provider, appUrl, loginHint) {
   throw e
 }
 
+async function handleSyncSettings(req, res) {
+  if (req.method === 'GET') {
+    try {
+      const supabase = createServerSupabaseClient()
+      const user = await requireUser(req, supabase)
+      const { data, error } = await supabase
+        .from('job_sync_connections')
+        .select('provider, provider_email, scopes, status, last_sync_at, last_error')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (error) throw error
+      if (!data) {
+        return res.status(200).json({ connected: false, provider: 'Not connected', providerEmail: '', emailSync: false, calendarSync: false, lastSyncAt: null, lastError: '', health: 'Preview mode', scopes: '' })
+      }
+      const scopes = Array.isArray(data.scopes) ? data.scopes : []
+      const emailSync = scopes.some(s => /gmail|mail/i.test(s))
+      const calendarSync = scopes.some(s => /calendar/i.test(s))
+      const connected = data.status === 'connected'
+      const providerLabel = data.provider === 'google' ? 'Google' : data.provider === 'microsoft' ? 'Microsoft' : data.provider || 'Unknown'
+      return res.status(200).json({ connected, provider: connected ? providerLabel : 'Not connected', providerEmail: data.provider_email || '', emailSync: connected && emailSync, calendarSync: connected && calendarSync, lastSyncAt: data.last_sync_at || null, lastError: data.last_error || '', health: connected ? (data.last_error ? `Error: ${String(data.last_error).slice(0, 60)}` : 'Connected') : 'Preview mode', scopes: scopes.join(' ') })
+    } catch (e) {
+      return res.status(e.statusCode || 500).json({ error: e.message || 'Could not load sync settings.', code: e.code })
+    }
+  }
+  if (req.method === 'DELETE') {
+    try {
+      const supabase = createServerSupabaseClient()
+      const user = await requireUser(req, supabase)
+      const { error } = await supabase.from('job_sync_connections').delete().eq('user_id', user.id)
+      if (error) throw error
+      return res.status(200).json({ success: true })
+    } catch (e) {
+      return res.status(e.statusCode || 500).json({ error: e.message || 'Could not disconnect sync.', code: e.code })
+    }
+  }
+  return res.status(405).json({ error: 'Method not allowed' })
+}
+
 export default async function handler(req, res) {
+  if (req.query._action === 'sync_settings') return handleSyncSettings(req, res)
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   try {
     const provider = String(req.body?.provider || req.query?.provider || '').toLowerCase()

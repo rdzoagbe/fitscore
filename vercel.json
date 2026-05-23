@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/sync-settings", "destination": "/api/mail-sync-start?_action=sync_settings" },
     { "source": "/api/auth/linkedin/me", "destination": "/api/linkedin-optimize?_action=auth_me" },
     { "source": "/api/auth/linkedin/logout", "destination": "/api/linkedin-optimize?_action=auth_logout" },
     { "source": "/api/auth/linkedin/start", "destination": "/api/linkedin-optimize?_action=auth_start" },
