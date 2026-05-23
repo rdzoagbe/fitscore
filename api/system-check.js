@@ -62,7 +62,7 @@ export default function handler(req, res) {
     },
     google: {
       redirect_uri_configured: checks.google_redirect_uri,
-      scopes: ['gmail.readonly', 'calendar.readonly']
+      scopes: ['gmail.metadata', 'calendar.readonly']
     },
     note: 'This endpoint only returns boolean readiness checks. It never exposes secret values.'
   })
