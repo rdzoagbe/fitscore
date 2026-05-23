@@ -376,8 +376,10 @@ async function scanGoogle(accessToken) {
   const { isoStart, isoNow } = monthWindow()
 
   try {
+    // gmail.metadata scope does NOT support the Gmail `q` search parameter.
+    // List recent messages first, then filter job-related signals locally from headers/snippet.
     const list = await getJson(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=${encodeURIComponent(gmailMonthQuery())}`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=80`,
       accessToken
     )
 
@@ -398,6 +400,14 @@ async function scanGoogle(accessToken) {
         const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
         const sender = parseFromHeader(fromRaw)
         const snippet = detail.snippet || ''
+        const jobSignalText = `${subject} ${snippet}`
+        if (
+          !containsAny(jobSignalText, REFUS_KW) &&
+          !containsAny(jobSignalText, ENTRETIEN_KW) &&
+          !containsAny(jobSignalText, EN_COURS_KW) &&
+          !containsAny(jobSignalText, OFFER_KW)
+        ) continue
+
         const platform = detectPlatform(sender.name, sender.email)
         const company = extractCompany(sender.name, sender.email, subject)
 
