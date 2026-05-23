@@ -53,8 +53,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/*.js": {
-      "maxDuration": 60,
-      "includeFiles": "api/lib/**"
+      "maxDuration": 10
     }
   }
 }
