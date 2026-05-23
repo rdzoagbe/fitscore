@@ -1,22 +1,6 @@
 # Vercel Hobby plan: max 12 Serverless Functions.
-# Explicitly exclude the 14 files NOT deployed, keeping exactly 12.
-# Deployed: analyze, contact, create-checkout-session, google-sync-callback,
-#           mail-sync-start, microsoft-sync-callback, profile-import,
-#           profile-optimize, smart-job-sync, stripe-webhook, support-reply,
-#           system-check
-
-api/lib/
-api/cover-letter.js
-api/create-checkout-v2.js
-api/cv-optimize.js
-api/google-sync-start.js
-api/health-check.js
-api/linkedin-optimize.js
-api/linkedin-pdf-extract.js
-api/mail-sync-callback.js
-api/microsoft-sync-start.js
-api/ms-callback.js
-api/smart-sync-health-check.js
-api/smart-sync-health.js
-api/smart-sync-microsoft-callback.js
-api/sync-callback.js
+# Exactly 12 api/*.js files exist — all are deployed.
+# Deployed: analyze, contact, cover-letter, create-checkout-session,
+#           google-sync-callback, linkedin-optimize, mail-sync-start,
+#           microsoft-sync-callback, profile-optimize, smart-job-sync,
+#           stripe-webhook, support-reply

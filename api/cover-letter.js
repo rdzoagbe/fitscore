@@ -1,6 +1,43 @@
 import Anthropic from '@anthropic-ai/sdk'
+import pdfParse from 'pdf-parse'
+import mammoth from 'mammoth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+async function extractCvText(base64Data, mimeType) {
+  const buffer = Buffer.from(base64Data, 'base64')
+  if (mimeType === 'application/pdf') return (await pdfParse(buffer)).text
+  if (mimeType.includes('word') || mimeType.includes('officedocument')) return (await mammoth.extractRawText({ buffer })).value
+  throw new Error('Unsupported file type. Please upload a PDF or Word document.')
+}
+
+async function handleCvOptimize(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  const { cvBase64, cvMimeType, analysis, lang = 'en' } = req.body
+  if (!cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing CV file. Please upload your CV first.' })
+  if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context. Please run an analysis first.' })
+  let cvText
+  try { cvText = await extractCvText(cvBase64, cvMimeType) } catch (e) { return res.status(400).json({ error: e.message || 'Could not read CV file.' }) }
+  if (!cvText || cvText.trim().length < 100) return res.status(400).json({ error: 'CV text is too short or could not be extracted. Make sure your CV is not a scanned image.' })
+  const r = analysis
+  const langInstruction = { en: 'All output must be in English.', fr: 'Toute la sortie doit être en français.', es: 'Toda la salida debe estar en español.', de: 'Alle Ausgaben müssen auf Deutsch sein.', it: 'Tutto l\'output deve essere in italiano.', pt: 'Todo o output deve estar em português.' }[lang] || 'All output must be in English.'
+  const missingKeywords = (r.keyword_match?.missing || []).slice(0, 12)
+  const foundKeywords = (r.keyword_match?.found || []).slice(0, 12)
+  const criticalGaps = (r.critical_gaps || []).slice(0, 5)
+  const prompt = `You are a senior career coach helping a job seeker optimize their CV for a specific job. You must NOT fabricate or invent experience that isn't in the original CV. You may only: reword existing experience using more impactful language, reorganize sections to put the most job-relevant content first, emphasize keywords from the job posting that are already present, suggest where to add specific skills the user likely has but didn't mention, quantify achievements where the user implied numbers.\n\nReturn a STRUCTURED JSON object with these exact fields. ${langInstruction}\n\nJOB CONTEXT:\nTitle: ${r.job_context?.title || 'Position'}\nCompany: ${r.job_context?.company || 'Not specified'}\nRequired keywords (already in CV): ${foundKeywords.join(', ') || 'none extracted'}\nMissing keywords (try to integrate where truthful): ${missingKeywords.join(', ') || 'none'}\nCritical gaps to address: ${criticalGaps.join('; ') || 'none'}\n\nORIGINAL CV:\n${cvText.slice(0, 6000)}\n\nOUTPUT FORMAT — return ONLY this JSON, no preamble, no markdown:\n{\n  "header": { "full_name": "<name from CV>", "title": "<professional title>", "contact": { "email": "", "phone": "", "location": "", "linkedin": "" } },\n  "summary": "<3-4 sentence professional summary tailored to the target role>",\n  "experience": [{ "title": "", "company": "", "location": "", "dates": "", "bullets": ["<bullet 1>", "<bullet 2>", "<bullet 3 max>"] }],\n  "skills": { "technical": [], "soft": [], "languages": [] },\n  "education": [{ "degree": "", "institution": "", "location": "", "dates": "" }],\n  "changes_made": ["<change 1>", "<change 2>", "<change 3>"],\n  "honest_disclaimer": "<one short sentence reminding user to verify before sending>"\n}\n\nCRITICAL RULES: NEVER invent skills, jobs, or qualifications. Keep the original truth. Maximum 5 experiences. Maximum 8 technical skills, 5 soft skills.`
+  const message = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 3500, temperature: 0.3, messages: [{ role: 'user', content: prompt }] })
+  const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
+  let optimized
+  try { optimized = JSON.parse(raw) } catch (e) { return res.status(500).json({ error: 'Could not parse the optimized CV. Please try again.' }) }
+  optimized.header = optimized.header || { full_name: '', title: '', contact: {} }
+  optimized.experience = Array.isArray(optimized.experience) ? optimized.experience.slice(0, 5) : []
+  optimized.skills = optimized.skills || { technical: [], soft: [], languages: [] }
+  optimized.education = Array.isArray(optimized.education) ? optimized.education : []
+  optimized.changes_made = Array.isArray(optimized.changes_made) ? optimized.changes_made.slice(0, 5) : []
+  optimized.summary = optimized.summary || ''
+  optimized.honest_disclaimer = optimized.honest_disclaimer || 'Please review and edit before sending.'
+  return res.status(200).json({ success: true, optimized })
+}
 
 // Locale-aware salutations and sign-offs
 const SALUTATIONS = {
@@ -35,6 +72,7 @@ function pickSalutation(recipient, lang) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (req.body?.type === 'cv-optimize') return handleCvOptimize(req, res)
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {

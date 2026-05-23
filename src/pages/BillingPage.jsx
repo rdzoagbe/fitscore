@@ -81,7 +81,7 @@ export default function BillingPage() {
       storePendingBillingLegalAcceptance(legalAcceptance)
       const token = await getFreshAccessToken(session)
       if (!token) throw new Error(t('billing_signin_required', 'Please sign in before subscribing.'))
-      const res = await fetch('/api/create-checkout-v2', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ planId: selectedPlan.planId, legalAcceptance }) })
+      const res = await fetch('/api/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ planId: selectedPlan.planId, legalAcceptance }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Could not start checkout (${res.status})`)
       if (!data?.url) throw new Error('Stripe did not return a checkout URL.')

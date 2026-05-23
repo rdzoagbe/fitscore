@@ -29,10 +29,11 @@ export default function OptimizeCvCard({ selected }) {
         reader.readAsDataURL(cvFile)
       })
 
-      const res = await fetch('/api/cv-optimize', {
+      const res = await fetch('/api/cover-letter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'cv-optimize',
           cvBase64,
           cvMimeType: cvFile.type,
           analysis: selected.result,

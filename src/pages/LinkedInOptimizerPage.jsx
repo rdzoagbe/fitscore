@@ -239,10 +239,10 @@ export default function LinkedInOptimizerPage() {
       }
 
       const base64 = await fileToBase64(file)
-      const response = await fetch('/api/linkedin-pdf-extract', {
+      const response = await fetch('/api/linkedin-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64: base64, fileName: file.name })
+        body: JSON.stringify({ type: 'extract-pdf', fileBase64: base64, fileName: file.name })
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok || !data.success) throw new Error(data.error || 'Could not extract text from this PDF.')

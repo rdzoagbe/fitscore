@@ -77,10 +77,10 @@ export default function ProfileOptimizerPage() {
     try {
       if (file.type && file.type !== 'application/pdf') throw new Error(t('profile_pdf_only', 'Please upload a PDF file.'))
       const fileBase64 = await readFileAsBase64(file)
-      const res = await fetch('/api/profile-import', {
+      const res = await fetch('/api/profile-optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64, filename: file.name })
+        body: JSON.stringify({ action: 'import', fileBase64, filename: file.name })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || `Import failed ${res.status}`)
