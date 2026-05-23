@@ -92,7 +92,7 @@ function providerConfig(provider, appUrl, loginHint) {
 
     return {
       clientId: process.env.GOOGLE_CLIENT_ID,
-      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/google-sync-callback`,
       authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
       params: {
         access_type: 'offline',
