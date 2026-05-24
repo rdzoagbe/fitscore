@@ -55,6 +55,10 @@ const NOISE_SENDER_PATTERNS = [
   /cloudflare/i,
   /supabase/i,
   /stripe/i,
+  /search console/i,
+  /sc-noreply@google\.com/i,
+  /google search console/i,
+  /google webmaster/i,
   /sentry/i,
   /dependabot/i,
   /notifications@/i,
@@ -75,7 +79,15 @@ const NOISE_TEXT_PATTERNS = [
   /\bfix:/i,
   /\bmerge pull request\b/i,
   /\bbranch\b/i,
-  /\brepository\b/i
+  /\brepository\b/i,
+  /google search console/i,
+  /improve google presence/i,
+  /site ownership/i,
+  /domain ownership/i,
+  /search performance/i,
+  /indexing/i,
+  /webmaster/i,
+  /verification/i
 ]
 
 function isNoiseSender(senderName = '', senderEmail = '') {
