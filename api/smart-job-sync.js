@@ -794,7 +794,7 @@ async function storeSyncEvents(supabase, userId, provider, emails = [], calendar
   return { stored: rows.length, error: null }
 }
 
-\nasync function scanMicrosoft(accessToken) {
+async function scanMicrosoft(accessToken) {
   const emails = []
   const calendar = []
   const errors = []
