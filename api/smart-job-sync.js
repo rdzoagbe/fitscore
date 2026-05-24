@@ -892,6 +892,62 @@ async function storeSyncEvents(supabase, userId, provider, emails = [], calendar
   return { stored: rows.length, error: null }
 }
 
+
+function eventRowToEmail(row = {}) {
+  return buildEmail({
+    id: row.external_id || row.id,
+    source: row.source || 'gmail',
+    subject: row.subject || '',
+    from: row.sender || '',
+    date: row.event_date || null,
+    snippet: row.snippet || '',
+    body: row.snippet || '',
+    platform: row.platform || 'Email',
+    company: row.company || 'Unknown'
+  })
+}
+
+function eventRowToCalendar(row = {}) {
+  return buildCalendar({
+    id: row.external_id || row.id,
+    source: row.source || 'calendar',
+    subject: row.subject || '',
+    from: row.sender || '',
+    date: row.event_date || null,
+    snippet: row.snippet || row.location || '',
+    location: row.location || '',
+    company: row.company || 'Unknown'
+  })
+}
+
+async function loadStoredSyncEvents(supabase, userId) {
+  const { isoStart, isoNow } = monthWindow()
+
+  const { data, error } = await supabase
+    .from('job_sync_events')
+    .select('id,provider,source,external_id,event_type,detected_status,status_label,company,role_title,platform,subject,sender,event_date,location,snippet,confidence,confidence_label,raw,updated_at')
+    .eq('user_id', userId)
+    .gte('event_date', isoStart)
+    .lte('event_date', isoNow)
+    .order('event_date', { ascending: false })
+
+  if (error) return { emails: [], calendar: [], error }
+
+  const emails = []
+  const calendar = []
+
+  for (const row of data || []) {
+    if (String(row.source || '').includes('calendar') || String(row.event_type || '').includes('interview')) {
+      calendar.push(eventRowToCalendar(row))
+    } else {
+      emails.push(eventRowToEmail(row))
+    }
+  }
+
+  return { emails, calendar, error: null }
+}
+
+
 async function scanMicrosoft(accessToken) {
   const emails = []
   const calendar = []
@@ -1065,22 +1121,30 @@ export default async function handler(req, res) {
       })
     }
 
+    const storedEvents = await loadStoredSyncEvents(supabase, user.id)
+    if (storedEvents.error) {
+      errors.push(`load-stored-events: ${storedEvents.error.message}`)
+    }
+
+    const responseEmails = storedEvents.error ? emails : storedEvents.emails
+    const responseCalendar = storedEvents.error ? calendar : storedEvents.calendar
+
     return res.status(200).json({
       success: errors.length === 0,
       connected: true,
       providers: connections.map(c => c.provider),
       providerEmails: connections.map(c => ({ provider: c.provider, email: c.provider_email || null })),
-      scanned: emails.length + calendar.length,
+      scanned: responseEmails.length + responseCalendar.length,
       eventsStored,
       analysesUpdated: 0,
       breakdown: {
-        emailSignals: emails.length,
-        calendarSignals: calendar.length,
-        emailEvents: emails.length,
-        calendarEvents: calendar.length
+        emailSignals: responseEmails.length,
+        calendarSignals: responseCalendar.length,
+        emailEvents: responseEmails.length,
+        calendarEvents: responseCalendar.length
       },
-      emails,
-      calendar,
+      emails: responseEmails,
+      calendar: responseCalendar,
       errors,
       diagnostics,
       monthWindow: monthWindow(),
