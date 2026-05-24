@@ -707,7 +707,91 @@ async function scanGoogle(accessToken) {
   return { emails, calendar, errors, diagnostics }
 }
 
-async function scanMicrosoft(accessToken) {
+function extractRoleTitle(subject = '') {
+  const text = clean(subject, 180)
+
+  const patterns = [
+    /your application to\s+(.+?)(?:\s+at\s+|$)/i,
+    /application to\s+(.+?)(?:\s+at\s+|$)/i,
+    /application for\s+(.+?)(?:\s+at\s+|$)/i,
+    /candidature(?: au poste de| pour le poste de)?\s+(.+?)(?:\s+chez\s+|$)/i,
+    /entretien.*?(?:pour|poste)\s+(.+?)(?:\s+chez\s+|$)/i
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match?.[1]) return clean(match[1].replace(/[-–—]+$/g, ''), 120)
+  }
+
+  return ''
+}
+
+function normalizeEventDate(value) {
+  const t = new Date(value || '').getTime()
+  return Number.isFinite(t) ? new Date(t).toISOString() : null
+}
+
+function toSyncEventRows(userId, provider, emails = [], calendar = []) {
+  const emailRows = emails.map(item => ({
+    user_id: userId,
+    provider,
+    source: item.source || 'email',
+    external_id: item.id,
+    event_type: item.eventType || 'application_signal',
+    detected_status: item.detected_status || null,
+    status_label: item.status || null,
+    company: item.company || null,
+    role_title: extractRoleTitle(item.subject || item.title || ''),
+    platform: item.platform || null,
+    subject: item.subject || item.title || null,
+    sender: item.from || null,
+    event_date: normalizeEventDate(item.date),
+    location: null,
+    snippet: item.snippet || null,
+    confidence: item.confidence || null,
+    confidence_label: item.confidenceLabel || null,
+    raw: item
+  }))
+
+  const calendarRows = calendar.map(item => ({
+    user_id: userId,
+    provider,
+    source: item.source || 'calendar',
+    external_id: item.id,
+    event_type: item.eventType || 'interview_scheduled',
+    detected_status: item.detected_status || 'interview',
+    status_label: item.status || 'Interview',
+    company: item.company || null,
+    role_title: extractRoleTitle(item.subject || item.eventTitle || ''),
+    platform: item.sourceLabel || null,
+    subject: item.subject || item.eventTitle || null,
+    sender: item.from || item.attendees || null,
+    event_date: normalizeEventDate(item.date),
+    location: item.location || null,
+    snippet: item.snippet || item.detail || null,
+    confidence: item.confidence || null,
+    confidence_label: item.confidenceLabel || null,
+    raw: item
+  }))
+
+  return [...emailRows, ...calendarRows].filter(row => row.external_id)
+}
+
+async function storeSyncEvents(supabase, userId, provider, emails = [], calendar = []) {
+  const rows = toSyncEventRows(userId, provider, emails, calendar)
+
+  if (!rows.length) return { stored: 0, error: null }
+
+  const { error } = await supabase
+    .from('job_sync_events')
+    .upsert(rows, { onConflict: 'user_id,provider,source,external_id' })
+
+  if (error) return { stored: 0, error }
+
+  return { stored: rows.length, error: null }
+}
+
+\nasync function scanMicrosoft(accessToken) {
   const emails = []
   const calendar = []
   const errors = []
@@ -834,6 +918,7 @@ export default async function handler(req, res) {
 
     let emails = []
     let calendar = []
+    let eventsStored = 0
     const errors = []
     const diagnostics = {}
 
@@ -845,6 +930,13 @@ export default async function handler(req, res) {
         emails = emails.concat(scan.emails)
         calendar = calendar.concat(scan.calendar)
         if (scan.diagnostics) diagnostics[connection.provider] = scan.diagnostics
+
+        const stored = await storeSyncEvents(supabase, user.id, connection.provider, scan.emails, scan.calendar)
+        if (stored.error) {
+          errors.push(`${connection.provider}: store-events: ${stored.error.message}`)
+        } else {
+          eventsStored += stored.stored
+        }
 
         if (scan.errors?.length) {
           errors.push(...scan.errors.map(message => `${connection.provider}: ${message}`))
@@ -878,7 +970,7 @@ export default async function handler(req, res) {
       providers: connections.map(c => c.provider),
       providerEmails: connections.map(c => ({ provider: c.provider, email: c.provider_email || null })),
       scanned: emails.length + calendar.length,
-      eventsStored: 0,
+      eventsStored,
       analysesUpdated: 0,
       breakdown: {
         emailSignals: emails.length,
