@@ -326,10 +326,10 @@ async function requireUser(req, supabase) {
 }
 
 function monthWindow() {
+  // Scan from the first day of the previous month up to now.
+  // This matches the product requirement: "last month till date".
   const now = new Date()
-  const start = new Date(now)
-  start.setUTCDate(1)
-  start.setUTCHours(0, 0, 0, 0)
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0, 0))
 
   const yyyy = start.getUTCFullYear()
   const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
@@ -340,6 +340,20 @@ function monthWindow() {
     isoStart: start.toISOString(),
     isoNow: now.toISOString()
   }
+}
+
+function headerDateToTime(value) {
+  const t = new Date(value || '').getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
+function isWithinWindow(dateValue, isoStart, isoNow) {
+  const t = headerDateToTime(dateValue)
+  return t >= new Date(isoStart).getTime() && t <= new Date(isoNow).getTime()
+}
+
+function shouldStopScan(startMs, budgetMs = 7500) {
+  return Date.now() - startMs > budgetMs
 }
 
 function keyForProvider(provider) {
@@ -534,18 +548,35 @@ async function scanGoogle(accessToken) {
     googleCalendarKeywordSkipped: 0
   }
   const { isoStart, isoNow } = monthWindow()
+  const scanStartedAt = Date.now()
 
   try {
     // gmail.metadata scope does NOT support the Gmail `q` search parameter.
-    // List recent messages first, then filter job-related signals locally from headers/snippet.
-    const list = await getJson(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=40`,
-      accessToken
-    )
+    // We paginate recent messages and filter by date locally from headers.
+    const gmailMessages = []
+    let pageToken = ''
+    let page = 0
 
-    diagnostics.gmailListed = (list.messages || []).length
+    while (page < 4 && !shouldStopScan(scanStartedAt, 2500)) {
+      const list = await getJson(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+        accessToken
+      )
 
-    for (const msg of (list.messages || []).slice(0, 25)) {
+      gmailMessages.push(...(list.messages || []))
+      pageToken = list.nextPageToken || ''
+      page += 1
+
+      if (!pageToken) break
+    }
+
+    diagnostics.gmailListed = gmailMessages.length
+
+    for (const msg of gmailMessages.slice(0, 80)) {
+      if (shouldStopScan(scanStartedAt, 7600)) {
+        errors.push('gmail-scan: stopped early to avoid timeout; run Smart Sync again to continue.')
+        break
+      }
       try {
         // gmail.metadata scope: use format=metadata — returns headers + snippet, no body.
         // Subject/From/Date come from headers; snippet (≤200 chars) is enough for classification.
@@ -559,6 +590,12 @@ async function scanGoogle(accessToken) {
         const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
         const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
         const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
+
+        if (!isWithinWindow(date, isoStart, isoNow)) {
+          diagnostics.gmailNoiseSkipped += 1
+          continue
+        }
+
         const sender = parseFromHeader(fromRaw)
         const snippet = detail.snippet || ''
         const jobSignalText = `${subject} ${snippet}`
@@ -848,8 +885,8 @@ export default async function handler(req, res) {
       diagnostics,
       monthWindow: monthWindow(),
       message: errors.length
-        ? 'Smart Sync scanned the current month with warnings.'
-        : 'Smart Sync scanned the current month successfully.'
+        ? 'Smart Sync scanned from last month through today with warnings.'
+        : 'Smart Sync scanned from last month through today successfully.'
     })
   } catch (error) {
     return res.status(error.statusCode || 500).json({
