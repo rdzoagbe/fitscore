@@ -664,8 +664,11 @@ async function scanGoogle(accessToken) {
   }
 
   try {
+    // Fetch all calendar events in the scan window, then filter locally.
+    // Do not use Calendar q= here because real interviews may be titled only
+    // "Teams meeting", "Google Meet", company name, or recruiter name.
     const events = await getJson(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=80&timeMin=${encodeURIComponent(isoStart)}&timeMax=${encodeURIComponent(isoNow)}&q=${encodeURIComponent('interview entretien recruiter hiring recrutement talent visio')}`,
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=120&timeMin=${encodeURIComponent(isoStart)}&timeMax=${encodeURIComponent(isoNow)}`,
       accessToken
     )
 
@@ -678,14 +681,16 @@ async function scanGoogle(accessToken) {
       const location = event.location || ''
 
       const calendarText = `${summary} ${description} ${location} ${attendees}`
-      if (!eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText)) {
+      const hasMeetingSignal = /\b(teams|microsoft teams|google meet|meet\.google|zoom|visio|video|call|appel|meeting|réunion|entretien|interview|recruiter|talent|hiring|recrutement|rh|hr)\b/i.test(calendarText)
+
+      if (!eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText) && !hasMeetingSignal) {
         diagnostics.googleCalendarKeywordSkipped += 1
         continue
       }
 
       if (
         isNoiseJobText(calendarText) ||
-        (!isApplicationAction(calendarText) && !eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText))
+        (!isApplicationAction(calendarText) && !eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText) && !hasMeetingSignal)
       ) {
         diagnostics.googleCalendarKeywordSkipped += 1
         continue
