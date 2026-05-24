@@ -611,7 +611,8 @@ function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
 
   const sender = parseFromHeader(fromRaw)
   const snippet = detail.snippet || ''
-  const jobSignalText = `${subject} ${snippet}`
+  const body = cleanBody(extractGmailBody(detail.payload || ''), 2200)
+  const jobSignalText = `${subject} ${snippet} ${body}`
 
   if (
     isNoiseSubject(subject) ||
@@ -659,7 +660,7 @@ function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
 
   if (!isRealJobSignal({
     subject,
-    snippet,
+    snippet: `${snippet} ${body}`.slice(0, 1500),
     senderName: sender.name,
     senderEmail: sender.email,
     platform
@@ -677,7 +678,7 @@ function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
     from: sender.email || sender.name,
     date,
     snippet,
-    body: snippet,
+    body: body || snippet,
     platform,
     company
   })
@@ -743,7 +744,7 @@ async function scanGoogle(accessToken) {
       }
 
       const detail = await getJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
         accessToken
       )
 
@@ -969,8 +970,8 @@ function eventRowToEmail(row = {}) {
     subject: row.subject || '',
     from: row.sender || '',
     date: row.event_date || null,
-    snippet: row.snippet || '',
-    body: row.snippet || '',
+    snippet: row.snippet || row.raw?.snippet || '',
+    body: row.raw?.body || row.snippet || row.raw?.snippet || '',
     platform: row.platform || 'Email',
     company: row.company || 'Unknown'
   })
