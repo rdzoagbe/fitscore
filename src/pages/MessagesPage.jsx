@@ -26,20 +26,31 @@ function toneForStatus(value = '') {
 }
 
 function normalizeEmail(item = {}, isPreview = false) {
+  const company = item.company || item.matchedCompany || ''
+  const roleTitle = item.role_title || item.roleTitle || item.matchedJobTitle || ''
+  const platform = item.platform || ''
+  const title = item.title || [company, roleTitle].filter(Boolean).join(' — ') || item.subject || (isPreview ? 'Example job email' : 'Detected job email')
+
   return {
-    id: item.id || item.provider_event_id || item.subject || `email-${Math.random()}`,
+    id: item.id || item.provider_event_id || item.external_id || item.subject || `email-${Math.random()}`,
     logo: item.logo || 'job',
-    title: item.title || item.matchedJobTitle || item.company || (isPreview ? 'Example job email' : 'Detected job email'),
-    status: isPreview ? 'Preview' : (item.status || item.detected_status || 'Email'),
-    statusTone: item.statusTone || toneForStatus(item.status || item.detected_status),
+    title,
+    status: isPreview ? 'Preview' : (item.status || item.status_label || item.detected_status || 'Email'),
+    statusTone: item.statusTone || toneForStatus(item.status || item.status_label || item.detected_status),
     source: item.sourceLabel || item.source || (isPreview ? 'Preview email' : 'Email'),
-    from: item.from || item.sender_or_attendees || 'Unknown sender',
+    from: item.from || item.sender || item.sender_or_attendees || 'Unknown sender',
     subject: item.subject || 'Job email detected',
-    date: formatDate(item.date || item.event_at) || (isPreview ? 'Preview' : ''),
+    date: formatDate(item.date || item.event_date || item.event_at) || (isPreview ? 'Preview' : ''),
     snippet: item.snippet || '',
     body: item.body || item.emailBody || item.snippet || '',
     summary: item.summary || item.ai_summary || item.aiSummary || '',
-    confidenceLabel: isPreview ? 'Preview example' : (item.confidenceLabel || (item.confidence ? `${Math.round(Number(item.confidence) * 100)}% confidence` : 'Detected'))
+    company,
+    roleTitle,
+    platform,
+    eventType: item.eventType || item.event_type || '',
+    confidenceLabel: isPreview
+      ? 'Preview example'
+      : (item.confidenceLabel || item.confidence_label || (item.confidence ? `${Math.round(Number(item.confidence) * 100)}% confidence` : 'Detected'))
   }
 }
 
@@ -61,7 +72,7 @@ function normalizeCalendar(item = {}, isPreview = false) {
 }
 
 const previewEmails = [
-  normalizeEmail({ id: 'preview-email-1', logo: 'job', title: 'Example — Application update', subject: 'Example: Thank you for your application', from: 'recruiter@example.com', body: 'Preview mode\n\nThis is an example of how Joblytics will display an important job-related email after secure sync is active.\n\nReal emails will show the actual sender, subject, date, content, AI summary and suggested action.', summary: 'Example summary: application update detected. Review the original email before acting.' }, true),
+  normalizeEmail({ id: 'preview-email-1', logo: 'job', title: 'Example — Application update', subject: 'Example: Thank you for your application', from: 'recruiter@example.com', body: 'Preview mode\n\nThis is an example of how Joblytics will display an important job-related email after secure sync is active.\n\nReal emails will show the sender, subject, date, detected company, role, status, and suggested action.', summary: 'Example detected message: application update detected. Review the original email before acting.' }, true),
   normalizeEmail({ id: 'preview-email-2', logo: 'job', title: 'Example — Recruiter follow-up', subject: 'Example: Next steps for your application', from: 'careers@example.com', body: 'Preview mode\n\nThis example represents a recruiter follow-up email. In production, Joblytics will summarize the message and highlight whether action is needed.', summary: 'Example summary: recruiter may be asking for availability.' }, true)
 ]
 
@@ -523,19 +534,30 @@ export default function MessagesPage({ setPage }) {
                           <em>{selectedEmail?.from} · {selectedEmail?.date}</em>
                         </div>
                       </div>
-                      {selectedEmail?.summary && (
-                        <div className="emailAiSummary">
-                          <strong>AI summary</strong>
-                          <p>{selectedEmail.summary}</p>
-                          <span>{selectedEmail.confidenceLabel}</span>
+
+                      <div className="emailDetailsBox">
+                        <strong>Email details</strong>
+                        <dl>
+                          <div><dt>Company</dt><dd>{selectedEmail?.company || 'Not detected'}</dd></div>
+                          <div><dt>Role</dt><dd>{selectedEmail?.roleTitle || selectedEmail?.subject || 'Not detected'}</dd></div>
+                          <div><dt>Status</dt><dd>{selectedEmail?.status || 'Detected'}</dd></div>
+                          <div><dt>Platform</dt><dd>{selectedEmail?.platform || selectedEmail?.source || 'Email'}</dd></div>
+                          <div><dt>Sender</dt><dd>{selectedEmail?.from || 'Unknown sender'}</dd></div>
+                          <div><dt>Date</dt><dd>{selectedEmail?.date || 'Unknown date'}</dd></div>
+                          <div><dt>Confidence</dt><dd>{selectedEmail?.confidenceLabel || 'Detected'}</dd></div>
+                        </dl>
+                      </div>
+
+                      {(selectedEmail?.summary || selectedEmail?.snippet || selectedEmail?.body) && (
+                        <div className="emailPreviewBody">
+                          <strong>Detected message</strong>
+                          {(selectedEmail?.body || selectedEmail?.snippet || selectedEmail?.summary || '').split('
+').map((line, index) => (
+                            <p key={`${selectedEmail?.id}-${index}`}>{line || ' '}</p>
+                          ))}
                         </div>
                       )}
-                      <div className="emailPreviewBody">
-                        {(selectedEmail?.body || selectedEmail?.snippet || '').split('\n').map((line, index) => (
-                          <p key={`${selectedEmail?.id}-${index}`}>{line || ' '}</p>
-                        ))}
-                      </div>
-                      <div className="emailPreviewFooter">
+<div className="emailPreviewFooter">
                         <span className={`statusPill ${selectedEmail?.statusTone}`}>{selectedEmail?.status}</span>
                         <strong>{selectedEmail?.title}</strong>
                       </div>
