@@ -584,6 +584,135 @@ function buildCalendar(item) {
 }
 
 
+
+function decodeBase64Url(value = '') {
+  try {
+    const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/')
+    return Buffer.from(normalized, 'base64').toString('utf8')
+  } catch {
+    return ''
+  }
+}
+
+function extractGmailText(payload = {}) {
+  const chunks = []
+
+  function walk(part) {
+    if (!part) return
+
+    const mime = String(part.mimeType || '').toLowerCase()
+    const data = part.body?.data
+
+    if (data && (mime.includes('text/plain') || mime.includes('text/html') || !mime)) {
+      let text = decodeBase64Url(data)
+      if (mime.includes('html')) {
+        text = text
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+      }
+      chunks.push(text)
+    }
+
+    for (const child of part.parts || []) walk(child)
+  }
+
+  walk(payload)
+  return cleanBody(chunks.join('\n'), 4000)
+}
+
+function messageDetailToJobEmailFull(detail, msg, diagnostics, isoStart, isoNow) {
+  const headers = detail.payload?.headers || []
+  const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
+  const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
+  const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
+
+  if (!isWithinWindow(date, isoStart, isoNow)) {
+    diagnostics.gmailNoiseSkipped += 1
+    return null
+  }
+
+  const sender = parseFromHeader(fromRaw)
+  const snippet = detail.snippet || ''
+  const body = extractGmailText(detail.payload)
+  const jobSignalText = `${subject} ${snippet} ${body}`
+
+  if (
+    isNoiseSubject(subject) ||
+    isNoiseSender(sender.name, sender.email) ||
+    isNoiseJobText(jobSignalText)
+  ) {
+    diagnostics.gmailNoiseSkipped += 1
+    return null
+  }
+
+  if (
+    !containsAny(jobSignalText, REFUS_KW) &&
+    !containsAny(jobSignalText, ENTRETIEN_KW) &&
+    !containsAny(jobSignalText, EN_COURS_KW) &&
+    !containsAny(jobSignalText, OFFER_KW) &&
+    !containsAny(jobSignalText, [
+      'application',
+      'candidature',
+      'recruiter',
+      'recrutement',
+      'career',
+      'careers',
+      'job',
+      'jobs',
+      'talent',
+      'hiring',
+      'poste',
+      'opportunité',
+      'opportunity',
+      'viewed your application',
+      'application was viewed',
+      'application was sent',
+      'message from recruiter',
+      'thank you for applying',
+      'merci pour votre candidature',
+      'suite à votre candidature',
+      'concernant votre candidature',
+      'we received your resume',
+      'your resume',
+      'cv',
+      'shortlisted',
+      'not selected',
+      'unfortunately'
+    ])
+  ) {
+    diagnostics.gmailKeywordSkipped += 1
+    return null
+  }
+
+  const platform = detectPlatform(sender.name, sender.email)
+
+  if (!isRealJobSignal({
+    subject,
+    snippet: `${snippet} ${body}`.slice(0, 1500),
+    senderName: sender.name,
+    senderEmail: sender.email,
+    platform
+  })) {
+    diagnostics.gmailKeywordSkipped += 1
+    return null
+  }
+
+  const company = inferCompanyFromEmailSubject(subject, sender.name, sender.email)
+
+  return buildEmail({
+    id: msg.id,
+    source: 'gmail',
+    subject,
+    from: sender.email || sender.name,
+    date,
+    snippet: snippet || body.slice(0, 240),
+    body,
+    platform,
+    company
+  })
+}
+
 async function mapInBatches(items, batchSize, mapper) {
   const results = []
 
@@ -750,7 +879,7 @@ async function scanGoogle(accessToken) {
       }
 
       const detail = await getJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
         accessToken
       )
 
@@ -769,7 +898,7 @@ async function scanGoogle(accessToken) {
       }
 
       diagnostics.gmailFetched += 1
-      const detectedEmail = messageDetailToJobEmail(result.value.detail, result.value.msg, diagnostics, isoStart, isoNow)
+      const detectedEmail = messageDetailToJobEmailFull(result.value.detail, result.value.msg, diagnostics, isoStart, isoNow)
       if (detectedEmail) emails.push(detectedEmail)
     }
   } catch (error) {
