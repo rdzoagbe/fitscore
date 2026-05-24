@@ -16,7 +16,7 @@ const EN_COURS_KW = [
 ]
 
 const OFFER_KW = [
-  'offer','job offer','offre','proposition','contrat','contract','compensation package','salary proposal','proposition salariale','promesse d’embauche',"promesse d'embauche"
+  'job offer','employment offer','offer letter','offre d’emploi acceptée','offre reçue','proposition d’embauche','proposition de contrat','contrat','contract','compensation package','salary proposal','proposition salariale','promesse d’embauche',"promesse d'embauche"
 ]
 
 const CALENDAR_INTERVIEW_KW = [
@@ -82,6 +82,13 @@ const NOISE_TEXT_PATTERNS = [
   /\brepository\b/i,
   /google search console/i,
   /improve google presence/i,
+  /\bjob alert\b/i,
+  /\balerte emploi\b/i,
+  /\balerte cadremploi\b/i,
+  /\b1 offre à ne rater\b/i,
+  /\boffres? à ne rater\b/i,
+  /\brecommended jobs\b/i,
+  /\boffre recommandée\b/i,
   /site ownership/i,
   /domain ownership/i,
   /search performance/i,
