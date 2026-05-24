@@ -169,7 +169,38 @@ const APPLICATION_ACTION_PATTERNS = [
   /\brejection\b/i,
   /\bnot selected\b/i,
   /\bnot moving forward\b/i,
-  /\bpas retenu\b/i
+  /\bpas retenu\b/i,
+  /\bapplication was sent\b/i,
+  /\byour application was sent\b/i,
+  /\bapplication was viewed\b/i,
+  /\byour application was viewed\b/i,
+  /\bviewed your application\b/i,
+  /\bviewed your resume\b/i,
+  /\bdownloaded your resume\b/i,
+  /\brecruiter viewed\b/i,
+  /\brecruiter message\b/i,
+  /\bnew message from\b/i,
+  /\bmessage from the recruiter\b/i,
+  /\byou have a message\b/i,
+  /\bapplication update\b/i,
+  /\bstatus update\b/i,
+  /\bnext step\b/i,
+  /\bnext steps\b/i,
+  /\bwe would like to invite you\b/i,
+  /\binvite you to interview\b/i,
+  /\bschedule your interview\b/i,
+  /\bchoose a time\b/i,
+  /\bselect a time\b/i,
+  /\bthank you for your interest\b/i,
+  /\bsuite à votre candidature\b/i,
+  /\bconcernant votre candidature\b/i,
+  /\bretour sur votre candidature\b/i,
+  /\bvotre profil nous intéresse\b/i,
+  /\bnous souhaitons échanger\b/i,
+  /\bnous souhaitons vous rencontrer\b/i,
+  /\bplanifier un entretien\b/i,
+  /\bcréneau\b/i,
+  /\bdisponibilités\b/i
 ]
 
 const KNOWN_JOB_COMPANY_PATTERNS = [
@@ -213,10 +244,17 @@ function isRealJobSignal({ subject = '', snippet = '', senderName = '', senderEm
   const applicationAction = isApplicationAction(text)
   const knownCompany = matchesKnownJobCompany(text)
 
-  // Strict mode: avoid generic inbox pollution.
-  // Accept when the email comes from a job platform AND has an application/recruiting action,
-  // or when it mentions a known company/application from the user's Job Tracker.
-  return (strongSender && applicationAction) || (knownCompany && applicationAction)
+  // Strict enough to avoid newsletters/admin noise, but broad enough for real job lifecycle emails.
+  // Accept job-platform messages when they contain an application/recruiting/status action.
+  // Accept known company messages when they contain any application/interview/recruiting action.
+  // Also accept direct recruiter-style messages when the text contains interview/recruiting language.
+  const recruiterSignal = /\b(recruiter|talent acquisition|hiring manager|interview|entretien|screening|phone screen|disponibilités|availability|next steps|créneau|visio)\b/i.test(text)
+
+  return (
+    (strongSender && applicationAction) ||
+    (knownCompany && (applicationAction || recruiterSignal)) ||
+    (!strongSender && recruiterSignal && applicationAction)
+  )
 }
 
 function classifyStatus(subject = '', snippet = '', body = '') {
@@ -642,7 +680,7 @@ async function scanGoogle(accessToken) {
           continue
         }
 
-        const company = extractCompany(sender.name, sender.email, subject)
+        const company = inferCompanyFromEmailSubject(subject, sender.name, sender.email)
 
         emails.push(buildEmail({
           id: msg.id,
@@ -715,6 +753,32 @@ async function scanGoogle(accessToken) {
   return { emails, calendar, errors, diagnostics }
 }
 
+
+
+function inferCompanyFromEmailSubject(subject = '', senderName = '', senderEmail = '') {
+  const text = clean(subject, 180)
+
+  const patterns = [
+    /your application to\s+(.+?)\s+at\s+(.+)$/i,
+    /application to\s+(.+?)\s+at\s+(.+)$/i,
+    /application for\s+(.+?)\s+at\s+(.+)$/i,
+    /your application was sent to\s+(.+)$/i,
+    /application was sent to\s+(.+)$/i,
+    /candidature.*?chez\s+(.+)$/i,
+    /candidature.*?pour\s+(.+)$/i,
+    /entretien.*?avec\s+(.+)$/i
+  ]
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match?.[2]) return clean(match[2], 90)
+    if (match?.[1] && !/manager|engineer|technician|responsable|developer|director|analyst|consultant|architect/i.test(match[1])) {
+      return clean(match[1], 90)
+    }
+  }
+
+  return extractCompany(senderName, senderEmail, subject)
+}
 
 function inferCompanyFromCalendar(summary = '', attendees = '') {
   const text = `${summary} ${attendees}`
