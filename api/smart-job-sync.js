@@ -600,28 +600,47 @@ async function scanGoogle(accessToken) {
 
   try {
     // gmail.metadata scope does NOT support the Gmail `q` search parameter.
-    // We paginate recent messages and filter by date locally from headers.
-    const gmailMessages = []
-    let pageToken = ''
-    let page = 0
+    // Scan multiple Gmail labels because job applications can be in Inbox, Sent,
+    // Updates, Promotions, or Primary. Then dedupe by message ID.
+    const gmailMessagesById = new Map()
+    const gmailLabelsToScan = [
+      '',
+      'INBOX',
+      'SENT',
+      'CATEGORY_PRIMARY',
+      'CATEGORY_UPDATES',
+      'CATEGORY_PROMOTIONS'
+    ]
 
-    while (page < 4 && !shouldStopScan(scanStartedAt, 2500)) {
-      const list = await getJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
-        accessToken
-      )
+    for (const labelId of gmailLabelsToScan) {
+      if (shouldStopScan(scanStartedAt, 3200)) break
 
-      gmailMessages.push(...(list.messages || []))
-      pageToken = list.nextPageToken || ''
-      page += 1
+      let pageToken = ''
+      let page = 0
 
-      if (!pageToken) break
+      while (page < 2 && !shouldStopScan(scanStartedAt, 3200)) {
+        const labelParam = labelId ? `&labelIds=${encodeURIComponent(labelId)}` : ''
+        const list = await getJson(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+          accessToken
+        )
+
+        for (const message of (list.messages || [])) {
+          if (message?.id) gmailMessagesById.set(message.id, message)
+        }
+
+        pageToken = list.nextPageToken || ''
+        page += 1
+
+        if (!pageToken) break
+      }
     }
 
+    const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    for (const msg of gmailMessages.slice(0, 80)) {
-      if (shouldStopScan(scanStartedAt, 7600)) {
+    for (const msg of gmailMessages.slice(0, 160)) {
+      if (shouldStopScan(scanStartedAt, 8500)) {
         errors.push('gmail-scan: stopped early to avoid timeout; run Smart Sync again to continue.')
         break
       }
