@@ -62,6 +62,9 @@ const NOISE_SENDER_PATTERNS = [
   /sentry/i,
   /dependabot/i,
   /notifications@/i,
+  /offres@alertes/i,
+  /alertes\.cadremploi/i,
+  /cadremploi.*alerte/i,
   /no-?reply@github/i,
   /noreply@github/i
 ]
