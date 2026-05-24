@@ -583,6 +583,105 @@ function buildCalendar(item) {
   }
 }
 
+
+async function mapInBatches(items, batchSize, mapper) {
+  const results = []
+
+  for (let index = 0; index < items.length; index += batchSize) {
+    const batch = items.slice(index, index + batchSize)
+    const settled = await Promise.allSettled(batch.map(mapper))
+    results.push(...settled)
+  }
+
+  return results
+}
+
+function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
+  const headers = detail.payload?.headers || []
+  const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
+  const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
+  const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
+
+  if (!isWithinWindow(date, isoStart, isoNow)) {
+    diagnostics.gmailNoiseSkipped += 1
+    return null
+  }
+
+  const sender = parseFromHeader(fromRaw)
+  const snippet = detail.snippet || ''
+  const jobSignalText = `${subject} ${snippet}`
+
+  if (
+    isNoiseSubject(subject) ||
+    isNoiseSender(sender.name, sender.email) ||
+    isNoiseJobText(jobSignalText)
+  ) {
+    diagnostics.gmailNoiseSkipped += 1
+    return null
+  }
+
+  if (
+    !containsAny(jobSignalText, REFUS_KW) &&
+    !containsAny(jobSignalText, ENTRETIEN_KW) &&
+    !containsAny(jobSignalText, EN_COURS_KW) &&
+    !containsAny(jobSignalText, OFFER_KW) &&
+    !containsAny(jobSignalText, [
+      'application',
+      'candidature',
+      'recruiter',
+      'recrutement',
+      'career',
+      'careers',
+      'job',
+      'jobs',
+      'talent',
+      'hiring',
+      'poste',
+      'opportunité',
+      'opportunity',
+      'viewed your application',
+      'application was viewed',
+      'application was sent',
+      'message from recruiter',
+      'thank you for applying',
+      'merci pour votre candidature',
+      'suite à votre candidature',
+      'concernant votre candidature'
+    ])
+  ) {
+    diagnostics.gmailKeywordSkipped += 1
+    return null
+  }
+
+  const platform = detectPlatform(sender.name, sender.email)
+
+  if (!isRealJobSignal({
+    subject,
+    snippet,
+    senderName: sender.name,
+    senderEmail: sender.email,
+    platform
+  })) {
+    diagnostics.gmailKeywordSkipped += 1
+    return null
+  }
+
+  const company = inferCompanyFromEmailSubject(subject, sender.name, sender.email)
+
+  return buildEmail({
+    id: msg.id,
+    source: 'gmail',
+    subject,
+    from: sender.email || sender.name,
+    date,
+    snippet,
+    body: snippet,
+    platform,
+    company
+  })
+}
+
+
 async function scanGoogle(accessToken) {
   const emails = []
   const calendar = []
@@ -642,82 +741,36 @@ async function scanGoogle(accessToken) {
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    for (const msg of gmailMessages.slice(0, 55)) {
-      if (shouldStopScan(scanStartedAt, 5200)) {
+    const gmailFetchLimit = 140
+    const gmailDetailsToFetch = gmailMessages.slice(0, gmailFetchLimit)
+
+    const detailResults = await mapInBatches(gmailDetailsToFetch, 12, async msg => {
+      if (shouldStopScan(scanStartedAt, 6200)) {
+        return { skipped: true, reason: 'timeout-budget', msg }
+      }
+
+      const detail = await getJson(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+        accessToken
+      )
+
+      return { msg, detail }
+    })
+
+    for (const result of detailResults) {
+      if (result.status !== 'fulfilled') {
+        errors.push(`gmail-message: ${result.reason?.message || result.reason || 'metadata fetch failed'}`)
+        continue
+      }
+
+      if (result.value?.skipped) {
         errors.push('gmail-scan: stopped early to avoid timeout; showing saved results from last month to today.')
         break
       }
-      try {
-        // gmail.metadata scope: use format=metadata — returns headers + snippet, no body.
-        // Subject/From/Date come from headers; snippet (≤200 chars) is enough for classification.
-        const detail = await getJson(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
-          accessToken
-        )
 
-        diagnostics.gmailFetched += 1
-        const headers = detail.payload?.headers || []
-        const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
-        const fromRaw = headers.find(h => h.name?.toLowerCase() === 'from')?.value || ''
-        const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || null
-
-        if (!isWithinWindow(date, isoStart, isoNow)) {
-          diagnostics.gmailNoiseSkipped += 1
-          continue
-        }
-
-        const sender = parseFromHeader(fromRaw)
-        const snippet = detail.snippet || ''
-        const jobSignalText = `${subject} ${snippet}`
-
-        if (
-          isNoiseSubject(subject) ||
-          isNoiseSender(sender.name, sender.email) ||
-          isNoiseJobText(jobSignalText)
-        ) {
-          diagnostics.gmailNoiseSkipped += 1
-          continue
-        }
-        if (
-          !containsAny(jobSignalText, REFUS_KW) &&
-          !containsAny(jobSignalText, ENTRETIEN_KW) &&
-          !containsAny(jobSignalText, EN_COURS_KW) &&
-          !containsAny(jobSignalText, OFFER_KW) &&
-          !containsAny(jobSignalText, ['application', 'candidature', 'recruiter', 'recrutement', 'career', 'careers', 'job', 'jobs', 'talent', 'hiring', 'poste', 'opportunité', 'opportunity'])
-        ) {
-          diagnostics.gmailKeywordSkipped += 1
-          continue
-        }
-
-        const platform = detectPlatform(sender.name, sender.email)
-
-        if (!isRealJobSignal({
-          subject,
-          snippet,
-          senderName: sender.name,
-          senderEmail: sender.email,
-          platform
-        })) {
-          diagnostics.gmailKeywordSkipped += 1
-          continue
-        }
-
-        const company = inferCompanyFromEmailSubject(subject, sender.name, sender.email)
-
-        emails.push(buildEmail({
-          id: msg.id,
-          source: 'gmail',
-          subject,
-          from: sender.email || sender.name,
-          date,
-          snippet,
-          body: snippet, // metadata scope: no body available; snippet is sufficient for classification
-          platform,
-          company
-        }))
-      } catch (error) {
-        errors.push(`gmail-message: ${error.message}`)
-      }
+      diagnostics.gmailFetched += 1
+      const detectedEmail = messageDetailToJobEmail(result.value.detail, result.value.msg, diagnostics, isoStart, isoNow)
+      if (detectedEmail) emails.push(detectedEmail)
     }
   } catch (error) {
     errors.push(`gmail-list: ${error.message}`)
