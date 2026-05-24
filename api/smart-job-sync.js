@@ -827,53 +827,44 @@ async function scanGoogle(accessToken) {
   const scanStartedAt = Date.now()
 
   try {
-    // gmail.metadata scope does NOT support the Gmail `q` search parameter.
-    // Scan multiple Gmail labels because job applications can be in Inbox, Sent,
-    // Updates, Promotions, or Primary. Then dedupe by message ID.
+    // gmail.readonly supports Gmail q= search. Use targeted searches instead of
+    // opening random mailbox messages. This is faster, safer on Vercel, and more accurate.
     const gmailMessagesById = new Map()
-    const gmailLabelsToScan = [
-      '',
-      'SENT',
-      'CATEGORY_UPDATES'
+    const { gmailAfter } = monthWindow()
+
+    const gmailQueries = [
+      gmailMonthQuery(),
+      `after:${gmailAfter} newer_than:90d ("your application" OR "application was sent" OR "application received" OR "thank you for applying" OR "votre candidature" OR "merci pour votre candidature")`,
+      `after:${gmailAfter} newer_than:90d (interview OR entretien OR recruiter OR recrutement OR "phone screen" OR "next steps" OR disponibilités OR availability)`,
+      `after:${gmailAfter} newer_than:90d (unfortunately OR "not selected" OR "not moving forward" OR "pas retenu" OR regrettons OR "réponse négative")`,
+      `after:${gmailAfter} newer_than:90d from:(jobs-noreply@linkedin.com)`,
+      `in:sent after:${gmailAfter} newer_than:90d (application OR candidature OR CV OR resume OR recruiter OR entretien OR interview)`
     ]
 
-    for (const labelId of gmailLabelsToScan) {
+    for (const query of gmailQueries) {
       if (shouldStopScan(scanStartedAt, 1800)) break
 
       try {
-        let pageToken = ''
-        let page = 0
+        const list = await getJson(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=${encodeURIComponent(query)}`,
+          accessToken
+        )
 
-        while (page < 1 && !shouldStopScan(scanStartedAt, 1800)) {
-          const labelParam = labelId ? `&labelIds=${encodeURIComponent(labelId)}` : ''
-          const list = await getJson(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=35${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
-            accessToken
-          )
-
-          for (const message of (list.messages || [])) {
-            if (message?.id) gmailMessagesById.set(message.id, message)
-          }
-
-          pageToken = list.nextPageToken || ''
-          page += 1
-
-          if (!pageToken) break
+        for (const message of (list.messages || [])) {
+          if (message?.id) gmailMessagesById.set(message.id, message)
         }
-      } catch (labelError) {
-        // Do not fail the entire Gmail scan because one label is unavailable.
-        // Some Gmail accounts do not expose every category label.
-        errors.push(`gmail-label:${labelId || 'ALL'}: ${labelError.message}`)
+      } catch (queryError) {
+        errors.push(`gmail-query: ${queryError.message}`)
       }
     }
 
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    const gmailFetchLimit = 35
+    const gmailFetchLimit = 30
     const gmailDetailsToFetch = gmailMessages.slice(0, gmailFetchLimit)
 
-    const detailResults = await mapInBatches(gmailDetailsToFetch, 4, async msg => {
+    const detailResults = await mapInBatches(gmailDetailsToFetch, 3, async msg => {
       if (shouldStopScan(scanStartedAt, 4300)) {
         return { skipped: true, reason: 'timeout-budget', msg }
       }
