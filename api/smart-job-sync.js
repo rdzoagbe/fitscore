@@ -605,24 +605,21 @@ async function scanGoogle(accessToken) {
     const gmailMessagesById = new Map()
     const gmailLabelsToScan = [
       '',
-      'INBOX',
       'SENT',
-      'CATEGORY_PERSONAL',
-      'CATEGORY_UPDATES',
-      'CATEGORY_PROMOTIONS'
+      'CATEGORY_UPDATES'
     ]
 
     for (const labelId of gmailLabelsToScan) {
-      if (shouldStopScan(scanStartedAt, 3200)) break
+      if (shouldStopScan(scanStartedAt, 1800)) break
 
       try {
         let pageToken = ''
         let page = 0
 
-        while (page < 2 && !shouldStopScan(scanStartedAt, 3200)) {
+        while (page < 1 && !shouldStopScan(scanStartedAt, 1800)) {
           const labelParam = labelId ? `&labelIds=${encodeURIComponent(labelId)}` : ''
           const list = await getJson(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=35${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
             accessToken
           )
 
@@ -645,8 +642,8 @@ async function scanGoogle(accessToken) {
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    for (const msg of gmailMessages.slice(0, 160)) {
-      if (shouldStopScan(scanStartedAt, 8500)) {
+    for (const msg of gmailMessages.slice(0, 55)) {
+      if (shouldStopScan(scanStartedAt, 5200)) {
         errors.push('gmail-scan: stopped early to avoid timeout; run Smart Sync again to continue.')
         break
       }
