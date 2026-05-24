@@ -550,7 +550,7 @@ export default function MessagesPage({ setPage }) {
 
                       {(selectedEmail?.summary || selectedEmail?.snippet || selectedEmail?.body) && (
                         <div className="emailPreviewBody">
-                          <strong>Detected message</strong>
+                          <strong>Email preview from Gmail metadata</strong>
                           {(selectedEmail?.body || selectedEmail?.snippet || selectedEmail?.summary || '').split('\n').map((line, index) => (
                             <p key={`${selectedEmail?.id}-${index}`}>{line || ' '}</p>
                           ))}
