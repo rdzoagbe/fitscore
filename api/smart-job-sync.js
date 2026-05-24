@@ -644,7 +644,7 @@ async function scanGoogle(accessToken) {
 
     for (const msg of gmailMessages.slice(0, 55)) {
       if (shouldStopScan(scanStartedAt, 5200)) {
-        errors.push('gmail-scan: stopped early to avoid timeout; run Smart Sync again to continue.')
+        errors.push('gmail-scan: stopped early to avoid timeout; showing saved results from last month to today.')
         break
       }
       try {
