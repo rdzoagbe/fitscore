@@ -618,7 +618,7 @@ function extractGmailText(payload = {}) {
   }
 
   walk(payload)
-  return cleanBody(chunks.join('\n'), 4000)
+  return cleanBody(chunks.join('\n'), 1600)
 }
 
 function messageDetailToJobEmailFull(detail, msg, diagnostics, isoStart, isoNow) {
@@ -707,7 +707,7 @@ function messageDetailToJobEmailFull(detail, msg, diagnostics, isoStart, isoNow)
     from: sender.email || sender.name,
     date,
     snippet: snippet || body.slice(0, 240),
-    body,
+    body: body.slice(0, 1600),
     platform,
     company
   })
@@ -870,11 +870,11 @@ async function scanGoogle(accessToken) {
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    const gmailFetchLimit = 140
+    const gmailFetchLimit = 35
     const gmailDetailsToFetch = gmailMessages.slice(0, gmailFetchLimit)
 
-    const detailResults = await mapInBatches(gmailDetailsToFetch, 12, async msg => {
-      if (shouldStopScan(scanStartedAt, 6200)) {
+    const detailResults = await mapInBatches(gmailDetailsToFetch, 4, async msg => {
+      if (shouldStopScan(scanStartedAt, 4300)) {
         return { skipped: true, reason: 'timeout-budget', msg }
       }
 
@@ -1183,7 +1183,7 @@ async function scanMicrosoft(accessToken) {
         from,
         date: message.receivedDateTime || null,
         snippet,
-        body,
+        body: body.slice(0, 1600),
         platform,
         company
       }))
@@ -1208,7 +1208,7 @@ async function scanMicrosoft(accessToken) {
       const location = event.location?.displayName || ''
       const body = event.bodyPreview || ''
 
-      if (!eventIsInterview(subject, body, location, people)) continue
+      if (!eventIsInterview(subject, body: body.slice(0, 1600), location, people)) continue
 
       const company = inferCompanyFromCalendar(subject, people)
       calendar.push(buildCalendar({
@@ -1217,7 +1217,7 @@ async function scanMicrosoft(accessToken) {
         subject,
         from: people,
         date: event.start?.dateTime || null,
-        snippet: location || body,
+        snippet: location || body: body.slice(0, 1600),
         location,
         company
       }))
