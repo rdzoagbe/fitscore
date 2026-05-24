@@ -112,6 +112,103 @@ function detectPlatform(senderName = '', senderEmail = '') {
   return hit ? hit[1] : 'Direct / Other'
 }
 
+const STRONG_JOB_SENDER_PATTERNS = [
+  /jobs?-noreply@linkedin/i,
+  /linkedin.*jobs/i,
+  /apec/i,
+  /hellowork/i,
+  /welcometothejungle/i,
+  /wttj/i,
+  /cadremploi/i,
+  /indeed/i,
+  /glassdoor/i,
+  /francetravail/i,
+  /france-travail/i,
+  /workday/i,
+  /myworkday/i,
+  /greenhouse/i,
+  /lever\.co/i,
+  /smartrecruiters/i,
+  /icims/i,
+  /workable/i,
+  /ashbyhq/i,
+  /teamtailor/i,
+  /bamboohr/i,
+  /jobs\.ashbyhq/i
+]
+
+const APPLICATION_ACTION_PATTERNS = [
+  /\byour application\b/i,
+  /\bapplication to\b/i,
+  /\bapplication for\b/i,
+  /\bthank you for applying\b/i,
+  /\bwe received your application\b/i,
+  /\bapplication received\b/i,
+  /\bapplied to\b/i,
+  /\bcandidature\b/i,
+  /\bmerci pour votre candidature\b/i,
+  /\bnous avons bien reçu\b/i,
+  /\bvotre candidature\b/i,
+  /\bentretien\b/i,
+  /\binterview\b/i,
+  /\brecruiter\b/i,
+  /\brecrutement\b/i,
+  /\bhiring\b/i,
+  /\boffer\b/i,
+  /\boffre\b/i,
+  /\brejection\b/i,
+  /\bnot selected\b/i,
+  /\bnot moving forward\b/i,
+  /\bpas retenu\b/i
+]
+
+const KNOWN_JOB_COMPANY_PATTERNS = [
+  /rodeo fx/i,
+  /summit paris/i,
+  /sl green/i,
+  /capgemini/i,
+  /soci[ée]t[ée] g[ée]n[ée]rale/i,
+  /societe generale/i,
+  /dassault/i,
+  /orange business/i,
+  /thales/i,
+  /bnp paribas/i,
+  /l['’]?or[ée]al/i,
+  /renault/i,
+  /carrefour/i,
+  /atos/i
+]
+
+function isStrongJobSender(senderName = '', senderEmail = '') {
+  const value = `${senderName} ${senderEmail}`
+  return STRONG_JOB_SENDER_PATTERNS.some(pattern => pattern.test(value))
+}
+
+function isApplicationAction(text = '') {
+  return APPLICATION_ACTION_PATTERNS.some(pattern => pattern.test(String(text || '')))
+}
+
+function matchesKnownJobCompany(text = '') {
+  return KNOWN_JOB_COMPANY_PATTERNS.some(pattern => pattern.test(String(text || '')))
+}
+
+function isRealJobSignal({ subject = '', snippet = '', senderName = '', senderEmail = '', platform = '' } = {}) {
+  const text = `${subject} ${snippet} ${senderName} ${senderEmail} ${platform}`
+
+  if (isNoiseJobText(text) || isNoiseSubject(subject) || isNoiseSender(senderName, senderEmail)) {
+    return false
+  }
+
+  const strongSender = isStrongJobSender(senderName, senderEmail)
+  const applicationAction = isApplicationAction(text)
+  const knownCompany = matchesKnownJobCompany(text)
+
+  // Strict mode: avoid generic inbox pollution.
+  // Accept when the email comes from a job platform AND has an application/recruiting action,
+  // or when it mentions a known company/application from the user's Job Tracker.
+  return (strongSender && applicationAction) || (knownCompany && applicationAction)
+}
+
 function classifyStatus(subject = '', snippet = '', body = '') {
   const combined = `${subject} ${snippet} ${body}`.toLowerCase()
   if (containsAny(combined, REFUS_KW)) return { status: 'rejected', label: 'Rejected', eventType: 'rejection', confidence: 0.88 }
@@ -486,6 +583,18 @@ async function scanGoogle(accessToken) {
         }
 
         const platform = detectPlatform(sender.name, sender.email)
+
+        if (!isRealJobSignal({
+          subject,
+          snippet,
+          senderName: sender.name,
+          senderEmail: sender.email,
+          platform
+        })) {
+          diagnostics.gmailKeywordSkipped += 1
+          continue
+        }
+
         const company = extractCompany(sender.name, sender.email, subject)
 
         emails.push(buildEmail({
@@ -521,7 +630,16 @@ async function scanGoogle(accessToken) {
       const description = event.description || ''
       const location = event.location || ''
 
-      if (!eventIsInterview(summary, description, location, attendees)) {
+      const calendarText = `${summary} ${description} ${location} ${attendees}`
+      if (!eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText)) {
+        diagnostics.googleCalendarKeywordSkipped += 1
+        continue
+      }
+
+      if (
+        isNoiseJobText(calendarText) ||
+        (!isApplicationAction(calendarText) && !eventIsInterview(summary, description, location, attendees) && !matchesKnownJobCompany(calendarText))
+      ) {
         diagnostics.googleCalendarKeywordSkipped += 1
         continue
       }
