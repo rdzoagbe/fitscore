@@ -607,7 +607,7 @@ async function scanGoogle(accessToken) {
       '',
       'INBOX',
       'SENT',
-      'CATEGORY_PRIMARY',
+      'CATEGORY_PERSONAL',
       'CATEGORY_UPDATES',
       'CATEGORY_PROMOTIONS'
     ]
@@ -615,24 +615,30 @@ async function scanGoogle(accessToken) {
     for (const labelId of gmailLabelsToScan) {
       if (shouldStopScan(scanStartedAt, 3200)) break
 
-      let pageToken = ''
-      let page = 0
+      try {
+        let pageToken = ''
+        let page = 0
 
-      while (page < 2 && !shouldStopScan(scanStartedAt, 3200)) {
-        const labelParam = labelId ? `&labelIds=${encodeURIComponent(labelId)}` : ''
-        const list = await getJson(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
-          accessToken
-        )
+        while (page < 2 && !shouldStopScan(scanStartedAt, 3200)) {
+          const labelParam = labelId ? `&labelIds=${encodeURIComponent(labelId)}` : ''
+          const list = await getJson(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50${labelParam}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+            accessToken
+          )
 
-        for (const message of (list.messages || [])) {
-          if (message?.id) gmailMessagesById.set(message.id, message)
+          for (const message of (list.messages || [])) {
+            if (message?.id) gmailMessagesById.set(message.id, message)
+          }
+
+          pageToken = list.nextPageToken || ''
+          page += 1
+
+          if (!pageToken) break
         }
-
-        pageToken = list.nextPageToken || ''
-        page += 1
-
-        if (!pageToken) break
+      } catch (labelError) {
+        // Do not fail the entire Gmail scan because one label is unavailable.
+        // Some Gmail accounts do not expose every category label.
+        errors.push(`gmail-label:${labelId || 'ALL'}: ${labelError.message}`)
       }
     }
 
