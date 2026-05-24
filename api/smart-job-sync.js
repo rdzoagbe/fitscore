@@ -696,7 +696,7 @@ async function scanGoogle(accessToken) {
         continue
       }
 
-      const company = extractCompany('', attendees.split(',')[0] || '', summary)
+      const company = inferCompanyFromCalendar(summary, attendees)
       calendar.push(buildCalendar({
         id: event.id,
         source: 'calendar',
@@ -713,6 +713,35 @@ async function scanGoogle(accessToken) {
   }
 
   return { emails, calendar, errors, diagnostics }
+}
+
+
+function inferCompanyFromCalendar(summary = '', attendees = '') {
+  const text = `${summary} ${attendees}`
+
+  const known = [
+    ['Microsoft', /microsoft|v-[a-z0-9._%+-]+@microsoft\.com/i],
+    ['Summit One Vanderbilt', /summit|summitov|greenhouse/i],
+    ['Networx Consulting', /networx-consulting|networx/i],
+    ['Bloomays / Finacca', /bloomays|finacca/i],
+    ['Neonyx / Mercialys', /neonyx|mercialys/i],
+    ['Eliadis', /eliadis/i],
+    ['Chapvision', /chapvision/i],
+    ['Rodeo FX', /rodeo\s*fx/i],
+    ['TeamCo', /teamco/i]
+  ]
+
+  for (const [label, pattern] of known) {
+    if (pattern.test(text)) return label
+  }
+
+  const atMatch = summary.match(/@\s*([A-Z0-9][A-Z0-9 .&'-]{2,})/i)
+  if (atMatch?.[1]) return clean(atMatch[1], 80)
+
+  const withMatch = summary.match(/(?:with|avec|chez)\s+([A-Z0-9][A-Z0-9 .&'-]{2,})/i)
+  if (withMatch?.[1]) return clean(withMatch[1], 80)
+
+  return extractCompany('', attendees.split(',').find(a => !/rolanddzoagbe|gmail\.com/i.test(a)) || '', summary)
 }
 
 function extractRoleTitle(subject = '') {
@@ -857,7 +886,7 @@ async function scanMicrosoft(accessToken) {
 
       if (!eventIsInterview(subject, body, location, people)) continue
 
-      const company = extractCompany('', people.split(',')[0] || '', subject)
+      const company = inferCompanyFromCalendar(subject, people)
       calendar.push(buildCalendar({
         id: event.id,
         source: 'ms_calendar',
