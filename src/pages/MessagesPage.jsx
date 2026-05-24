@@ -551,8 +551,7 @@ export default function MessagesPage({ setPage }) {
                       {(selectedEmail?.summary || selectedEmail?.snippet || selectedEmail?.body) && (
                         <div className="emailPreviewBody">
                           <strong>Detected message</strong>
-                          {(selectedEmail?.body || selectedEmail?.snippet || selectedEmail?.summary || '').split('
-').map((line, index) => (
+                          {(selectedEmail?.body || selectedEmail?.snippet || selectedEmail?.summary || '').split('\n').map((line, index) => (
                             <p key={`${selectedEmail?.id}-${index}`}>{line || ' '}</p>
                           ))}
                         </div>
