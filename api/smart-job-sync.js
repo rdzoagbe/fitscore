@@ -827,8 +827,8 @@ async function scanGoogle(accessToken) {
   const scanStartedAt = Date.now()
 
   try {
-    // gmail.readonly supports Gmail q= search. Use targeted searches instead of
-    // opening random mailbox messages. This is faster, safer on Vercel, and more accurate.
+    // Gmail readonly supports q= search. Keep Smart Sync stable by using targeted
+    // Gmail search + lightweight metadata, instead of opening full message bodies.
     const gmailMessagesById = new Map()
     const { gmailAfter } = monthWindow()
 
@@ -846,7 +846,7 @@ async function scanGoogle(accessToken) {
 
       try {
         const list = await getJson(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=18&q=${encodeURIComponent(query)}`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`,
           accessToken
         )
 
@@ -861,16 +861,16 @@ async function scanGoogle(accessToken) {
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    const gmailFetchLimit = 30
+    const gmailFetchLimit = 45
     const gmailDetailsToFetch = gmailMessages.slice(0, gmailFetchLimit)
 
-    const detailResults = await mapInBatches(gmailDetailsToFetch, 3, async msg => {
-      if (shouldStopScan(scanStartedAt, 4300)) {
+    const detailResults = await mapInBatches(gmailDetailsToFetch, 5, async msg => {
+      if (shouldStopScan(scanStartedAt, 4200)) {
         return { skipped: true, reason: 'timeout-budget', msg }
       }
 
       const detail = await getJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
         accessToken
       )
 
@@ -889,12 +889,13 @@ async function scanGoogle(accessToken) {
       }
 
       diagnostics.gmailFetched += 1
-      const detectedEmail = messageDetailToJobEmailFull(result.value.detail, result.value.msg, diagnostics, isoStart, isoNow)
+      const detectedEmail = messageDetailToJobEmail(result.value.detail, result.value.msg, diagnostics, isoStart, isoNow)
       if (detectedEmail) emails.push(detectedEmail)
     }
   } catch (error) {
     errors.push(`gmail-list: ${error.message}`)
   }
+
 
   try {
     // Fetch all calendar events in the scan window, then filter locally.
