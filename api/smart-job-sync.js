@@ -1200,7 +1200,7 @@ async function scanMicrosoft(accessToken) {
       const location = event.location?.displayName || ''
       const body = event.bodyPreview || ''
 
-      if (!eventIsInterview(subject, body: body.slice(0, 1600), location, people)) continue
+      if (!eventIsInterview(subject, body, location, people)) continue
 
       const company = inferCompanyFromCalendar(subject, people)
       calendar.push(buildCalendar({
@@ -1209,7 +1209,7 @@ async function scanMicrosoft(accessToken) {
         subject,
         from: people,
         date: event.start?.dateTime || null,
-        snippet: location || body: body.slice(0, 1600),
+        snippet: location || body.slice(0, 1600),
         location,
         company
       }))
