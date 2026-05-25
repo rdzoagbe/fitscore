@@ -137,6 +137,45 @@ function isSuggestionSignal(item = {}) {
   )
 }
 
+
+function getEmailSignalType(item = {}) {
+  const text = `${item.status || ''} ${item.detected_status || ''} ${item.eventType || ''} ${item.subject || ''} ${item.title || ''} ${item.body || ''} ${item.snippet || ''}`.toLowerCase()
+
+  if (isSuggestionSignal(item)) return 'suggestions'
+  if (text.includes('reject') || text.includes('refus') || text.includes('not selected') || text.includes('pas retenu') || text.includes('unfortunately') || text.includes('malheureusement')) return 'rejections'
+  if (text.includes('interview') || text.includes('entretien') || text.includes('screening') || text.includes('phone screen')) return 'interviews'
+  if (text.includes('viewed your application') || text.includes('application was viewed')) return 'viewed'
+  if (text.includes('follow') || text.includes('next step') || text.includes('availability') || text.includes('disponibilité') || text.includes('disponibilités')) return 'followups'
+  if (text.includes('application was sent') || text.includes('your application to') || text.includes('application received') || text.includes('thank you for applying') || text.includes('votre candidature') || text.includes('merci pour votre candidature') || text.includes('suite à votre candidature')) return 'applications'
+
+  return 'other'
+}
+
+function filterEmailsBySignal(emails = [], filter = 'all') {
+  if (filter === 'all') return emails
+  return emails.filter(email => getEmailSignalType(email) === filter)
+}
+
+function buildEmailFilterCounts(emails = []) {
+  const counts = {
+    all: emails.length,
+    applications: 0,
+    viewed: 0,
+    interviews: 0,
+    rejections: 0,
+    suggestions: 0,
+    followups: 0
+  }
+
+  for (const email of emails) {
+    const type = getEmailSignalType(email)
+    if (counts[type] !== undefined) counts[type] += 1
+  }
+
+  return counts
+}
+
+
 function buildSyncInsights(emails = [], calendar = []) {
   const all = [...emails, ...calendar]
 
@@ -444,6 +483,8 @@ export default function MessagesPage({ setPage }) {
 
   const emailItems = hasRealSync ? syncedEmails : previewEmails
   const calendarItems = hasRealSync ? syncedCalendar : previewCalendarEvents
+  const emailFilterCounts = buildEmailFilterCounts(emailItems)
+  const visibleEmailItems = filterEmailsBySignal(emailItems, emailFilter)
   const syncInsights = buildSyncInsights(emailItems, calendarItems)
   const syncDisplay = hasRealSync ? {
     scanned: syncResult.scanned,
@@ -661,8 +702,35 @@ export default function MessagesPage({ setPage }) {
                 </div>
                 {syncTab === 'emails' && (
                   <div className="syncSplitView">
-                    <div className="updatedJobsList emailSignalsList">
-                      {emailItems.map(email => (
+                    <div className="emailListColumn">
+                      <div className="emailFilterChips" role="toolbar" aria-label="Filter email signals">
+                        {[
+                          ['all', 'All'],
+                          ['applications', 'Applications'],
+                          ['viewed', 'Viewed'],
+                          ['interviews', 'Interviews'],
+                          ['rejections', 'Rejections'],
+                          ['suggestions', 'Suggestions'],
+                          ['followups', 'Follow-ups']
+                        ].map(([key, label]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            className={emailFilter === key ? 'is-active' : ''}
+                            onClick={() => {
+                              setEmailFilter(key)
+                              const nextVisible = filterEmailsBySignal(emailItems, key)
+                              if (nextVisible.length > 0) setSelectedEmail(nextVisible[0])
+                            }}
+                          >
+                            {label}
+                            <span>{emailFilterCounts[key] || 0}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="updatedJobsList emailSignalsList">
+                        {visibleEmailItems.map(email => (
                         <button type="button" className={`updatedJobCard emailSignalCard${selectedEmail?.id === email.id ? ' is-selected' : ''}`} key={email.id} onClick={() => setSelectedEmail(email)}>
                           <div className={`jobLogo ${email.logo}`} aria-hidden="true"><span /></div>
                           <div className="updatedJobCopy">
@@ -673,7 +741,14 @@ export default function MessagesPage({ setPage }) {
                           </div>
                           <span className="jobChevron" aria-hidden="true">›</span>
                         </button>
-                      ))}
+                        ))}
+                        {visibleEmailItems.length === 0 && (
+                          <div className="emailSignalsEmpty">
+                            <strong>No emails in this category</strong>
+                            <p>Try another filter or run Smart Sync again.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <article className="emailPreviewPanel">
                       <div className="emailPreviewHead">
