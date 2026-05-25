@@ -598,6 +598,45 @@ async function mapInBatches(items, batchSize, mapper) {
   return results
 }
 
+
+function isJobRecommendationOnly(subject = '', snippet = '', body = '', senderEmail = '') {
+  const text = `${subject} ${snippet} ${body}`.toLowerCase()
+  const sender = String(senderEmail || '').toLowerCase()
+
+  const recommendationSender =
+    sender.includes('match.indeed.com') ||
+    sender.includes('alertes.cadremploi.fr') ||
+    sender.includes('jobalert') ||
+    sender.includes('job-alert') ||
+    sender.includes('alert')
+
+  const recommendationText =
+    /il semble que votre parcours pourrait correspondre/i.test(text) ||
+    /pourrait correspondre au poste/i.test(text) ||
+    /nouveau poste/i.test(text) ||
+    /new job/i.test(text) ||
+    /new jobs/i.test(text) ||
+    /job alert/i.test(text) ||
+    /alerte emploi/i.test(text) ||
+    /offres? à ne pas manquer/i.test(text) ||
+    /recommended for you/i.test(text) ||
+    /jobs you may be interested in/i.test(text)
+
+  const realApplicationText =
+    /your application/i.test(text) ||
+    /application was sent/i.test(text) ||
+    /application received/i.test(text) ||
+    /thank you for applying/i.test(text) ||
+    /votre candidature/i.test(text) ||
+    /merci pour votre candidature/i.test(text) ||
+    /suite à votre candidature/i.test(text) ||
+    /nous avons bien reçu votre candidature/i.test(text) ||
+    /interview/i.test(text) ||
+    /entretien/i.test(text)
+
+  return recommendationSender && recommendationText && !realApplicationText
+}
+
 function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
   const headers = detail.payload?.headers || []
   const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || ''
@@ -653,6 +692,11 @@ function messageDetailToJobEmail(detail, msg, diagnostics, isoStart, isoNow) {
     ])
   ) {
     diagnostics.gmailKeywordSkipped += 1
+    return null
+  }
+
+  if (isJobRecommendationOnly(subject, snippet, body, sender.email)) {
+    diagnostics.gmailNoiseSkipped += 1
     return null
   }
 
