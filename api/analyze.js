@@ -4,6 +4,8 @@ import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import mammoth from 'mammoth'
 import crypto from 'crypto'
 
+export const config = { maxDuration: 60 }
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const SYSTEM = `You are Joblytics ATS Intelligence Fast Mode.
@@ -135,6 +137,132 @@ function getRestrictedBoardName(url = '') {
   return null
 }
 
+
+function htmlDecode(value = '') {
+  return String(value || '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+}
+
+function cleanExtractedText(value = '', limit = 5500) {
+  return htmlDecode(value)
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, limit)
+}
+
+function findJobPostingObject(input) {
+  if (!input) return null
+
+  if (Array.isArray(input)) {
+    for (const item of input) {
+      const found = findJobPostingObject(item)
+      if (found) return found
+    }
+    return null
+  }
+
+  if (typeof input !== 'object') return null
+
+  const type = input['@type']
+  const typeText = Array.isArray(type) ? type.join(' ').toLowerCase() : String(type || '').toLowerCase()
+  if (typeText.includes('jobposting')) return input
+
+  if (input['@graph']) return findJobPostingObject(input['@graph'])
+
+  for (const value of Object.values(input)) {
+    const found = findJobPostingObject(value)
+    if (found) return found
+  }
+
+  return null
+}
+
+function extractJsonLdJobText(html = '') {
+  const scripts = [...String(html).matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
+
+  for (const match of scripts) {
+    try {
+      const parsed = JSON.parse(match[1].trim())
+      const job = findJobPostingObject(parsed)
+      if (!job) continue
+
+      const parts = [
+        job.title,
+        job.hiringOrganization?.name,
+        job.jobLocation?.address?.addressLocality,
+        job.jobLocation?.address?.addressCountry,
+        job.employmentType,
+        job.baseSalary?.value?.minValue && job.baseSalary?.value?.maxValue
+          ? `${job.baseSalary.value.minValue} - ${job.baseSalary.value.maxValue}`
+          : '',
+        job.description,
+        Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : job.responsibilities,
+        Array.isArray(job.qualifications) ? job.qualifications.join('\n') : job.qualifications,
+        Array.isArray(job.skills) ? job.skills.join('\n') : job.skills
+      ]
+
+      const text = cleanExtractedText(parts.filter(Boolean).join('\n\n'), 5500)
+      if (text.length >= 200) return text
+    } catch {
+      continue
+    }
+  }
+
+  return ''
+}
+
+function extractMetaJobText(html = '') {
+  const text = String(html || '')
+
+  const metaPatterns = [
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+name=["']title["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>/i
+  ]
+
+  const parts = []
+  for (const pattern of metaPatterns) {
+    const match = text.match(pattern)
+    if (match?.[1]) parts.push(match[1])
+  }
+
+  return cleanExtractedText(parts.join('\n\n'), 2500)
+}
+
+function extractReadableHtmlText(html = '') {
+  return cleanExtractedText(
+    String(html || '')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+      .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+      .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<[^>]+>/g, ' '),
+    5500
+  )
+}
+
+function extractBestJobTextFromHtml(html = '') {
+  const jsonLd = extractJsonLdJobText(html)
+  if (jsonLd.length >= 200) return jsonLd
+
+  const meta = extractMetaJobText(html)
+  if (meta.length >= 200) return meta
+
+  return extractReadableHtmlText(html)
+}
+
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
 
@@ -167,21 +295,17 @@ async function fetchJobText(url) {
     throw err
   }
   const html = await res.text()
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    .replace(/<svg[\s\S]*?<\/svg>/gi, '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, ' ').trim()
+  const text = extractBestJobTextFromHtml(html)
+
   if (text.length < 200) {
-    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Joblytics tried to read the page but the job description was hidden, blocked, or loaded dynamically. Use Mode texte for this specific page.`)
+    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Joblytics tried direct extraction, structured job data, and metadata, but the job description was hidden, blocked, or loaded dynamically.`)
     err.statusCode = 400
     err.code = 'URL_TEXT_TOO_SHORT'
     throw err
   }
+
   return text.slice(0, 5500)
+
 }
 
 async function extractCvText(base64Data, mimeType) {
