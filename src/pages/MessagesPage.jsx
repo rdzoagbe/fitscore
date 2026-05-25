@@ -729,16 +729,6 @@ export default function MessagesPage({ setPage }) {
                     ))}
                   </div>
                 )}
-                <button type="button" className="moreSignalsRow" onClick={() => setSyncTab(syncTab === 'emails' ? 'calendar' : 'emails')}>
-                  <span className="signalsIcon" aria-hidden="true">{syncTab === 'emails' ? '▣' : '✉'}</span>
-                  <span>
-                    <strong>{syncTab === 'emails' ? t('smart_sync_calendar_found', 'Calendar events found') : t('smart_sync_emails_found', 'Emails found')}</strong>
-                    <em>{syncTab === 'emails' ? t('smart_sync_calendar_found_body', 'See interviews and recruitment events detected from your agenda.') : t('smart_sync_emails_found_body', 'See emails detected from your inbox.')}</em>
-                  </span>
-                  <b>✉ {syncDisplay.emailEvents} {t('smart_sync_emails_short', 'emails')}</b>
-                  <b>▣ {syncDisplay.calendarEvents} {t('smart_sync_events_short', 'events')}</b>
-                  <i aria-hidden="true">›</i>
-                </button>
               </div>
             </div>
           )}

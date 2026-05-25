@@ -747,13 +747,3 @@
   color: #0848b8;
   border-bottom-color: rgba(8, 72, 184, 0.55);
 }
-
-
-/* TEMP/HARD HIDE: redundant Smart Sync bottom summary cards */
-.smartSyncBottomSummary,
-.smartSyncFooterSummary,
-.smartSyncDetectedFooter,
-.smartSyncBottomCard,
-.smartSyncFooterCard {
-  display: none !important;
-}
