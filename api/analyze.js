@@ -319,6 +319,26 @@ function hashContent(...parts) {
   return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
 }
 
+
+function createTimer(label = 'analyze') {
+  const start = Date.now()
+  let last = start
+
+  return step => {
+    const now = Date.now()
+    const entry = {
+      route: label,
+      step,
+      stepMs: now - last,
+      totalMs: now - start
+    }
+    last = now
+    console.log('[ANALYZE_TIMING]', JSON.stringify(entry))
+    return entry
+  }
+}
+
+
 const WHITELIST = (process.env.RATE_LIMIT_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean)
 const HOURLY_LIMIT = 15
 const DAILY_LIMIT = 50
@@ -449,6 +469,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
+    const mark = createTimer('api/analyze')
+    mark('start')
+
     const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
 
@@ -466,10 +489,14 @@ export default async function handler(req, res) {
       if (!rl.allowed) return res.status(429).json({ error: rl.message, rate_limited: true, reason: rl.reason })
     }
 
+    mark('before_extract_text')
+
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(providedJobText.slice(0, 3500)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
+
+    mark('after_extract_text')
 
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
@@ -477,8 +504,13 @@ export default async function handler(req, res) {
     const cacheKey = hashContent('ats-v2', cvText.slice(0, 3500), jobText.slice(0, 3500))
     if (supabaseClient && userId) {
       const { data: cached } = await supabaseClient.from('analyses').select('result, created_at').eq('user_id', userId).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).single()
-      if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true })
+      if (cached?.result) {
+        mark('cache_hit')
+        return res.status(200).json({ success: true, analysis: cached.result, cached: true })
+      }
     }
+
+    mark('before_claude')
 
     const message = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
@@ -487,6 +519,8 @@ export default async function handler(req, res) {
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 3500)}\n\n---\n\nCV:\n${cvText.slice(0, 3500)}` }]
     }, { timeout: 8500 })
+
+    mark('after_claude')
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
@@ -515,11 +549,16 @@ export default async function handler(req, res) {
       console.log('Save failed:', e.message)
     }
 
+    mark('success')
     return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo })
   } catch (e) {
     console.error('Handler error:', e.message)
     if (e.name === 'APIConnectionTimeoutError' || e.code === 'ETIMEDOUT' || /timeout/i.test(e.message)) {
-      return res.status(504).json({ error: 'Analysis is taking too long. Please try again — this is usually a one-off slowdown.', code: 'ANALYSIS_TIMEOUT' })
+      return res.status(504).json({
+        success: false,
+        error: 'Analysis is taking too long. The request reached the analyze API, but one processing phase exceeded the available runtime.',
+        code: 'ANALYSIS_TIMEOUT'
+      })
     }
     const statusCode = e.statusCode || 500
     return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED' })
