@@ -91,7 +91,20 @@ export const productionTranslations = {
     billing_redirecting: 'Redirecting...',
     billing_start_checkout: 'Start checkout',
     billing_signin_required: 'Please sign in before subscribing.',
-    billing_checkout_failed: 'Could not start checkout. Please try again.'
+    billing_checkout_failed: 'Could not start checkout. Please try again.',
+    tip_kicker: 'Did you know?',
+    tip_track_title: 'Track your applications',
+    tip_track_body: 'Mark each analysis as Applied, Interview, or Offer to see your funnel over time.',
+    tip_track_cta: 'See history →',
+    tip_coach_title: 'Get a tailored cover letter',
+    tip_coach_body: 'CV Coach generates a complete letter with proper salutation, tone, and your signature in seconds.',
+    tip_coach_cta: 'Open CV Coach →',
+    tip_paste_title: 'URL not working? Paste the text',
+    tip_paste_body: 'LinkedIn and Indeed often block automated reading. Copying the description works on every site.',
+    tip_reanalyze_title: 'Already optimized your CV?',
+    tip_reanalyze_body: 'Re-run the same job to compare scores. We track your improvement over time with a delta indicator.',
+    tip_privacy_title: 'Your CV stays on your device',
+    tip_privacy_body: 'We never share your CV with third parties. Stored locally for privacy, synced only with your account.'
   },
   fr: {
     nav_messages: 'Messages',
@@ -185,6 +198,19 @@ export const productionTranslations = {
     billing_redirecting: 'Redirection...',
     billing_start_checkout: 'Démarrer le paiement',
     billing_signin_required: 'Veuillez vous connecter avant de souscrire.',
-    billing_checkout_failed: 'Impossible de démarrer le paiement. Veuillez réessayer.'
+    billing_checkout_failed: 'Impossible de démarrer le paiement. Veuillez réessayer.',
+    tip_kicker: 'Le saviez-vous ?',
+    tip_track_title: 'Suivez vos candidatures',
+    tip_track_body: 'Marquez chaque analyse comme Postulé, Entretien ou Offre pour suivre votre avancement.',
+    tip_track_cta: 'Voir l\'historique →',
+    tip_coach_title: 'Obtenez une lettre de motivation personnalisée',
+    tip_coach_body: 'CV Coach génère une lettre complète avec salutation, ton approprié et signature en quelques secondes.',
+    tip_coach_cta: 'Ouvrir CV Coach →',
+    tip_paste_title: 'URL bloquée ? Collez le texte',
+    tip_paste_body: 'LinkedIn et Indeed bloquent souvent la lecture automatique. Copier-coller la description fonctionne sur tous les sites.',
+    tip_reanalyze_title: 'CV optimisé ? Relancez l\'analyse',
+    tip_reanalyze_body: 'Relancez la même offre pour comparer les scores. Joblytics suit votre progression avec un indicateur d\'évolution.',
+    tip_privacy_title: 'Votre CV reste sur votre appareil',
+    tip_privacy_body: 'Nous ne partageons jamais votre CV avec des tiers. Stocké localement pour votre vie privée, synchronisé uniquement avec votre compte.'
   }
 }
