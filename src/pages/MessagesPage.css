@@ -733,3 +733,17 @@
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
+
+/* Clean clickable links inside Gmail message content */
+.emailPreviewBody .emailBodyLink {
+  color: #0b63f6;
+  font-weight: 800;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(11, 99, 246, 0.28);
+  word-break: break-word;
+}
+
+.emailPreviewBody .emailBodyLink:hover {
+  color: #0848b8;
+  border-bottom-color: rgba(8, 72, 184, 0.55);
+}
