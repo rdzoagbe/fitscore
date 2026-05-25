@@ -30,13 +30,22 @@ function normalizeEmail(item = {}, isPreview = false) {
   const roleTitle = item.role_title || item.roleTitle || item.matchedJobTitle || ''
   const platform = item.platform || ''
   const title = item.title || [company, roleTitle].filter(Boolean).join(' — ') || item.subject || (isPreview ? 'Example job email' : 'Detected job email')
+  const rawStatus = item.status || item.status_label || item.detected_status || 'Email'
+  const suggestion = isSuggestionSignal({
+    ...item,
+    status: rawStatus,
+    subject: item.subject || title,
+    title,
+    from: item.from || item.sender || ''
+  })
+  const displayStatus = suggestion && !String(rawStatus).toLowerCase().includes('viewed') ? 'Suggestion' : rawStatus
 
   return {
     id: item.id || item.provider_event_id || item.external_id || item.subject || `email-${Math.random()}`,
     logo: item.logo || 'job',
     title,
-    status: isPreview ? 'Preview' : (item.status || item.status_label || item.detected_status || 'Email'),
-    statusTone: item.statusTone || toneForStatus(item.status || item.status_label || item.detected_status),
+    status: isPreview ? 'Preview' : displayStatus,
+    statusTone: item.statusTone || toneForStatus(displayStatus),
     source: item.sourceLabel || item.source || (isPreview ? 'Preview email' : 'Email'),
     from: item.from || item.sender || item.sender_or_attendees || 'Unknown sender',
     subject: item.subject || 'Job email detected',
@@ -108,24 +117,58 @@ function getAccountEmail(user) {
 }
 
 
+function isSuggestionSignal(item = {}) {
+  const text = `${item.status || ''} ${item.detected_status || ''} ${item.eventType || ''} ${item.subject || ''} ${item.title || ''} ${item.body || ''} ${item.snippet || ''}`.toLowerCase()
+  const sender = String(item.from || item.sender || '').toLowerCase()
+
+  return (
+    text.includes('job_suggestion') ||
+    text.includes('suggestion') ||
+    text.includes('recommended') ||
+    text.includes('recommended for you') ||
+    text.includes('jobs you may be interested in') ||
+    text.includes('nouveau poste') ||
+    text.includes('nouveaux postes') ||
+    text.includes('pourrait correspondre') ||
+    text.includes('offre à ne pas manquer') ||
+    text.includes('offres à ne pas manquer') ||
+    sender.includes('match.indeed.com') ||
+    sender.includes('alertes.cadremploi.fr')
+  )
+}
+
 function buildSyncInsights(emails = [], calendar = []) {
   const all = [...emails, ...calendar]
 
-  const countBy = matcher => all.filter(item => matcher(String(item.status || item.detected_status || item.eventType || item.subject || item.title || '').toLowerCase())).length
+  const getText = item => `${item.status || ''} ${item.detected_status || ''} ${item.eventType || ''} ${item.subject || ''} ${item.title || ''} ${item.body || ''} ${item.snippet || ''}`.toLowerCase()
+  const countBy = matcher => all.filter(item => matcher(getText(item))).length
+
+  const suggestions = emails.filter(item => isSuggestionSignal(item)).length
 
   const applications = emails.filter(item => {
-    const text = `${item.status} ${item.detected_status} ${item.eventType} ${item.subject} ${item.title}`.toLowerCase()
-    return text.includes('sent') || text.includes('applied') || text.includes('application')
+    if (isSuggestionSignal(item)) return false
+    const text = getText(item)
+    return (
+      text.includes('application was sent') ||
+      text.includes('your application to') ||
+      text.includes('your application was viewed') ||
+      text.includes('application received') ||
+      text.includes('thank you for applying') ||
+      text.includes('votre candidature') ||
+      text.includes('merci pour votre candidature') ||
+      text.includes('suite à votre candidature') ||
+      text.includes('nous avons bien reçu votre candidature')
+    )
   }).length
 
   const interviews = all.filter(item => {
-    const text = `${item.status} ${item.detected_status} ${item.eventType} ${item.subject} ${item.title}`.toLowerCase()
-    return text.includes('interview') || text.includes('entretien') || text.includes('screening')
+    const text = getText(item)
+    return text.includes('interview') || text.includes('entretien') || text.includes('screening') || text.includes('phone screen')
   }).length
 
-  const rejections = countBy(text => text.includes('reject') || text.includes('refus') || text.includes('not selected') || text.includes('pas retenu'))
+  const rejections = countBy(text => text.includes('reject') || text.includes('refus') || text.includes('not selected') || text.includes('pas retenu') || text.includes('unfortunately') || text.includes('malheureusement'))
   const offers = countBy(text => text.includes('offer') || text.includes('offre') || text.includes('contract') || text.includes('contrat'))
-  const followUps = countBy(text => text.includes('follow') || text.includes('next step') || text.includes('availability') || text.includes('disponibilité'))
+  const followUps = countBy(text => text.includes('follow') || text.includes('next step') || text.includes('availability') || text.includes('disponibilité') || text.includes('disponibilités'))
 
   return {
     applications,
@@ -133,6 +176,7 @@ function buildSyncInsights(emails = [], calendar = []) {
     rejections,
     offers,
     followUps,
+    suggestions,
     total: all.length
   }
 }
@@ -557,9 +601,9 @@ export default function MessagesPage({ setPage }) {
                 <p>Negative responses detected</p>
               </div>
               <div>
-                <span>Offers</span>
-                <strong>{syncInsights.offers}</strong>
-                <p>Offer or positive signals</p>
+                <span>Suggestions</span>
+                <strong>{syncInsights.suggestions}</strong>
+                <p>Job alerts separated from applications</p>
               </div>
               <div>
                 <span>Follow-ups</span>
