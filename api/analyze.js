@@ -138,15 +138,6 @@ function getRestrictedBoardName(url = '') {
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
 
-  // LinkedIn/Indeed/Glassdoor commonly block server-side scraping.
-  // Fail fast so Vercel does not timeout with 504.
-  if (restrictedBoard) {
-    const err = new Error(`${restrictedBoard} blocks reliable URL extraction. Please use Mode texte and paste the job description instead.`)
-    err.statusCode = 400
-    err.code = 'RESTRICTED_JOB_BOARD'
-    throw err
-  }
-
   let res
   try {
     const controller = new AbortController()
@@ -185,12 +176,12 @@ async function fetchJobText(url) {
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/\s{2,}/g, ' ').trim()
   if (text.length < 200) {
-    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Paste mode is available as a fallback.`)
+    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text through URL mode. Joblytics tried to read the page but the job description was hidden, blocked, or loaded dynamically. Use Mode texte for this specific page.`)
     err.statusCode = 400
-    err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_TEXT_TOO_SHORT'
+    err.code = 'URL_TEXT_TOO_SHORT'
     throw err
   }
-  return text.slice(0, 7000)
+  return text.slice(0, 5500)
 }
 
 async function extractCvText(base64Data, mimeType) {
@@ -352,7 +343,7 @@ export default async function handler(req, res) {
     }
 
     const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(providedJobText.slice(0, 7000)) : fetchJobText(jobUrl),
+      providedJobText ? Promise.resolve(providedJobText.slice(0, 5500)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
 
@@ -367,10 +358,10 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 3000,
+      max_tokens: 1800,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 7000)}\n\n---\n\nCV:\n${cvText.slice(0, 7000)}` }]
+      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
