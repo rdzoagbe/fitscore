@@ -304,7 +304,7 @@ async function fetchJobText(url) {
     throw err
   }
 
-  return text.slice(0, 5500)
+  return text.slice(0, 3500)
 
 }
 
@@ -467,14 +467,14 @@ export default async function handler(req, res) {
     }
 
     const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(providedJobText.slice(0, 5500)) : fetchJobText(jobUrl),
+      providedJobText ? Promise.resolve(providedJobText.slice(0, 3500)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
 
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ error: 'Could not extract text from your CV. Make sure it is not a scanned image.' })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.' })
 
-    const cacheKey = hashContent('ats-v2', cvText.slice(0, 6000), jobText.slice(0, 6000))
+    const cacheKey = hashContent('ats-v2', cvText.slice(0, 3500), jobText.slice(0, 3500))
     if (supabaseClient && userId) {
       const { data: cached } = await supabaseClient.from('analyses').select('result, created_at').eq('user_id', userId).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).single()
       if (cached?.result) return res.status(200).json({ success: true, analysis: cached.result, cached: true })
@@ -482,11 +482,11 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
-      max_tokens: 1800,
+      max_tokens: 900,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
-    }, { timeout: 30000 })
+      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 3500)}\n\n---\n\nCV:\n${cvText.slice(0, 3500)}` }]
+    }, { timeout: 8500 })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
