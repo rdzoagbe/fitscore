@@ -486,7 +486,7 @@ export default async function handler(req, res) {
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
-    }, { timeout: 9000 })
+    }, { timeout: 30000 })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
