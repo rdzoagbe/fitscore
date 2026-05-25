@@ -41,8 +41,8 @@ export default function TipCard({ onGoCoach, onGoHistory }) {
     },
     {
       icon: '🌍',
-      title: t('tip_languages_title') || '6 languages supported',
-      body: t('tip_languages_body') || 'French, English, Spanish, German, Italian, Portuguese. Switch in settings — cover letters auto-localize.',
+      title: t('Optimize your language', 'Optimize your language') || '6 languages supported',
+      body: t('Use the same language as the job description when possible. It helps Joblytics compare your CV and the offer more accurately.', 'Use the same language as the job description when possible. It helps Joblytics compare your CV and the offer more accurately.') || 'French, English, Spanish, German, Italian, Portuguese. Switch in settings — cover letters auto-localize.',
       cta: null
     },
     {
