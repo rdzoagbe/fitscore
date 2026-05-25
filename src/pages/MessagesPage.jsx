@@ -293,6 +293,7 @@ export default function MessagesPage({ setPage }) {
   const [syncNotice, setSyncNotice] = useState('')
   const [replySuccess, setReplySuccess] = useState('')
   const [syncTab, setSyncTab] = useState('emails')
+  const [emailFilter, setEmailFilter] = useState('all')
   const [syncedEmails, setSyncedEmails] = useState([])
   const [syncedCalendar, setSyncedCalendar] = useState([])
   const [selectedEmail, setSelectedEmail] = useState(previewEmails[0])
