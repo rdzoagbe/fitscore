@@ -69,7 +69,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
 
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
   const restrictedJobBoard = detectRestrictedJobBoard(jobUrl)
-  const canAnalyzeUrl = isValidUrl(jobUrl)
+  const canAnalyzeUrl = isValidUrl(jobUrl) && !restrictedJobBoard
   const canAnalyzePaste = jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
@@ -87,6 +87,13 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   }
   const handleAnalyze = async () => {
     if (!cvFile) return
+
+    if (!showTextPaste && restrictedJobBoard) {
+      setShowTextPaste(true)
+      setUserToggledMode(true)
+      return
+    }
+
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i+1) % LOADING_MSGS.length), 1800)
     if (canAnalyzePaste) await analyze(null, cvFile, jobText.trim())
@@ -120,7 +127,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               {!showTextPaste ? <>
                 <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
                 {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title={t('analyzer_link_invalid_title')} body={t('analyzer_link_invalid_body')} />}
-                {restrictedJobBoard && <><TipCard type="warning" title={t('analyzer_restricted_title', { board: restrictedJobBoard })} body={t('analyzer_restricted_body')} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>{t('analyzer_use_paste')}</button></>}
+                {restrictedJobBoard && <><TipCard type="warning" title={t('analyzer_restricted_title', `${restrictedJobBoard} blocks automatic URL extraction`)} body={t('analyzer_restricted_body', 'Use Mode texte and paste the job description so Joblytics can analyze it reliably.')} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>{t('analyzer_use_paste', 'Utiliser le mode texte')}</button></>}
                 {urlHistory.length > 0 && <div style={{ marginTop: 10 }}><button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>{t('analyzer_recent_links')}</button>{showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => { setJobUrl(normalizeJobUrl(url)); setJobText(''); setShowTextPaste(false); setShowHistory(false) }} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}</div>}
               </> : <>
                 <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
@@ -129,7 +136,13 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
               {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
               {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
-              <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze} style={{ width: '100%', marginTop: 14 }}>{status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
+              <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze && !restrictedJobBoard} style={{ width: '100%', marginTop: 14 }}>
+                {status === 'loading'
+                  ? t('analyzer_analyzing')
+                  : restrictedJobBoard && !showTextPaste
+                    ? t('analyzer_use_paste')
+                    : t('analyzer_analyze_match')}
+              </button>
             </div>
           </section>
           <aside className="analyzePro-side">
