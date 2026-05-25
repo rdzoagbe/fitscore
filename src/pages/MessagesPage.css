@@ -747,3 +747,131 @@
   color: #0848b8;
   border-bottom-color: rgba(8, 72, 184, 0.55);
 }
+
+/* Premium compact email list */
+.emailSignalsList {
+  gap: 8px !important;
+  padding: 12px !important;
+  max-height: 620px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 98, 230, 0.35) transparent;
+}
+
+.emailSignalsList::-webkit-scrollbar {
+  width: 7px;
+}
+
+.emailSignalsList::-webkit-scrollbar-thumb {
+  background: rgba(15, 98, 230, 0.28);
+  border-radius: 999px;
+}
+
+.emailSignalsList .emailSignalCard {
+  grid-template-columns: 38px minmax(0, 1fr) 16px !important;
+  min-height: 78px !important;
+  padding: 10px 12px !important;
+  gap: 10px !important;
+  border-radius: 16px !important;
+  align-items: center !important;
+  box-shadow: none;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.emailSignalsList .emailSignalCard:hover {
+  border-color: rgba(15, 98, 230, 0.45);
+  background: #f8fbff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 98, 230, 0.08);
+}
+
+.emailSignalsList .emailSignalCard.is-selected {
+  background: linear-gradient(180deg, #f4f8ff 0%, #eef5ff 100%);
+  border-color: #0f62e6;
+  box-shadow: 0 12px 26px rgba(15, 98, 230, 0.12);
+}
+
+.emailSignalsList .jobLogo {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 12px !important;
+}
+
+.emailSignalsList .jobLogo.job::before {
+  font-size: 20px !important;
+}
+
+.emailSignalsList .updatedJobCopy {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.emailSignalsList .updatedJobCopy strong {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 5px !important;
+  color: #06143a;
+  font-size: 13.5px !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.025em;
+}
+
+.emailSignalsList .updatedJobCopy div {
+  gap: 6px !important;
+  margin-bottom: 3px;
+  flex-wrap: nowrap !important;
+  min-width: 0;
+}
+
+.emailSignalsList .statusPill {
+  min-height: 20px !important;
+  padding: 0 8px !important;
+  font-size: 10.5px !important;
+  line-height: 20px;
+  flex-shrink: 0;
+}
+
+.emailSignalsList .updatedJobCopy em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b7691 !important;
+  font-size: 11px !important;
+}
+
+.emailSignalsList .updatedJobCopy p {
+  margin: 2px 0 0 !important;
+  color: #51607f !important;
+  font-size: 11.5px !important;
+  line-height: 1.25 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emailSignalsList .updatedJobCopy small {
+  display: none !important;
+}
+
+.emailSignalsList .jobChevron {
+  font-size: 20px !important;
+  color: #8c97b0 !important;
+}
+
+@media (max-width: 680px) {
+  .emailSignalsList {
+    max-height: 520px;
+  }
+
+  .emailSignalsList .emailSignalCard {
+    min-height: 74px !important;
+    padding: 9px 10px !important;
+  }
+
+  .emailSignalsList .updatedJobCopy strong {
+    font-size: 12.5px !important;
+  }
+}
