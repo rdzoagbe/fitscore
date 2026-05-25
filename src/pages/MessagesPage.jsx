@@ -182,6 +182,45 @@ function buildSyncInsights(emails = [], calendar = []) {
 }
 
 
+
+function getCleanLinkLabel(value = '') {
+  try {
+    const url = new URL(value)
+    const host = url.hostname.replace(/^www\./, '')
+    const path = url.pathname && url.pathname !== '/' ? url.pathname : ''
+    const shortPath = path.length > 38 ? `${path.slice(0, 38)}…` : path
+    return `${host}${shortPath}`
+  } catch {
+    return 'Open link'
+  }
+}
+
+function renderTextWithLinks(text = '', keyPrefix = 'link') {
+  const value = String(text || '')
+  const urlRegex = /(https?:\/\/[^\s<>"')]+[^\s<>"').,;:])/gi
+  const parts = value.split(urlRegex)
+
+  return parts.map((part, index) => {
+    if (/^https?:\/\//i.test(part)) {
+      return (
+        <a
+          key={`${keyPrefix}-url-${index}`}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="emailBodyLink"
+          title={part}
+        >
+          {getCleanLinkLabel(part)}
+        </a>
+      )
+    }
+
+    return <React.Fragment key={`${keyPrefix}-txt-${index}`}>{part}</React.Fragment>
+  })
+}
+
+
 function getProviderLabel(provider) {
   return provider === 'microsoft' ? 'Microsoft / Outlook' : 'Google'
 }
@@ -663,7 +702,7 @@ export default function MessagesPage({ setPage }) {
                         <div className="emailPreviewBody">
                           <strong>Gmail message content</strong>
                           {(selectedEmail?.body || selectedEmail?.snippet || selectedEmail?.summary || '').split('\n').map((line, index) => (
-                            <p key={`${selectedEmail?.id}-${index}`}>{line || ' '}</p>
+                            <p key={`${selectedEmail?.id}-${index}`}>{line ? renderTextWithLinks(line, `${selectedEmail?.id}-${index}`) : ' '}</p>
                           ))}
                         </div>
                       )}
