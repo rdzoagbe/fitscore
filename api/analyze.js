@@ -201,9 +201,23 @@ function getRestrictedBoardName(url = '') {
 
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
+
+  // LinkedIn/Indeed/Glassdoor commonly block server-side scraping.
+  // Fail fast so Vercel does not timeout with 504.
+  if (restrictedBoard) {
+    const err = new Error(`${restrictedBoard} blocks reliable URL extraction. Please use Mode texte and paste the job description instead.`)
+    err.statusCode = 400
+    err.code = 'RESTRICTED_JOB_BOARD'
+    throw err
+  }
+
   let res
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6500)
+
     res = await fetch(url, {
+      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -211,8 +225,10 @@ async function fetchJobText(url) {
       },
       redirect: 'follow'
     })
+
+    clearTimeout(timeout)
   } catch {
-    const err = new Error(`${restrictedBoard || 'This job page'} could not be reached from URL mode. Paste mode is available as a fallback.`)
+    const err = new Error(`${restrictedBoard || 'This job page'} could not be reached quickly from URL mode. Please use Mode texte and paste the job description.`)
     err.statusCode = 400
     err.code = 'URL_FETCH_FAILED'
     throw err
@@ -238,7 +254,7 @@ async function fetchJobText(url) {
     err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_TEXT_TOO_SHORT'
     throw err
   }
-  return text.slice(0, 9000)
+  return text.slice(0, 7000)
 }
 
 async function extractCvText(base64Data, mimeType) {
@@ -400,7 +416,7 @@ export default async function handler(req, res) {
     }
 
     const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(providedJobText.slice(0, 9000)) : fetchJobText(jobUrl),
+      providedJobText ? Promise.resolve(providedJobText.slice(0, 7000)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
 
@@ -415,10 +431,10 @@ export default async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4200,
+      max_tokens: 3000,
       temperature: 0,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 9000)}\n\n---\n\nCV:\n${cvText.slice(0, 9000)}` }]
+      messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 7000)}\n\n---\n\nCV:\n${cvText.slice(0, 7000)}` }]
     })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
