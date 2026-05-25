@@ -374,10 +374,12 @@ async function requireUser(req, supabase) {
 }
 
 function monthWindow() {
-  // Scan from the first day of the previous month up to now.
-  // This matches the product requirement: "last month till date".
+  // Default to 120 days so Joblytics tracks a real job-search period,
+  // not only the current/previous calendar month.
   const now = new Date()
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0, 0))
+  const configuredDays = Number(process.env.SMART_SYNC_LOOKBACK_DAYS || 120)
+  const lookbackDays = Number.isFinite(configuredDays) && configuredDays > 0 ? configuredDays : 120
+  const start = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000)
 
   const yyyy = start.getUTCFullYear()
   const mm = String(start.getUTCMonth() + 1).padStart(2, '0')
@@ -386,7 +388,8 @@ function monthWindow() {
   return {
     gmailAfter: `${yyyy}/${mm}/${dd}`,
     isoStart: start.toISOString(),
-    isoNow: now.toISOString()
+    isoNow: now.toISOString(),
+    lookbackDays
   }
 }
 
@@ -764,7 +767,7 @@ async function scanGoogle(accessToken) {
 
       try {
         const list = await getJson(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`,
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${encodeURIComponent(process.env.SMART_SYNC_GMAIL_QUERY_LIMIT || 25)}&q=${encodeURIComponent(query)}`,
           accessToken
         )
 
@@ -779,7 +782,7 @@ async function scanGoogle(accessToken) {
     const gmailMessages = Array.from(gmailMessagesById.values())
     diagnostics.gmailListed = gmailMessages.length
 
-    const gmailFetchLimit = 45
+    const gmailFetchLimit = Number(process.env.SMART_SYNC_GMAIL_FETCH_LIMIT || 60)
     const gmailDetailsToFetch = gmailMessages.slice(0, gmailFetchLimit)
 
     const detailResults = await mapInBatches(gmailDetailsToFetch, 5, async msg => {
@@ -1259,7 +1262,7 @@ export default async function handler(req, res) {
       providerEmails: connections.map(c => ({ provider: c.provider, email: c.provider_email || null })),
       scanned: responseEmails.length + responseCalendar.length,
       eventsStored,
-      analysesUpdated: 0,
+      analysesUpdated: 0, // TODO: link sync events to analyses/job opportunities
       breakdown: {
         emailSignals: responseEmails.length,
         calendarSignals: responseCalendar.length,
@@ -1272,8 +1275,8 @@ export default async function handler(req, res) {
       diagnostics,
       monthWindow: monthWindow(),
       message: errors.length
-        ? 'Smart Sync scanned from last month through today with warnings.'
-        : 'Smart Sync scanned from last month through today successfully.'
+        ? 'Smart Sync scanned your recent job-search signals with warnings.'
+        : 'Smart Sync scanned and stored your recent job-search signals successfully.'
     })
   } catch (error) {
     return res.status(error.statusCode || 500).json({
