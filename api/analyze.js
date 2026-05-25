@@ -357,12 +357,12 @@ export default async function handler(req, res) {
     }
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
       max_tokens: 1800,
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
-    })
+    }, { timeout: 9000 })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
@@ -394,6 +394,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo })
   } catch (e) {
     console.error('Handler error:', e.message)
+    if (e.name === 'APIConnectionTimeoutError' || e.code === 'ETIMEDOUT' || /timeout/i.test(e.message)) {
+      return res.status(504).json({ error: 'Analysis is taking too long. Please try again — this is usually a one-off slowdown.', code: 'ANALYSIS_TIMEOUT' })
+    }
     const statusCode = e.statusCode || 500
     return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED' })
   }
