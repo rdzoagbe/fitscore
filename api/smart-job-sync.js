@@ -1051,7 +1051,16 @@ async function loadStoredSyncEvents(supabase, userId) {
   const calendar = []
 
   for (const row of data || []) {
-    if (String(row.source || '').includes('calendar') || String(row.event_type || '').includes('interview')) {
+    const rowSource = String(row.source || '').toLowerCase()
+    const isCalendarSource =
+      rowSource === 'calendar' ||
+      rowSource === 'google_calendar' ||
+      rowSource === 'ms_calendar' ||
+      rowSource.includes('calendar')
+
+    // Important: interview emails from Gmail/Outlook stay in Emails.
+    // Only true calendar sources go to the Calendar tab.
+    if (isCalendarSource) {
       calendar.push(eventRowToCalendar(row))
     } else {
       emails.push(eventRowToEmail(row))

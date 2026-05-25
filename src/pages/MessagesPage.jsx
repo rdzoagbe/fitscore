@@ -107,6 +107,37 @@ function getAccountEmail(user) {
   )
 }
 
+
+function buildSyncInsights(emails = [], calendar = []) {
+  const all = [...emails, ...calendar]
+
+  const countBy = matcher => all.filter(item => matcher(String(item.status || item.detected_status || item.eventType || item.subject || item.title || '').toLowerCase())).length
+
+  const applications = emails.filter(item => {
+    const text = `${item.status} ${item.detected_status} ${item.eventType} ${item.subject} ${item.title}`.toLowerCase()
+    return text.includes('sent') || text.includes('applied') || text.includes('application')
+  }).length
+
+  const interviews = all.filter(item => {
+    const text = `${item.status} ${item.detected_status} ${item.eventType} ${item.subject} ${item.title}`.toLowerCase()
+    return text.includes('interview') || text.includes('entretien') || text.includes('screening')
+  }).length
+
+  const rejections = countBy(text => text.includes('reject') || text.includes('refus') || text.includes('not selected') || text.includes('pas retenu'))
+  const offers = countBy(text => text.includes('offer') || text.includes('offre') || text.includes('contract') || text.includes('contrat'))
+  const followUps = countBy(text => text.includes('follow') || text.includes('next step') || text.includes('availability') || text.includes('disponibilité'))
+
+  return {
+    applications,
+    interviews,
+    rejections,
+    offers,
+    followUps,
+    total: all.length
+  }
+}
+
+
 function getProviderLabel(provider) {
   return provider === 'microsoft' ? 'Microsoft / Outlook' : 'Google'
 }
@@ -330,6 +361,7 @@ export default function MessagesPage({ setPage }) {
 
   const emailItems = hasRealSync ? syncedEmails : previewEmails
   const calendarItems = hasRealSync ? syncedCalendar : previewCalendarEvents
+  const syncInsights = buildSyncInsights(emailItems, calendarItems)
   const syncDisplay = hasRealSync ? {
     scanned: syncResult.scanned,
     emails: syncResult.emailSignals,
@@ -501,6 +533,41 @@ export default function MessagesPage({ setPage }) {
             <span aria-hidden="true">💡</span>
             <p><strong>Tip:</strong> Keep Smart Sync enabled to let Joblytics automatically detect and track your job applications, interviews, offers, rejections, and follow-ups in real time.</p>
           </div>
+
+          {hasRealSync && (
+            <div className="smartCommandCenter">
+              <div>
+                <span>Tracked signals</span>
+                <strong>{syncInsights.total}</strong>
+                <p>Detected from Gmail and Calendar</p>
+              </div>
+              <div>
+                <span>Applications</span>
+                <strong>{syncInsights.applications}</strong>
+                <p>Sent or confirmed applications</p>
+              </div>
+              <div>
+                <span>Interviews</span>
+                <strong>{syncInsights.interviews}</strong>
+                <p>Email and calendar interview signals</p>
+              </div>
+              <div>
+                <span>Rejections</span>
+                <strong>{syncInsights.rejections}</strong>
+                <p>Negative responses detected</p>
+              </div>
+              <div>
+                <span>Offers</span>
+                <strong>{syncInsights.offers}</strong>
+                <p>Offer or positive signals</p>
+              </div>
+              <div>
+                <span>Follow-ups</span>
+                <strong>{syncInsights.followUps}</strong>
+                <p>Messages that may need action</p>
+              </div>
+            </div>
+          )}
 
           {hasRealSync && (
             <div className="newSyncResults">
