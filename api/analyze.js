@@ -138,10 +138,17 @@ function getRestrictedBoardName(url = '') {
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
 
+  if (restrictedBoard) {
+    const err = new Error(`${restrictedBoard} blocks automated reading. Please paste the job description directly using text mode.`)
+    err.statusCode = 400
+    err.code = 'RESTRICTED_JOB_BOARD'
+    throw err
+  }
+
   let res
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 6500)
+    const timeout = setTimeout(() => controller.abort(), 3000)
 
     res = await fetch(url, {
       signal: controller.signal,
@@ -362,7 +369,7 @@ export default async function handler(req, res) {
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
-    }, { timeout: 9000 })
+    }, { timeout: 7000 })
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
