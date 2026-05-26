@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { supabase } from '../lib/supabase'
@@ -6,6 +6,31 @@ import './MessagesPage.css'
 import './MessagesPageStable.css'
 
 const URL_RE = /(https?:\/\/[^\s<>"')]+[^\s<>"').,;:])/gi
+const SMART_SYNC_CACHE_VERSION = 'joblytics-smart-sync-v1'
+const SMART_SYNC_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+function getSmartSyncCacheKey(userId) {
+  return `${SMART_SYNC_CACHE_VERSION}:${userId || 'anonymous'}`
+}
+
+function loadSmartSyncCache(userId) {
+  try {
+    const raw = localStorage.getItem(getSmartSyncCacheKey(userId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const savedAt = parsed?.savedAt ? new Date(parsed.savedAt).getTime() : 0
+    if (!savedAt || Date.now() - savedAt > SMART_SYNC_CACHE_TTL_MS) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function saveSmartSyncCache(userId, payload) {
+  try {
+    localStorage.setItem(getSmartSyncCacheKey(userId), JSON.stringify({ ...payload, savedAt: new Date().toISOString() }))
+  } catch {}
+}
 
 function formatDate(value) {
   if (!value) return ''
@@ -171,7 +196,7 @@ function normalizeEmail(item = {}, index = 0) {
     subject: item.subject || item.title || 'Job-related email detected',
     type: getSyncType(item),
     from: item.from || item.sender || item.sender_or_attendees || 'Unknown sender',
-    date: formatDate(item.date || item.event_date || item.event_at),
+    date: item.date || item.event_date || item.event_at ? formatDate(item.date || item.event_date || item.event_at) : '',
     company,
     role,
     platform: item.platform || item.source || 'Email',
@@ -186,7 +211,7 @@ function normalizeCalendar(item = {}, index = 0) {
     title: item.title || item.matchedJobTitle || item.company || 'Detected calendar event',
     subject: item.eventTitle || item.subject || 'Recruitment calendar event',
     type: getSyncType(item),
-    date: formatDate(item.date || item.event_at),
+    date: item.date || item.event_at ? formatDate(item.date || item.event_at) : '',
     from: item.attendees || item.sender_or_attendees || '',
     company: item.company || '',
     role: item.matchedJobTitle || '',
@@ -243,6 +268,7 @@ function SignalDetail({ selected, mode }) {
 export default function MessagesPage({ setPage }) {
   const { user } = useAuth()
   const { t } = useLang()
+  const autoRefreshAttempted = useRef(false)
   const [threads, setThreads] = useState([])
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [threadError, setThreadError] = useState('')
@@ -263,6 +289,22 @@ export default function MessagesPage({ setPage }) {
   useEffect(() => {
     const next = getSignedInProvider(user)
     setProvider(next)
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    const cached = loadSmartSyncCache(user.id)
+    if (!cached) return
+
+    const cachedEmails = Array.isArray(cached.emails) ? cached.emails.map(normalizeEmail) : []
+    const cachedCalendar = Array.isArray(cached.calendar) ? cached.calendar.map(normalizeCalendar) : []
+    const cachedProviders = Array.isArray(cached.providers) ? cached.providers : []
+
+    setEmails(cachedEmails)
+    setCalendar(cachedCalendar)
+    setTab(cached.tab || (cachedEmails.length ? 'emails' : 'calendar'))
+    setLastSyncAt(cached.lastSyncAt || cached.savedAt || '')
+    if (cachedProviders.length) setConnections(prev => new Set([...prev, ...cachedProviders]))
   }, [user?.id])
 
   useEffect(() => {
@@ -300,7 +342,8 @@ export default function MessagesPage({ setPage }) {
     if (sync === 'connected') {
       const connectedProvider = params.get('provider') || provider
       setConnections(prev => new Set([...prev, connectedProvider]))
-      setSyncNotice('Account connected. Run Smart Sync to refresh your job signals.')
+      setSyncNotice('Account connected. Smart Sync will refresh automatically.')
+      autoRefreshAttempted.current = false
     }
     if (sync === 'failed') setSyncNotice(params.get('reason') || 'Smart Sync connection failed.')
     if (sync === 'cancelled') setSyncNotice('Smart Sync connection was cancelled.')
@@ -346,10 +389,10 @@ export default function MessagesPage({ setPage }) {
     }
   }
 
-  const runSmartSync = async () => {
+  const runSmartSync = async ({ silent = false } = {}) => {
     setSyncLoading(true)
-    setSyncNotice('')
-    setSyncSuccess('')
+    if (!silent) setSyncNotice('')
+    if (!silent) setSyncSuccess('')
     try {
       const token = await getFreshAccessToken()
       if (!token) throw new Error('Please sign in again.')
@@ -363,11 +406,22 @@ export default function MessagesPage({ setPage }) {
       if (!res.ok) throw new Error(data?.error || `Smart Sync failed (${res.status}).`)
       const nextEmails = Array.isArray(data.emails) ? data.emails.map(normalizeEmail) : []
       const nextCalendar = Array.isArray(data.calendar) ? data.calendar.map(normalizeCalendar) : []
-      if (data.providers?.length) setConnections(new Set(data.providers))
+      const nextProviders = data.providers?.length ? data.providers : Array.from(connections)
+      const nextTab = nextEmails.length ? 'emails' : 'calendar'
+      const syncedAt = new Date().toISOString()
+
+      if (nextProviders.length) setConnections(new Set(nextProviders))
       setEmails(nextEmails)
       setCalendar(nextCalendar)
-      setTab(nextEmails.length ? 'emails' : 'calendar')
-      setLastSyncAt(new Date().toISOString())
+      setTab(nextTab)
+      setLastSyncAt(syncedAt)
+      saveSmartSyncCache(user?.id, {
+        emails: nextEmails,
+        calendar: nextCalendar,
+        providers: nextProviders,
+        tab: nextTab,
+        lastSyncAt: syncedAt
+      })
       setSyncSuccess(`Smart Sync complete: ${data.scanned || 0} signals scanned, ${data.eventsStored || 0} events saved, ${data.analysesUpdated || 0} jobs updated.`)
     } catch (error) {
       setSyncNotice(error.message || 'Smart Sync could not complete.')
@@ -375,6 +429,15 @@ export default function MessagesPage({ setPage }) {
       setSyncLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!user?.id || syncLoading || autoRefreshAttempted.current) return
+    if (!providerConnected) return
+    if (emails.length || calendar.length) return
+
+    autoRefreshAttempted.current = true
+    runSmartSync({ silent: true })
+  }, [user?.id, providerConnected, emails.length, calendar.length, syncLoading])
 
   const handlePrimarySync = () => providerConnected ? runSmartSync() : connectProvider()
 
