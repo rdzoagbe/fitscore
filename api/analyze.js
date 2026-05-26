@@ -557,7 +557,7 @@ export default async function handler(req, res) {
       temperature: 0,
       system: SYSTEM,
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 3500)}\n\n---\n\nCV:\n${cvText.slice(0, 3500)}` }]
-    }, { timeout: 8500 })
+    }, { timeout: 30000 })
 
     mark('after_claude')
 
