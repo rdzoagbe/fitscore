@@ -713,6 +713,297 @@ select:focus-visible {
   border: 1px solid rgba(169,71,64,.18);
 }
 
+/* ─── Phase 3: Structured CV workspace ─────────────────────────────── */
+.cvWorkspace-trustStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cvWorkspace-provenance {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .02em;
+  border: 1px solid rgba(16,24,43,.10);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+.cvWorkspace-provenance--source {
+  background: rgba(85,124,100,.09);
+  color: var(--green);
+  border-color: rgba(85,124,100,.20);
+}
+
+.cvWorkspace-provenance--ai {
+  background: rgba(164,81,43,.09);
+  color: var(--accent);
+  border-color: rgba(164,81,43,.20);
+}
+
+.cvWorkspace-provenance--proof {
+  background: rgba(185,134,59,.10);
+  color: var(--amber);
+  border-color: rgba(185,134,59,.22);
+}
+
+.cvWorkspace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+  gap: clamp(14px, 2vw, 22px);
+  align-items: start;
+}
+
+.cvWorkspace-editor,
+.cvWorkspace-livePreview,
+.cvWorkspace-versions {
+  border: 1px solid rgba(16,24,43,.10);
+  background: rgba(255,255,255,.68);
+  border-radius: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+.cvWorkspace-editor {
+  padding: clamp(14px, 2vw, 20px);
+  display: grid;
+  gap: 14px;
+}
+
+.cvWorkspace-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(16,24,43,.09);
+}
+
+.cvWorkspace-toolbar strong,
+.cvWorkspace-versions strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+
+.cvWorkspace-toolbar p,
+.cvWorkspace-versions p {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.cvWorkspace-toolbarActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cvWorkspace-toolbarActions button,
+.cvWorkspace-versionList button {
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(16,24,43,.12);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0 13px;
+}
+
+.cvWorkspace-toolbarActions button:last-child {
+  background: var(--accent);
+  color: #fffdf8;
+  border-color: var(--accent);
+}
+
+.cvWorkspace-field {
+  display: grid;
+  gap: 7px;
+}
+
+.cvWorkspace-field span {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.cvWorkspace-field em {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.cvWorkspace-field input,
+.cvWorkspace-field textarea {
+  width: 100%;
+  border: 1px solid rgba(16,24,43,.12);
+  background: rgba(250,247,241,.80);
+  border-radius: 14px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  padding: 12px 13px;
+  resize: vertical;
+}
+
+.cvWorkspace-field input:focus,
+.cvWorkspace-field textarea:focus {
+  border-color: rgba(164,81,43,.42);
+  box-shadow: 0 0 0 4px rgba(164,81,43,.10);
+  outline: none;
+}
+
+.cvWorkspace-livePreview {
+  padding: clamp(14px, 2vw, 18px);
+  position: sticky;
+  top: 92px;
+}
+
+.cvWorkspace-previewPaper {
+  min-height: 620px;
+  background: #fff;
+  border: 1px solid rgba(16,24,43,.12);
+  border-radius: 18px;
+  padding: clamp(18px, 2.4vw, 28px);
+  box-shadow: 0 18px 42px rgba(16,24,43,.08);
+}
+
+.cvWorkspace-previewKicker {
+  margin: 0 0 9px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.cvWorkspace-previewPaper h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(22px, 3vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -.05em;
+}
+
+.cvWorkspace-profileText {
+  margin: 14px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.cvWorkspace-previewSection {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(16,24,43,.10);
+}
+
+.cvWorkspace-previewSection strong {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+.cvWorkspace-previewSection ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.cvWorkspace-previewSection p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cvWorkspace-previewWarning {
+  border-radius: 14px;
+  padding: 13px;
+  background: rgba(185,134,59,.08);
+  border: 1px solid rgba(185,134,59,.18);
+}
+
+.cvWorkspace-chipList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.cvWorkspace-chipList span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(164,81,43,.08);
+  color: var(--accent);
+  border: 1px solid rgba(164,81,43,.14);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.cvWorkspace-versions {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.cvWorkspace-versions > span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.cvWorkspace-versionList {
+  display: grid;
+  gap: 8px;
+}
+
+.cvWorkspace-versionList button {
+  display: grid;
+  height: auto;
+  min-height: 48px;
+  justify-items: start;
+  text-align: left;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.cvWorkspace-versionList button strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.cvWorkspace-versionList button span {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 /* ─── Optimizer cards with missing translation keys ─────────────────── */
 [class*='profileOpt'],
 [class*='cvBuilder'],
@@ -835,14 +1126,24 @@ select:focus-visible {
 }
 
 @media (max-width: 980px) {
-  .cvBuilder-flow {
+  .cvBuilder-flow,
+  .cvWorkspace-layout {
     grid-template-columns: 1fr;
+  }
+
+  .cvWorkspace-livePreview {
+    position: static;
   }
 
   .cvBuilder-head,
   .cvBuilder-previewHead,
-  .resultTrust-header {
+  .resultTrust-header,
+  .cvWorkspace-toolbar {
     display: grid;
+  }
+
+  .cvWorkspace-toolbarActions {
+    justify-content: flex-start;
   }
 
   .cvBuilder-head > strong,
@@ -875,7 +1176,10 @@ select:focus-visible {
   .messagesConversation,
   .newSyncPanel,
   .smartTrackingPanel,
-  .resultTrust-panel {
+  .resultTrust-panel,
+  .cvWorkspace-editor,
+  .cvWorkspace-livePreview,
+  .cvWorkspace-versions {
     border-radius: 22px !important;
     padding: 18px !important;
   }
@@ -921,6 +1225,11 @@ select:focus-visible {
   .newSyncDetectsGrid,
   .newSyncGrid {
     grid-template-columns: 1fr !important;
+  }
+
+  .cvWorkspace-previewPaper {
+    min-height: 0;
+    padding: 18px;
   }
 
   .newSyncServiceRow {
