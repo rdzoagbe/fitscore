@@ -75,12 +75,11 @@ function InfoPill({ label, value }) {
 
 function BulletList({ items, tone = 'good', empty, max = 5 }) {
   const color = tone === 'bad' ? premium.red : premium.green
-  const marker = tone === 'bad' ? '•' : '•'
   return items?.length ? (
     <div style={{ display: 'grid', gap: 8 }}>
       {items.slice(0, max).map((item, index) => (
         <div key={`${item}-${index}`} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-          <span style={{ color, fontSize: 16, lineHeight: '14px' }}>{marker}</span>
+          <span style={{ color, fontSize: 16, lineHeight: '14px' }}>•</span>
           <p style={{ margin: 0, color: premium.muted, fontSize: 12, lineHeight: 1.45 }}>{item}</p>
         </div>
       ))}
@@ -105,23 +104,26 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
   const strict = data.strict_ats_result || {}
   const strictAnalysis = strict.analysis || {}
   const strictMatched = safeArray(strictAnalysis.matched_skills, 12)
+  const cleanKeywords = data.keywords_analysis || {}
+  const cleanReq = data.requirements_analysis || {}
 
   const score = safeScore(data.display_score ?? data.match_probability, 0)
   const tone = score >= 75 ? premium.green : score >= 55 ? premium.gold : premium.red
-  const title = context.title || data.job_title || t('selected_analysis_fallback_title', 'Selected analysis')
-  const company = context.company && context.company !== 'Not specified' ? context.company : null
+  const title = context.job_title || context.title || data.job_title || t('selected_analysis_fallback_title', 'Selected analysis')
+  const company = context.company && !['Not specified', 'Not stated'].includes(context.company) ? context.company : null
   const analyzedAt = formatDate(savedRow?.created_at || data.created_at)
   const subtitle = [company, analyzedAt].filter(Boolean).join(' · ')
-  const summary = data.job_summary || data.match_reasoning || recruiter.reason || 'Joblytics analyzed the job description against the current CV and extracted the strongest ATS signals.'
+  const summary = context.job_summary || data.job_summary || data.match_reasoning || recruiter.reason || 'Joblytics analyzed the job description against the current CV and extracted the strongest ATS signals.'
 
-  const missingKeywords = unique([...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 8)
-  const foundKeywords = unique([...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 10)
+  const missingKeywords = unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 8)
+  const foundKeywords = unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 10)
   const quickWins = safeArray(data.quick_wins, 5)
-  const gaps = unique([...(data.critical_gaps || []), ...(strictAnalysis.missing_skills || [])], 5)
-  const met = unique([...(req.met || []), ...strictMatched.map(item => item.required_skill)], 5)
-  const unmet = unique([...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 5)
-  const salaryText = context.salary_range || data.salary_assessment?.assessment || 'Not stated'
+  const gaps = unique([...(data.gaps_to_address || []), ...(data.critical_gaps || []), ...(cleanReq.requirements_missing || []), ...(strictAnalysis.needs_proof || [])], 5)
+  const met = unique([...(cleanReq.requirements_met || []), ...(req.met || []), ...strictMatched.map(item => item.required_skill)], 5)
+  const unmet = unique([...(cleanReq.requirements_missing || []), ...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 5)
+  const salaryText = context.salary || context.salary_range || data.salary_assessment?.assessment || 'Not stated'
   const statusText = savedRow ? 'Saved' : 'Ready to save'
+  const recruiterSummary = data.recruiter_screening_summary || recruiter.reason || data.overall_reason || 'Use this result to decide what to fix before applying.'
 
   return (
     <section style={{ marginBottom: 20, padding: 24, borderRadius: 28, background: premium.paper, border: `1px solid ${premium.line}`, boxShadow: '0 24px 70px rgba(16,24,43,0.08)' }}>
@@ -150,7 +152,7 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
           </div>
           <div style={{ marginTop: 12, padding: '13px 14px', borderRadius: 14, border: '1px solid rgba(181,102,60,0.20)', background: premium.copperSoft }}>
             <strong style={{ display: 'block', color: premium.navy, fontSize: 12, marginBottom: 5 }}>Recruiter screening summary</strong>
-            <p style={{ margin: 0, color: premium.muted, fontSize: 12, lineHeight: 1.5 }}>{recruiter.reason || data.overall_reason || 'Use this result to decide what to fix before applying.'}</p>
+            <p style={{ margin: 0, color: premium.muted, fontSize: 12, lineHeight: 1.5 }}>{recruiterSummary}</p>
           </div>
         </div>
 
