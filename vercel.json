@@ -3,6 +3,9 @@
     "api/analyze.js": {
       "maxDuration": 60
     },
+    "api/analyze-v4.js": {
+      "maxDuration": 60
+    },
     "api/smart-job-sync.js": {
       "maxDuration": 60
     }
