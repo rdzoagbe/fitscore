@@ -2,13 +2,13 @@ import { useEffect } from 'react'
 
 const URL_RE = /(https?:\/\/[^\s<>"')]+[^\s<>"').,;:])/gi
 
-function cleanLine(value = '') {
-  return String(value || '')
+function decodeHtml(value = '') {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = String(value || '')
+  return textarea.value
+    .replace(/\u00a0/g, ' ')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ')
-    .replace(/^-{3,}$/g, '')
-    .trim()
 }
 
 function cleanLinkLabel(url = '', index = 0) {
@@ -16,139 +16,136 @@ function cleanLinkLabel(url = '', index = 0) {
     const parsed = new URL(url)
     const host = parsed.hostname.replace(/^www\./, '')
     const jobId = parsed.pathname.match(/\/jobs\/view\/(\d+)/)?.[1]
-    if (host.includes('linkedin.com')) return jobId ? `Open LinkedIn job ${jobId}` : 'Open LinkedIn job'
+    if (host.includes('linkedin.com')) return jobId ? `View LinkedIn job ${jobId}` : 'View LinkedIn job'
     return `Open ${host}`
   } catch {
     return `Open link ${index + 1}`
   }
 }
 
-function uniqueLinks(text = '') {
-  const seen = new Set()
-  return (String(text || '').match(URL_RE) || []).filter(url => {
-    let key = url
-    try {
-      const parsed = new URL(url)
-      key = parsed.pathname.match(/\/jobs\/view\/(\d+)/)?.[1] || `${parsed.hostname}${parsed.pathname}`
-    } catch {}
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  }).slice(0, 5)
+function appendTextWithLinks(parent, text = '') {
+  const parts = String(text || '').split(URL_RE)
+  let linkIndex = 0
+  parts.forEach(part => {
+    if (!part) return
+    if (/^https?:\/\//i.test(part)) {
+      const link = document.createElement('a')
+      link.href = part
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      link.className = 'mailReaderLink'
+      link.textContent = cleanLinkLabel(part, linkIndex)
+      linkIndex += 1
+      parent.append(link)
+    } else {
+      parent.append(document.createTextNode(part))
+    }
+  })
 }
 
-function polishMessagePreviewBlocks() {
-  document.querySelectorAll('.messagesStableBody:not([data-polished="true"])').forEach(block => {
-    const raw = block.textContent || ''
-    if (!raw || raw.length < 120 || !/https?:\/\//i.test(raw)) return
+function lineLooksSeparator(line = '') {
+  return /^[-–—_\s]{8,}$/.test(line.trim())
+}
 
-    const original = raw.replace(/^Message preview\s*/i, '').trim()
-    const links = uniqueLinks(original)
-    const withoutLinks = original
-      .replace(URL_RE, '')
-      .replace(/View job:\s*/gi, '')
-      .replace(/-{8,}/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim()
+function renderEmailLikePreview(block, raw) {
+  const original = decodeHtml(raw.replace(/^Message preview\s*/i, '').trim())
+  const lines = original.split(/\r?\n/)
 
-    const split = withoutLinks.split(/now, take these next steps|view similar jobs|jobs you may be interested|recommended jobs|you may be interested in/i)
-    const mainText = split[0] || withoutLinks
-    const suggestions = split.slice(1).join('\n').trim()
-    const lines = mainText.split('\n').map(cleanLine).filter(Boolean).slice(0, 8)
-    const suggestionLines = suggestions.split('\n').map(cleanLine).filter(Boolean).filter(line => !/^apply with/i.test(line)).slice(0, 10)
+  block.dataset.polished = 'true'
+  block.textContent = ''
+  block.classList.remove('cleanDomPreview')
+  block.classList.add('mailReaderPreview')
 
-    const applicationLine = lines.find(line => /application was sent|candidature|applied on|application received/i.test(line)) || 'Job-related message detected'
-    const appliedOn = lines.find(line => /^applied on/i.test(line)) || ''
-    const company = (() => {
-      const sentLine = lines.find(line => /application was sent to/i.test(line))
-      if (sentLine) return sentLine.replace(/your application was sent to/i, '').trim()
-      return lines.find(line => /^[A-Z0-9][A-Za-z0-9 .&'_-]{2,}$/.test(line) && line.length < 80) || 'Not detected'
-    })()
-    const role = lines.find((line, idx) => idx > 0 && !/^your application/i.test(line) && !/^applied on/i.test(line) && line !== company && line.length < 100) || 'Not detected'
-    const location = lines.find(line => /paris|france|metropolitan|remote|hybrid|london|dublin|brussels/i.test(line)) || 'Not detected'
+  const header = document.createElement('div')
+  header.className = 'mailReaderPreviewHeader'
+  const headerLabel = document.createElement('span')
+  headerLabel.textContent = 'Email content'
+  const headerHint = document.createElement('em')
+  headerHint.textContent = 'Links are clickable'
+  header.append(headerLabel, headerHint)
+  block.append(header)
 
-    block.dataset.polished = 'true'
-    block.textContent = ''
-    block.classList.add('cleanDomPreview')
+  const body = document.createElement('div')
+  body.className = 'mailReaderBody'
 
-    const head = document.createElement('div')
-    head.className = 'cleanDomPreview-head'
-    const label = document.createElement('p')
-    label.textContent = 'Message preview'
-    const title = document.createElement('h3')
-    title.textContent = applicationLine
-    head.append(label, title)
-
-    const summary = document.createElement('div')
-    summary.className = 'cleanDomPreview-summary'
-    ;[
-      ['Company', company],
-      ['Role', role],
-      ['Location', location],
-      ['Date', appliedOn || 'Not detected']
-    ].forEach(([key, value]) => {
-      const card = document.createElement('div')
-      const span = document.createElement('span')
-      span.textContent = key
-      const strong = document.createElement('strong')
-      strong.textContent = value
-      card.append(span, strong)
-      summary.append(card)
-    })
-
-    block.append(head, summary)
-
-    if (links[0]) {
-      const primary = document.createElement('a')
-      primary.className = 'cleanDomPreview-primaryLink'
-      primary.href = links[0]
-      primary.target = '_blank'
-      primary.rel = 'noopener noreferrer'
-      primary.textContent = cleanLinkLabel(links[0], 0)
-      block.append(primary)
+  lines.forEach((line, index) => {
+    if (lineLooksSeparator(line)) {
+      const hr = document.createElement('hr')
+      body.append(hr)
+      return
     }
 
+    const paragraph = document.createElement('p')
+    const trimmed = line.trim()
+    if (!trimmed) paragraph.className = 'is-spacer'
+    appendTextWithLinks(paragraph, line)
+    body.append(paragraph)
+  })
+
+  block.append(body)
+}
+
+function renderCalendarLikePreview(block, raw) {
+  const original = decodeHtml(raw.replace(/^Message preview\s*/i, '').trim())
+  const lines = original.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+
+  block.dataset.polished = 'true'
+  block.textContent = ''
+  block.classList.add('calendarInvitePreview')
+
+  const title = lines[0] || 'Calendar invitation'
+  const metaLines = lines.slice(1, 6)
+  const description = lines.slice(6).join('\n')
+
+  const header = document.createElement('div')
+  header.className = 'calendarInviteHeader'
+  const icon = document.createElement('span')
+  icon.textContent = 'CAL'
+  const copy = document.createElement('div')
+  const label = document.createElement('p')
+  label.textContent = 'Calendar invitation'
+  const h3 = document.createElement('h3')
+  h3.textContent = title
+  copy.append(label, h3)
+  header.append(icon, copy)
+  block.append(header)
+
+  if (metaLines.length) {
+    const facts = document.createElement('div')
+    facts.className = 'calendarInviteFacts'
+    metaLines.forEach((line, index) => {
+      const fact = document.createElement('div')
+      const dt = document.createElement('span')
+      dt.textContent = ['When', 'Where', 'Attendees', 'Organizer', 'Status'][index] || 'Detail'
+      const dd = document.createElement('strong')
+      appendTextWithLinks(dd, line)
+      fact.append(dt, dd)
+      facts.append(fact)
+    })
+    block.append(facts)
+  }
+
+  if (description) {
     const body = document.createElement('div')
-    body.className = 'cleanDomPreview-body'
-    lines.filter(line => !/^view job:?$/i.test(line)).forEach(line => {
+    body.className = 'calendarInviteBody'
+    description.split(/\r?\n/).forEach(line => {
       const p = document.createElement('p')
-      p.textContent = line
+      appendTextWithLinks(p, line)
       body.append(p)
     })
     block.append(body)
+  }
+}
 
-    if (suggestionLines.length) {
-      const details = document.createElement('details')
-      details.className = 'cleanDomPreview-details'
-      const summaryNode = document.createElement('summary')
-      summaryNode.textContent = 'Show suggested jobs from this email'
-      const ul = document.createElement('ul')
-      suggestionLines.forEach(line => {
-        const li = document.createElement('li')
-        li.textContent = line
-        ul.append(li)
-      })
-      details.append(summaryNode, ul)
-      block.append(details)
-    }
+function renderReadableMessageBlocks() {
+  document.querySelectorAll('.messagesStableBody:not([data-polished="true"])').forEach(block => {
+    const raw = block.textContent || ''
+    if (!raw || raw.trim().length < 1) return
 
-    if (links.length > 1) {
-      const details = document.createElement('details')
-      details.className = 'cleanDomPreview-details cleanDomPreview-links'
-      const summaryNode = document.createElement('summary')
-      summaryNode.textContent = 'Other links found in this email'
-      const div = document.createElement('div')
-      links.slice(1).forEach((url, index) => {
-        const a = document.createElement('a')
-        a.href = url
-        a.target = '_blank'
-        a.rel = 'noopener noreferrer'
-        a.textContent = cleanLinkLabel(url, index + 1)
-        div.append(a)
-      })
-      details.append(summaryNode, div)
-      block.append(details)
-    }
+    const parentText = block.closest('.messagesStableDetail')?.textContent || ''
+    const isCalendar = /calendar|invitation|attendees|organizer|location|meeting/i.test(parentText) && !/email/i.test(parentText)
+    if (isCalendar) renderCalendarLikePreview(block, raw)
+    else renderEmailLikePreview(block, raw)
   })
 }
 
@@ -176,7 +173,7 @@ export default function SmartSyncUxBridge() {
 
     const enhance = () => {
       if (stopped || !shouldRunForPath()) return
-      polishMessagePreviewBlocks()
+      renderReadableMessageBlocks()
       const panel = document.querySelector('.newSyncPanel')
       if (!panel) return
 
@@ -237,13 +234,9 @@ export default function SmartSyncUxBridge() {
       }
     }
 
-    const start = () => {
-      observer = new MutationObserver(enhance)
-      observer.observe(document.body, { childList: true, subtree: true, characterData: true })
-      enhance()
-    }
-
-    start()
+    observer = new MutationObserver(enhance)
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+    enhance()
     window.addEventListener('popstate', enhance)
     window.addEventListener('focus', enhance)
 
