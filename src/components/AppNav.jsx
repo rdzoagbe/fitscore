@@ -8,55 +8,29 @@ import './AppNav.css'
 
 const navItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
-  { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
-  { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
+  { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
+  { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
   { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
 ]
 
 const workspaceItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
-  { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
-  { id: 'history', icon: '📊', labelKey: 'nav_history', fallback: 'History' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
+  { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
   { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' },
-  { id: 'billing', icon: '💳', labelKey: 'nav_billing', fallback: 'Billing' }
+  { id: 'billing', icon: '€', labelKey: 'nav_billing', fallback: 'Billing' }
 ]
 
 const mobileNavItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
-  { id: 'analyzer', icon: '🔍', labelKey: 'nav_analyze', fallback: 'Analyze' },
-  { id: 'coach', icon: '🎤', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'messages', icon: '💬', labelKey: 'nav_messages', fallback: 'Messages' },
+  { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
+  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
   { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' }
 ]
-
-function getDisplayName(user) {
-  const metadata = user?.user_metadata || {}
-  const email =
-    user?.email ||
-    metadata.email ||
-    metadata.preferred_username ||
-    metadata.upn ||
-    metadata.user_name ||
-    ''
-
-  return (
-    metadata.full_name ||
-    metadata.name ||
-    metadata.display_name ||
-    metadata.preferred_username ||
-    metadata.upn ||
-    metadata.user_name ||
-    email?.split('@')?.[0] ||
-    'User'
-  )
-}
-
-function getInitials(name) {
-  return String(name || 'User').split(/[.\s_-]+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U'
-}
 
 export default function AppNav({ page, setPage, onLogoClick }) {
   const { user, signOut } = useAuth()
@@ -144,10 +118,13 @@ export default function AppNav({ page, setPage, onLogoClick }) {
 
                 <div className="jobNav-menuSection">
                   <p>{t('legal_support', 'Legal & support')}</p>
+                  <button type="button" onClick={() => goTo('contact')} className={page === 'contact' ? 'is-active' : ''}>
+                    <span className="jobNav-menuGlyph">?</span>
+                    {t('nav_support', 'Support')}
+                  </button>
                   <a href="/legal" onClick={closeMenu}>{t('legal_notice', 'Legal notice')}</a>
                   <a href="/privacy" onClick={closeMenu}>{t('privacy_policy_full', 'Privacy policy')}</a>
                   <a href="/terms" onClick={closeMenu}>{t('terms_of_use', 'Terms of use')}</a>
-                  <button type="button" onClick={() => goTo('contact')}>💬 {t('contact_support', 'Contact support')}</button>
                 </div>
 
                 <button type="button" className="jobNav-signOut" onClick={handleSignOut}>{t('sign_out', 'Sign out')}</button>
