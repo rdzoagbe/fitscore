@@ -30,6 +30,22 @@ const premium = {
   blue: '#516483'
 }
 
+function safeArray(value, limit = 8) {
+  return Array.isArray(value) ? value.filter(Boolean).slice(0, limit) : []
+}
+
+function safeScore(value, fallback = 0) {
+  const n = typeof value === 'number' ? value : parseInt(value, 10)
+  if (Number.isNaN(n)) return fallback
+  return Math.max(0, Math.min(100, Math.round(n)))
+}
+
+function getScoreTone(score) {
+  if (score >= 75) return { color: premium.green, bg: 'rgba(85,124,100,0.10)', label: 'strong' }
+  if (score >= 55) return { color: premium.gold, bg: 'rgba(185,134,59,0.10)', label: 'medium' }
+  return { color: premium.red, bg: 'rgba(184,92,85,0.10)', label: 'weak' }
+}
+
 const Tag = ({ label, type }) => {
   const styles = {
     found:   { bg: 'rgba(85,124,100,0.12)',  color: premium.green, border: 'rgba(85,124,100,0.24)' },
@@ -48,6 +64,169 @@ const MiniCard = ({ title, children, accent }) => (
     <div style={{ padding: '9px 16px 16px' }}>{children}</div>
   </div>
 )
+
+function TrustFactorCard({ title, description, score, items, risk, t }) {
+  const tone = getScoreTone(score)
+  return (
+    <article className="resultTrust-factor">
+      <div className="resultTrust-factorTop">
+        <div>
+          <strong>{title}</strong>
+          <p>{description}</p>
+        </div>
+        <span style={{ color: tone.color, background: tone.bg, borderColor: `${tone.color}33` }}>{score}%</span>
+      </div>
+      <div className="resultTrust-meter"><i style={{ width: `${score}%`, background: tone.color }} /></div>
+      {risk && <em className="resultTrust-risk">{risk}</em>}
+      {items?.length > 0 && (
+        <ul>
+          {items.slice(0, 3).map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}
+        </ul>
+      )}
+      {!items?.length && <small>{t('trust_no_specific_evidence', 'No specific evidence returned for this factor.')}</small>}
+    </article>
+  )
+}
+
+function EvidenceColumn({ title, subtitle, items, tone = 'neutral', empty, max = 6 }) {
+  return (
+    <div className={`resultTrust-evidence resultTrust-evidence--${tone}`}>
+      <div>
+        <strong>{title}</strong>
+        {subtitle && <span>{subtitle}</span>}
+      </div>
+      {items?.length ? (
+        <ul>{items.slice(0, max).map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}</ul>
+      ) : <p>{empty}</p>}
+    </div>
+  )
+}
+
+function TrustInsightPanel({ data, t }) {
+  const keyword = data.keyword_match || {}
+  const req = data.requirements_check || {}
+  const semantic = data.semantic_fit || {}
+  const seniorityFit = data.seniority_fit || {}
+  const exp = data.experience_depth || {}
+  const confidence = data.confidence || {}
+  const recruiter = data.recruiter_shortlist || {}
+
+  const factors = [
+    {
+      title: t('trust_factor_keywords', 'ATS keyword match'),
+      description: t('trust_factor_keywords_desc', 'How many role-specific terms from the job appear in your CV.'),
+      score: safeScore(keyword.score, 0),
+      items: safeArray(keyword.found, 4)
+    },
+    {
+      title: t('trust_factor_requirements', 'Required skills match'),
+      description: t('trust_factor_requirements_desc', 'How clearly your CV proves the must-have requirements.'),
+      score: safeScore(req.score, 0),
+      items: safeArray(req.met, 4)
+    },
+    {
+      title: t('trust_factor_responsibilities', 'Responsibility match'),
+      description: t('trust_factor_responsibilities_desc', 'How closely your past responsibilities match the job scope.'),
+      score: safeScore(semantic.score, 0),
+      items: safeArray(semantic.matched_responsibilities, 4),
+      risk: semantic.domain_reason
+    },
+    {
+      title: t('trust_factor_seniority', 'Seniority fit'),
+      description: t('trust_factor_seniority_desc', 'Whether the role level matches your apparent experience level.'),
+      score: safeScore(seniorityFit.score, 60),
+      items: [data.seniority?.alignment_label, data.seniority?.alignment_reason].filter(Boolean),
+      risk: seniorityFit.risk && seniorityFit.risk !== 'none' ? seniorityFit.risk.replace(/_/g, ' ') : null
+    },
+    {
+      title: t('trust_factor_depth', 'Evidence strength'),
+      description: t('trust_factor_depth_desc', 'How strong your proof is across ownership, metrics, scale and leadership.'),
+      score: safeScore(exp.score, 50),
+      items: [exp.proof_summary, exp.metrics ? `${t('trust_metrics', 'Metrics')}: ${exp.metrics}` : null, exp.ownership ? `${t('trust_ownership', 'Ownership')}: ${exp.ownership}` : null].filter(Boolean)
+    }
+  ]
+
+  const foundEvidence = [
+    ...safeArray(keyword.found, 8),
+    ...safeArray(req.met, 6),
+    ...safeArray(semantic.matched_responsibilities, 6),
+    ...safeArray(data.interview_prep?.your_edges, 5)
+  ]
+  const missingEvidence = [
+    ...safeArray(keyword.missing_required, 8),
+    ...safeArray(req.unmet, 6),
+    ...safeArray(semantic.weak_or_missing_responsibilities, 6),
+    ...safeArray(data.critical_gaps, 4)
+  ]
+  const proofNeeded = [
+    ...safeArray(data.proof_gaps, 6),
+    ...safeArray(recruiter.likely_recruiter_concerns, 5),
+    ...safeArray(data.hidden_expectations, 5)
+  ]
+
+  const confidenceScore = safeScore(confidence.score, 0)
+  const confidenceTone = getScoreTone(confidenceScore)
+
+  return (
+    <section className="resultTrust-panel">
+      <div className="resultTrust-header">
+        <div>
+          <p>{t('trust_kicker', 'Score explainability')}</p>
+          <h2>{t('trust_title', 'Why Joblytics gave this score')}</h2>
+          <span>{t('trust_desc', 'The score is not just a keyword count. It combines keywords, requirements, responsibilities, seniority and proof strength so you know exactly what to improve before applying.')}</span>
+        </div>
+        <div className="resultTrust-confidence" style={{ borderColor: `${confidenceTone.color}33`, background: confidenceTone.bg }}>
+          <strong style={{ color: confidenceTone.color }}>{confidenceScore}%</strong>
+          <span>{t('trust_confidence', 'confidence')}</span>
+          <em>{confidence.level || t('trust_medium', 'medium')}</em>
+        </div>
+      </div>
+
+      {confidence.reasons?.length > 0 && (
+        <div className="resultTrust-confidenceReasons">
+          {safeArray(confidence.reasons, 4).map((reason, index) => <span key={`reason-${index}`}>{reason}</span>)}
+        </div>
+      )}
+
+      <div className="resultTrust-grid">
+        {factors.map(factor => <TrustFactorCard key={factor.title} {...factor} t={t} />)}
+      </div>
+
+      <div className="resultTrust-evidenceGrid">
+        <EvidenceColumn
+          title={t('trust_found_in_cv', 'Found in your CV')}
+          subtitle={t('trust_found_in_cv_desc', 'Signals recruiters and ATS can already detect.')}
+          items={[...new Set(foundEvidence)].slice(0, 8)}
+          tone="good"
+          empty={t('trust_found_empty', 'No strong evidence was returned. Check whether your CV text was extracted correctly.')}
+        />
+        <EvidenceColumn
+          title={t('trust_missing_from_cv', 'Missing or weak')}
+          subtitle={t('trust_missing_from_cv_desc', 'Items to add naturally if they are true.')}
+          items={[...new Set(missingEvidence)].slice(0, 8)}
+          tone="bad"
+          empty={t('trust_missing_empty', 'No major missing items were detected.')}
+        />
+        <EvidenceColumn
+          title={t('trust_needs_proof', 'Needs proof')}
+          subtitle={t('trust_needs_proof_desc', 'Do not invent these. Add only if you can prove them.')}
+          items={[...new Set(proofNeeded)].slice(0, 8)}
+          tone="warn"
+          empty={t('trust_proof_empty', 'No extra proof warnings were returned.')}
+        />
+      </div>
+
+      <div className="resultTrust-recruiter">
+        <div>
+          <p>{t('trust_recruiter_kicker', 'Recruiter screening')}</p>
+          <strong>{recruiter.verdict ? recruiter.verdict.replace(/_/g, ' ') : t('trust_recruiter_verdict_unknown', 'screening verdict unknown')}</strong>
+          <span>{recruiter.reason || data.match_reasoning || t('trust_recruiter_fallback', 'Recruiter concerns will appear here when the analysis has enough information.')}</span>
+        </div>
+        <b>{safeScore(recruiter.probability, data.match_probability || data.display_score || 0)}%</b>
+      </div>
+    </section>
+  )
+}
 
 export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit, onReset, onGoCoach }) {
   const { user } = useAuth()
@@ -125,6 +304,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       </div>
 
       <FitScoreCard data={data} scoreDelta={scoreDelta} />
+      <TrustInsightPanel data={data} t={t} />
 
       <NextStepsCard
         score={score}
