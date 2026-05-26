@@ -1,0 +1,13 @@
+/* CV Coach layout safeguard
+   The cover-letter generator previously used inline sticky positioning, which caused it to overlap the job-specific message generator while scrolling. This override keeps the card in normal document flow without touching the component logic. */
+
+.appShellContent main [style*="position: sticky"][style*="top: 86"] {
+  position: static !important;
+  top: auto !important;
+}
+
+@media (min-width: 980px) {
+  .appShellContent main [style*="position: sticky"][style*="top: 86"] {
+    align-self: start;
+  }
+}
