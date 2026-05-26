@@ -1,9 +1,13 @@
 const STOPWORDS = new Set([
-  'with','from','that','this','your','you','our','the','and','for','are','will','have','has','had','into','about','over','under','within','their','them','they','role','job','work','team','teams','business','candidate','profile','experience','skills','required','requirements','mission','missions','poste','profil','avec','dans','pour','vous','nous','les','des','une','aux','sur','qui','que','est','sont','être','avoir','plus','afin','ainsi','candidat','expérience','compétences','responsibilities','responsabilites','responsabilités'
+  'with','from','that','this','your','you','our','the','and','for','are','will','have','has','had','into','about','over','under','within','their','them','they','role','job','work','team','teams','business','candidate','profile','experience','skills','required','requirements','mission','missions','responsibilities','responsabilites','responsabilités',
+  'poste','profil','avec','dans','pour','vous','nous','les','des','une','aux','sur','qui','que','quoi','dont','est','sont','etre','être','avoir','plus','afin','ainsi','candidat','expérience','competences','compétences','pourquoi','comment','choisir','faire','fait','faites','font','faisons','sera','serait','ce','ces','cet','cette','son','ses','leur','leurs','votre','notre','vos','nos','entre','comme','chez','rejoindre','rejoins','postuler','candidatez','offre','description','opportunite','opportunité',
+  'why','how','choose','make','made','doing','done','apply','join','about','what','where','when','who'
 ])
 
+const FORBIDDEN_SKILL_TERMS = new Set([...STOPWORDS, 'pourquoi', 'comment', 'choisir', 'faire', 'why', 'how', 'choose'])
+
 const TECH_TERMS = [
-  'active directory','azure ad','entra id','microsoft 365','office 365','intune','autopilot','defender','jamf','sccm','endpoint manager','sharepoint','teams','exchange','powershell','graph api','azure','aws','gcp','cloud','terraform','ansible','kubernetes','docker','ci/cd','devops','sre','itil','sla','slo','kpi','servicenow','jira','zendesk','freshdesk','sql','power bi','power platform','crm','erp','yardi','api','integration','security','cybersecurity','network','firewall','vpn','identity','iam','sso','mfa','windows','linux','macos','helpdesk','service desk','support','incident','change management','problem management','asset management','budget','vendor','supplier','run','mco','production','infrastructure','architecture','migration','project management','stakeholder','leadership','manager','management','team management','recruitment','onboarding','monitoring','availability','disaster recovery','backup','compliance','gdpr','iso 27001','ticketing','ticketing system','data center','datacenter','hardware','networking','o365','mdm','edr','xdr','bcp','drp','business continuity','react','vue','angular','next.js','node.js','typescript','javascript','python','java','c#','php','ruby','html','css','tailwind','firebase','supabase','postgresql','mysql','mongodb','rest api','graphql'
+  'active directory','azure ad','entra id','microsoft 365','office 365','intune','autopilot','defender','jamf','sccm','endpoint manager','sharepoint','teams','exchange','powershell','graph api','azure','aws','gcp','cloud','terraform','ansible','kubernetes','docker','ci/cd','devops','sre','itil','sla','slo','kpi','servicenow','jira','zendesk','freshdesk','sql','power bi','power platform','crm','erp','yardi','api','integration','security','cybersecurity','network','firewall','vpn','identity','iam','sso','mfa','windows','linux','macos','helpdesk','service desk','support','incident','change management','problem management','asset management','budget','vendor','supplier','run','mco','production','infrastructure','architecture','migration','project management','stakeholder','leadership','manager','management','team management','people management','service delivery','recruitment','onboarding','monitoring','availability','disaster recovery','backup','compliance','gdpr','iso 27001','ticketing','ticketing system','data center','datacenter','hardware','networking','o365','mdm','edr','xdr','bcp','drp','business continuity','react','vue','angular','next.js','node.js','typescript','javascript','python','java','c#','php','ruby','html','css','tailwind','firebase','supabase','postgresql','mysql','mongodb','rest api','graphql'
 ]
 
 const SYNONYM_GROUPS = [
@@ -24,6 +28,9 @@ const SYNONYM_GROUPS = [
   ['crm','customer relationship management'],
   ['erp','enterprise resource planning'],
   ['api','rest api'],
+  ['manager','management','people management','team management','team leadership','leadership'],
+  ['leadership','team leadership','people leadership','management'],
+  ['service delivery','it service delivery','service management'],
   ['react','react.js','reactjs'],
   ['vue','vue.js','vuejs'],
   ['node.js','nodejs'],
@@ -36,10 +43,13 @@ const SYNONYM_GROUPS = [
 
 const ROLE_LEVELS = [
   { level: 'executive', terms: ['head of','director','directeur','vp','chief','cto','cio'] },
-  { level: 'manager', terms: ['manager','responsable','lead','team leader','chef','supervisor','supervise'] },
-  { level: 'senior', terms: ['senior','expert','principal','specialist','référent'] },
+  { level: 'manager', terms: ['manager','responsable','lead','team leader','chef','supervisor','supervise','head of'] },
+  { level: 'senior', terms: ['senior','expert','principal','specialist','référent','referent'] },
   { level: 'mid', terms: ['engineer','analyst','technician','consultant','administrator','developer'] }
 ]
+
+const MANAGEMENT_REQUIREMENTS = ['manager','management','leadership','team management','people management','service delivery','supervision','lead']
+const MANAGEMENT_TITLE_TERMS = ['head of','director','directeur','manager','responsable','lead','team leader','service delivery manager','it service delivery manager','head of corporate it','head of it','delivery manager','supervisor','chef de service','responsable informatique']
 
 function clean(value = '') {
   return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim()
@@ -73,14 +83,23 @@ function clamp(value, fallback = 0) {
   return Math.max(0, Math.min(100, Math.round(n)))
 }
 
+function isForbiddenSkill(value = '') {
+  const normalized = clean(value)
+  if (!normalized) return true
+  if (FORBIDDEN_SKILL_TERMS.has(normalized)) return true
+  if (/^(pourquoi|comment|choisir|faire|why|how|choose)$/.test(normalized)) return true
+  if (/^\d+$/.test(normalized)) return true
+  return false
+}
+
 function tokenise(text = '') {
-  return clean(text).match(/[a-z0-9+#.\/-]{3,}/g)?.filter(token => !STOPWORDS.has(token)) || []
+  return clean(text).match(/[a-z0-9+#.\/-]{3,}/g)?.filter(token => !STOPWORDS.has(token) && !isForbiddenSkill(token)) || []
 }
 
 function countOccurrences(text = '', term = '') {
   const haystack = clean(text)
   const needle = clean(term)
-  if (!needle) return 0
+  if (!needle || isForbiddenSkill(needle)) return 0
   const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return (haystack.match(new RegExp(`(^|[^a-z0-9+#.])${escaped}([^a-z0-9+#.]|$)`, 'g')) || []).length
 }
@@ -114,11 +133,15 @@ function oneToThreeWords(value = '') {
   return words.length >= 1 && words.length <= 3
 }
 
+function isConcreteSkill(value = '') {
+  return oneToThreeWords(value) && !isForbiddenSkill(value)
+}
+
 function extractSkills(text = '', { strict = false } = {}) {
   const lower = clean(text)
-  const foundTech = TECH_TERMS.filter(term => lower.includes(clean(term))).map(canonicalSkill)
-  if (strict) return unique(foundTech.filter(oneToThreeWords), 40)
-  const frequent = topTerms(text, 24).filter(term => term.length >= 4 && oneToThreeWords(term)).map(titleCase)
+  const foundTech = TECH_TERMS.filter(term => lower.includes(clean(term))).map(canonicalSkill).filter(isConcreteSkill)
+  if (strict) return unique(foundTech, 40)
+  const frequent = topTerms(text, 24).filter(term => term.length >= 4 && isConcreteSkill(term)).map(titleCase)
   return unique([...foundTech, ...frequent], 40)
 }
 
@@ -164,6 +187,22 @@ function detectRoleLevel(text = '') {
   return 'unspecified'
 }
 
+function extractJobTitles(cvText = '') {
+  const titlePattern = /\b(head of|director|directeur|manager|responsable|lead|team leader|service delivery|delivery manager|it service|corporate it|chef|supervisor|référent|referent)\b/i
+  const ignored = /^(skills|competences|compétences|education|formation|languages|langues|summary|profile|profil|certifications?)\b/i
+  const lines = String(cvText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  return unique(lines.filter(line => line.length <= 120 && titlePattern.test(line) && !ignored.test(line)).map(line => line.replace(/^[•●▪\-*\s]+/, '').trim()), 14)
+}
+
+function roleEvidenceSkillsFromTitles(jobTitles = []) {
+  const text = clean(jobTitles.join(' | '))
+  const skills = []
+  if (MANAGEMENT_TITLE_TERMS.some(term => text.includes(clean(term)))) skills.push('Manager', 'Management', 'Leadership', 'Team Management', 'People Management')
+  if (/service delivery|delivery manager|it service/.test(text)) skills.push('Service Delivery')
+  if (/head of|director|directeur/.test(text)) skills.push('Leadership')
+  return unique(skills, 10)
+}
+
 function sectionMap(cvText = '') {
   const headings = [
     ['summary', /^(summary|profile|profil|professional summary|about)$/i],
@@ -203,13 +242,16 @@ function parseCvSchema(cvText = '') {
   const bulletCount = (text.match(/[•●▪\-*]\s+/g) || []).length
   const explicitYears = extractYears(text)
   const rangeYears = extractDateRangeYears(sections.experience || text)
+  const jobTitles = extractJobTitles(text)
+  const roleEvidenceSkills = roleEvidenceSkillsFromTitles(jobTitles)
   if (textLength < 700) warnings.push('CV extraction looks thin; ATS may miss experience or skills.')
   if (!hasExperience) warnings.push('No clear Experience section detected; ATS parsers rely heavily on standard headers.')
   if (!hasSkills) warnings.push('No clear Skills section detected; keyword matching may be weaker.')
   if (lineCount < 15) warnings.push('CV text has very few line breaks; parser may have flattened the layout.')
-  if (tableLike) warnings.push('Table/column-like formatting detected; older ATS parsers may drop fields.')
-  const parseQuality = clamp(42 + (textLength > 1200 ? 18 : 0) + (hasExperience ? 18 : 0) + (hasSkills ? 12 : 0) + (hasEducation ? 5 : 0) + (bulletCount >= 5 ? 5 : 0) - (tableLike ? 8 : 0), 50)
-  return { parse_quality: parseQuality, parser_risk: parseQuality >= 80 ? 'low' : parseQuality >= 60 ? 'medium' : 'high', warnings: unique(warnings, 6), schema: { contact_info_detected: /@|\+?\d[\d\s().-]{7,}/.test(text), work_history_detected: hasExperience, education_detected: hasEducation, skills_detected: hasSkills, sections_detected: Object.keys(sections).filter(key => key !== 'other'), extracted_skills: extractSkills([sections.skills, sections.experience, text].filter(Boolean).join('\n'), { strict: true }).slice(0, 40), candidate_level: detectRoleLevel(text), candidate_years_signal: Math.max(explicitYears, rangeYears), text_length: textLength } }
+  if (tableLike) warnings.push('Table/column-like formatting detected; older ATS parsers may drop fields. Consider a single-column ATS CV if key titles are missing.')
+  if (!jobTitles.length && /manager|responsable|lead|head of|director|directeur/i.test(text)) warnings.push('Management terms are present but job titles were not cleanly extracted; CV layout may be scrambling title context.')
+  const parseQuality = clamp(42 + (textLength > 1200 ? 18 : 0) + (hasExperience ? 18 : 0) + (hasSkills ? 12 : 0) + (hasEducation ? 5 : 0) + (jobTitles.length ? 5 : 0) + (bulletCount >= 5 ? 5 : 0) - (tableLike ? 8 : 0), 50)
+  return { parse_quality: parseQuality, parser_risk: parseQuality >= 80 ? 'low' : parseQuality >= 60 ? 'medium' : 'high', warnings: unique(warnings, 7), schema: { contact_info_detected: /@|\+?\d[\d\s().-]{7,}/.test(text), work_history_detected: hasExperience, education_detected: hasEducation, skills_detected: hasSkills, sections_detected: Object.keys(sections).filter(key => key !== 'other'), job_titles: jobTitles, role_evidence_skills: roleEvidenceSkills, extracted_skills: unique([...extractSkills([sections.skills, sections.experience, text].filter(Boolean).join('\n'), { strict: true }), ...roleEvidenceSkills], 40), candidate_level: detectRoleLevel(text), candidate_years_signal: Math.max(explicitYears, rangeYears), text_length: textLength } }
 }
 
 function buildBooleanGroups(jobText = '', skills = []) {
@@ -230,17 +272,30 @@ function parseJobSchema(jobText = '') {
   const text = String(jobText || '')
   const lines = text.split(/\r?\n|\./).map(line => line.trim()).filter(line => line.length > 3)
   const title = lines.find(line => line.length <= 90 && /manager|responsable|lead|engineer|technician|support|director|consultant|administrator|developer|chef|expert/i.test(line)) || lines[0] || 'Not specified'
-  const requiredSignals = lines.filter(line => /required|must|minimum|mandatory|essential|you have|you bring|required skills|profile|requirements|requis|obligatoire|minimum|expérience|competences|compétences|profil/i.test(line))
+  const requiredSignals = lines.filter(line => /required|must|minimum|mandatory|essential|you have|you bring|required skills|profile|requirements|requis|obligatoire|minimum|expérience|competences|compétences|profil|maitrise|maîtrise|connaissance/i.test(line))
   const niceSignals = lines.filter(line => /nice|plus|preferred|bonus|ideally|souhait|apprécié|apprecie/i.test(line))
   const allStrictSkills = extractSkills(text, { strict: true })
   const requiredStrict = extractSkills(requiredSignals.join('\n'), { strict: true })
   const niceStrict = extractSkills(niceSignals.join('\n'), { strict: true })
-  const mustHave = unique([...(requiredStrict.length ? requiredStrict : allStrictSkills.slice(0, 14))], 16).filter(oneToThreeWords)
-  const niceToHave = unique([...niceStrict, ...allStrictSkills.filter(skill => !mustHave.map(clean).includes(clean(skill))).slice(0, 8)], 10).filter(oneToThreeWords)
+  const mustHave = unique([...(requiredStrict.length ? requiredStrict : allStrictSkills.slice(0, 14))], 16).filter(isConcreteSkill)
+  const niceToHave = unique([...niceStrict, ...allStrictSkills.filter(skill => !mustHave.map(clean).includes(clean(skill))).slice(0, 8)], 10).filter(isConcreteSkill)
   return { title, required_skills: mustHave, nice_to_have_skills: niceToHave, minimum_years_experience: extractYears(text), years_experience_required: extractYears(text), role_level: detectRoleLevel(text), must_have_phrases: unique(requiredSignals.slice(0, 10), 10), nice_to_have_phrases: unique(niceSignals.slice(0, 8), 8), boolean_groups: buildBooleanGroups(text, mustHave), text_quality: text.length > 1600 ? 'strong' : text.length > 700 ? 'usable' : 'thin' }
 }
 
-function exactOrSynonymMatch(requiredSkill = '', candidateSkills = []) {
+function isManagementRequirement(skill = '') {
+  const normalized = clean(skill)
+  return MANAGEMENT_REQUIREMENTS.some(term => normalized === clean(term) || normalized.includes(clean(term)))
+}
+
+function titleMatchForRequirement(requiredSkill = '', jobTitles = []) {
+  if (!isManagementRequirement(requiredSkill)) return ''
+  const matchedTitle = jobTitles.find(title => MANAGEMENT_TITLE_TERMS.some(term => clean(title).includes(clean(term))))
+  return matchedTitle ? `Job title: ${matchedTitle}` : ''
+}
+
+function exactOrSynonymMatch(requiredSkill = '', candidateSkills = [], jobTitles = []) {
+  const titleEvidence = titleMatchForRequirement(requiredSkill, jobTitles)
+  if (titleEvidence) return titleEvidence
   const requiredAliases = aliasesForSkill(requiredSkill).map(clean)
   const candidateAliases = candidateSkills.flatMap(skill => aliasesForSkill(skill).map(clean))
   const candidateCanonical = candidateSkills.map(canonicalSkill)
@@ -249,11 +304,12 @@ function exactOrSynonymMatch(requiredSkill = '', candidateSkills = []) {
   return ''
 }
 
-function strictMatch(requiredSkills = [], candidateSkills = []) {
+function strictMatch(requiredSkills = [], candidateSkills = [], jobTitles = []) {
   const matched = []
   const missing = []
   for (const required of requiredSkills) {
-    const matchedSkill = exactOrSynonymMatch(required, candidateSkills)
+    if (isForbiddenSkill(required)) continue
+    const matchedSkill = exactOrSynonymMatch(required, candidateSkills, jobTitles)
     if (matchedSkill) matched.push({ required_skill: canonicalSkill(required), matched_candidate_skill: matchedSkill })
     else missing.push(canonicalSkill(required))
   }
@@ -261,20 +317,22 @@ function strictMatch(requiredSkills = [], candidateSkills = []) {
 }
 
 function evaluateBooleanGroups(groups = [], cvText = '') {
+  const candidateSkills = extractSkills(cvText, { strict: true })
+  const jobTitles = extractJobTitles(cvText)
   return groups.map(group => {
     const terms = group.terms || []
-    const matched_terms = terms.filter(term => hasTerm(cvText, term) || exactOrSynonymMatch(term, extractSkills(cvText, { strict: true })))
+    const matched_terms = terms.filter(term => hasTerm(cvText, term) || exactOrSynonymMatch(term, candidateSkills, jobTitles))
     const passed = group.operator === 'AND' ? matched_terms.length === terms.length : matched_terms.length > 0
     return { ...group, matched_terms, missing_terms: terms.filter(term => !matched_terms.includes(term)), passed }
   })
 }
 
-function semanticMatches(jobSkills = [], candidateSkills = []) {
+function semanticMatches(jobSkills = [], candidateSkills = [], jobTitles = []) {
   const matched = []
   const missing = []
   for (const skill of jobSkills) {
-    const hit = exactOrSynonymMatch(skill, candidateSkills)
-    if (hit) matched.push({ requirement: canonicalSkill(skill), matched_by: hit, type: clean(canonicalSkill(skill)) === clean(hit) ? 'exact' : 'accepted_synonym' })
+    const hit = exactOrSynonymMatch(skill, candidateSkills, jobTitles)
+    if (hit) matched.push({ requirement: canonicalSkill(skill), matched_by: hit, type: clean(canonicalSkill(skill)) === clean(hit) ? 'exact' : hit.startsWith('Job title:') ? 'job_title_evidence' : 'accepted_synonym' })
     else missing.push(canonicalSkill(skill))
   }
   return { matches: matched, missing }
@@ -283,7 +341,7 @@ function semanticMatches(jobSkills = [], candidateSkills = []) {
 function proofSignals(cvText = '') {
   const text = String(cvText || '')
   const metrics = (text.match(/\b\d+\s*(%|k|m|users|utilisateurs|devices|appareils|tickets|sla|sites|countries|pays|people|personnes|servers|serveurs|€|£|\$)/gi) || []).slice(0, 12)
-  const leadership = ['managed','led','supervised','coordinated','owned','piloted','responsable','dirigé','géré','encadré','supervisé'].filter(term => hasTerm(text, term))
+  const leadership = ['managed','led','supervised','coordinated','owned','piloted','responsable','dirigé','géré','encadré','supervisé','head of','director','directeur'].filter(term => hasTerm(text, term))
   const action = ['implemented','deployed','migrated','automated','improved','reduced','created','built','rolled out','déployé','mis en place','automatisé','amélioré','réduit'].filter(term => hasTerm(text, term))
   return { metrics, leadership, action }
 }
@@ -303,7 +361,7 @@ function buildStrictAtsResult(job, cv, strict) {
   const gap = Math.max(0, requiredYears - candidateYears)
   return {
     job_requirements: { required_skills: job.required_skills.map(canonicalSkill), minimum_years_experience: requiredYears },
-    candidate_profile: { candidate_skills: cv.schema.extracted_skills.map(canonicalSkill), total_years_experience: candidateYears },
+    candidate_profile: { candidate_skills: cv.schema.extracted_skills.map(canonicalSkill), total_years_experience: candidateYears, job_titles: cv.schema.job_titles || [] },
     analysis: { matched_skills: strict.matched, missing_skills: strict.missing, experience_gap_years: gap },
     coaching_feedback: buildCoachingFeedback(strict.missing, gap)
   }
@@ -313,14 +371,15 @@ function scoreAts(jobText = '', cvText = '') {
   const cv = parseCvSchema(cvText)
   const job = parseJobSchema(jobText)
   const candidateSkills = cv.schema.extracted_skills
-  const strict = strictMatch(job.required_skills, candidateSkills)
+  const candidateJobTitles = cv.schema.job_titles || []
+  const strict = strictMatch(job.required_skills, candidateSkills, candidateJobTitles)
   const strictResult = buildStrictAtsResult(job, cv, strict)
   const jobSkills = unique([...job.required_skills, ...job.nice_to_have_skills], 22)
   const exactFound = strict.matched.map(item => item.required_skill)
   const exactMissing = strict.missing
   const keywordDensity = job.required_skills.map(skill => ({ term: canonicalSkill(skill), cv_count: Math.max(...aliasesForSkill(skill).map(alias => countOccurrences(cvText, alias))), jd_count: Math.max(...aliasesForSkill(skill).map(alias => countOccurrences(jobText, alias))) }))
   const booleanResults = evaluateBooleanGroups(job.boolean_groups, cvText)
-  const semantic = semanticMatches(jobSkills, candidateSkills)
+  const semantic = semanticMatches(jobSkills, candidateSkills, candidateJobTitles)
   const proof = proofSignals(cvText)
   const keywordScore = clamp((exactFound.length / Math.max(job.required_skills.length, 1)) * 100, 0)
   const booleanScore = clamp((booleanResults.filter(item => item.passed).length / Math.max(booleanResults.length, 1)) * 100, booleanResults.length ? 0 : 60)
@@ -335,7 +394,7 @@ function scoreAts(jobText = '', cvText = '') {
   const bucket = finalScore >= 78 ? 'Highly Qualified' : finalScore >= 62 ? 'Review / Maybe' : finalScore >= 48 ? 'Low Priority' : 'Likely Filtered'
   const visibility = finalScore >= 78 ? 'top_of_shortlist' : finalScore >= 62 ? 'visible_if_recruiter_reviews_more_profiles' : finalScore >= 48 ? 'bottom_of_pagination' : 'unlikely_to_be_seen'
   const hardFailures = booleanResults.filter(item => !item.passed).flatMap(item => item.missing_terms).slice(0, 8)
-  return { strict_ats_result: strictResult, ats_score: finalScore, extraction_phase: { cv_parse_quality: cv.parse_quality, parser_risk: cv.parser_risk, parser_warnings: cv.warnings, cv_schema: cv.schema, job_schema: job, linkedin_profile_note: 'LinkedIn profiles are usually structured before matching; uploaded CVs depend heavily on document parsing quality.' }, matching_algorithm: { score_breakdown: { cv_parser_quality: cv.parse_quality, exact_keyword_match: keywordScore, requirements_match: requirementsScore, boolean_search_match: booleanScore, semantic_match: semanticScore, proof_strength: proofScore }, keyword_density: keywordDensity, exact_keywords: { found: exactFound, missing_required: exactMissing }, boolean_search: { query_style: booleanResults.map(g => `(${g.terms.join(` ${g.operator} `)})`).join(' AND '), groups: booleanResults, hard_filter_failures: hardFailures }, semantic_matching: { matched: semantic.matches.slice(0, 12), missing: semantic.missing.slice(0, 10) }, experience_proof: { metrics: proof.metrics, leadership_terms: proof.leadership, action_terms: proof.action, years_required: yearsRequired, years_candidate_signal: yearsCandidate } }, recruiter_view: { rank_bucket: bucket, visibility, shortlist_probability: finalScore, reason: finalScore >= 78 ? 'Strong ATS visibility: enough exact/synonym matches and readable CV structure.' : finalScore >= 62 ? 'Likely visible, but recruiter may need stronger proof for missing requirements.' : 'Risk of being pushed down because the parsed CV does not clearly satisfy enough strict ATS triggers.' } }
+  return { strict_ats_result: strictResult, ats_score: finalScore, extraction_phase: { cv_parse_quality: cv.parse_quality, parser_risk: cv.parser_risk, parser_warnings: cv.warnings, cv_schema: cv.schema, job_schema: job, linkedin_profile_note: 'LinkedIn profiles are usually structured before matching; uploaded CVs depend heavily on document parsing quality.' }, matching_algorithm: { score_breakdown: { cv_parser_quality: cv.parse_quality, exact_keyword_match: keywordScore, requirements_match: requirementsScore, boolean_search_match: booleanScore, semantic_match: semanticScore, proof_strength: proofScore }, keyword_density: keywordDensity, exact_keywords: { found: exactFound, missing_required: exactMissing }, boolean_search: { query_style: booleanResults.map(g => `(${g.terms.join(` ${g.operator} `)})`).join(' AND '), groups: booleanResults, hard_filter_failures: hardFailures }, semantic_matching: { matched: semantic.matches.slice(0, 12), missing: semantic.missing.slice(0, 10) }, experience_proof: { metrics: proof.metrics, leadership_terms: proof.leadership, action_terms: proof.action, years_required: yearsRequired, years_candidate_signal: yearsCandidate, job_titles_detected: candidateJobTitles } }, recruiter_view: { rank_bucket: bucket, visibility, shortlist_probability: finalScore, reason: finalScore >= 78 ? 'Strong ATS visibility: enough exact/synonym/title-evidence matches and readable CV structure.' : finalScore >= 62 ? 'Likely visible, but recruiter may need stronger proof for missing requirements.' : 'Risk of being pushed down because the parsed CV does not clearly satisfy enough strict ATS triggers.' } }
 }
 
 export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '') {
@@ -347,5 +406,5 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
   const breakdown = ats.matching_algorithm.score_breakdown
   const recruiterVerdict = finalScore >= 78 ? 'strong_shortlist' : finalScore >= 58 ? 'possible_shortlist' : 'unlikely_shortlist'
   const overallVerdict = finalScore >= 75 ? 'likely_passed' : finalScore >= 55 ? 'borderline' : 'likely_filtered'
-  return { ...analysis, strict_ats_result: ats.strict_ats_result, display_score: finalScore, match_probability: finalScore, ats_pipeline: ats, keyword_match: { ...(analysis.keyword_match || {}), score: breakdown.exact_keyword_match, found: unique([...(exact.found || []), ...((analysis.keyword_match || {}).found || [])], 12), missing_required: unique([...(exact.missing_required || []), ...semantic.missing], 12), missing_nice: unique((analysis.keyword_match || {}).missing_nice || [], 8), keyword_stuffing_risk: (analysis.keyword_match || {}).keyword_stuffing_risk || 'low' }, requirements_check: { ...(analysis.requirements_check || {}), score: breakdown.requirements_match, must_have: ats.extraction_phase.job_schema.required_skills.slice(0, 14), nice_to_have: ats.extraction_phase.job_schema.nice_to_have_skills.slice(0, 10), met: unique([...(exact.found || []), ...semantic.matched.map(item => `${item.requirement} → ${item.matched_by}`)], 10), unmet: unique([...(exact.missing_required || []), ...ats.matching_algorithm.boolean_search.hard_filter_failures], 10) }, semantic_fit: { ...(analysis.semantic_fit || {}), score: breakdown.semantic_match, matched_responsibilities: semantic.matched.map(item => `${item.requirement} → ${item.matched_by}`).slice(0, 8), weak_or_missing_responsibilities: semantic.missing.slice(0, 8), domain_fit: breakdown.semantic_match >= 75 ? 'strong' : breakdown.semantic_match >= 50 ? 'moderate' : 'weak', domain_reason: 'Calculated from exact matches and accepted industry synonyms. Broad assumptions are not counted as matches.' }, recruiter_shortlist: { ...(analysis.recruiter_shortlist || {}), probability: finalScore, verdict: recruiterVerdict, reason: ats.recruiter_view.reason, top_screening_factors: unique([...(exact.found || []), ...ats.matching_algorithm.experience_proof.metrics.slice(0, 4)], 8), likely_recruiter_concerns: unique([...(exact.missing_required || []), ...ats.extraction_phase.parser_warnings], 8) }, experience_depth: { ...(analysis.experience_depth || {}), score: breakdown.proof_strength, metrics: ats.matching_algorithm.experience_proof.metrics.length ? 'visible' : 'weak_or_missing', leadership: ats.matching_algorithm.experience_proof.leadership_terms.length ? 'visible' : 'weak_or_missing', proof_summary: 'Measured from parsed evidence: metrics, leadership verbs, action verbs, seniority and years signals.' }, proof_gaps: unique([...(analysis.proof_gaps || []), ...exact.missing_required.slice(0, 6), ...ats.extraction_phase.parser_warnings], 10), critical_gaps: unique([...(analysis.critical_gaps || []), ...ats.matching_algorithm.boolean_search.hard_filter_failures, ...exact.missing_required], 6), format_warnings: unique([...(analysis.format_warnings || []), ...ats.extraction_phase.parser_warnings], 8), quick_wins: unique(['Use standard ATS headers: Experience, Skills, Education and Certifications.', ...exact.missing_required.slice(0, 4).map(term => `Add the exact keyword “${term}” only if you truly have that experience.`), ...(analysis.quick_wins || [])], 8), rewrite_priorities: unique([...(exact.missing_required || []), ...semantic.missing, ...(analysis.rewrite_priorities || [])], 10), overall_verdict: overallVerdict, overall_reason: `${ats.recruiter_view.reason} Score includes parser quality, exact keywords, accepted synonyms, Boolean search, experience gap and proof strength.`, analysis_version: 'ats-intelligence-v5-strict-dual-engine' }
+  return { ...analysis, strict_ats_result: ats.strict_ats_result, display_score: finalScore, match_probability: finalScore, ats_pipeline: ats, keyword_match: { ...(analysis.keyword_match || {}), score: breakdown.exact_keyword_match, found: unique([...(exact.found || []), ...((analysis.keyword_match || {}).found || [])], 12), missing_required: unique([...(exact.missing_required || []), ...semantic.missing], 12), missing_nice: unique((analysis.keyword_match || {}).missing_nice || [], 8), keyword_stuffing_risk: (analysis.keyword_match || {}).keyword_stuffing_risk || 'low' }, requirements_check: { ...(analysis.requirements_check || {}), score: breakdown.requirements_match, must_have: ats.extraction_phase.job_schema.required_skills.slice(0, 14), nice_to_have: ats.extraction_phase.job_schema.nice_to_have_skills.slice(0, 10), met: unique([...(exact.found || []), ...semantic.matched.map(item => `${item.requirement} → ${item.matched_by}`)], 10), unmet: unique([...(exact.missing_required || []), ...ats.matching_algorithm.boolean_search.hard_filter_failures], 10) }, semantic_fit: { ...(analysis.semantic_fit || {}), score: breakdown.semantic_match, matched_responsibilities: semantic.matched.map(item => `${item.requirement} → ${item.matched_by}`).slice(0, 8), weak_or_missing_responsibilities: semantic.missing.slice(0, 8), domain_fit: breakdown.semantic_match >= 75 ? 'strong' : breakdown.semantic_match >= 50 ? 'moderate' : 'weak', domain_reason: 'Calculated from exact matches, accepted industry synonyms, and verified management job-title evidence. Broad assumptions are not counted as matches.' }, recruiter_shortlist: { ...(analysis.recruiter_shortlist || {}), probability: finalScore, verdict: recruiterVerdict, reason: ats.recruiter_view.reason, top_screening_factors: unique([...(exact.found || []), ...ats.matching_algorithm.experience_proof.metrics.slice(0, 4), ...ats.matching_algorithm.experience_proof.job_titles_detected.slice(0, 3)], 8), likely_recruiter_concerns: unique([...(exact.missing_required || []), ...ats.extraction_phase.parser_warnings], 8) }, experience_depth: { ...(analysis.experience_depth || {}), score: breakdown.proof_strength, metrics: ats.matching_algorithm.experience_proof.metrics.length ? 'visible' : 'weak_or_missing', leadership: ats.matching_algorithm.experience_proof.leadership_terms.length || ats.matching_algorithm.experience_proof.job_titles_detected.length ? 'visible' : 'weak_or_missing', proof_summary: 'Measured from parsed evidence: metrics, leadership verbs, action verbs, seniority, years signals and detected job titles.' }, proof_gaps: unique([...(analysis.proof_gaps || []), ...exact.missing_required.slice(0, 6), ...ats.extraction_phase.parser_warnings], 10), critical_gaps: unique([...(analysis.critical_gaps || []), ...ats.matching_algorithm.boolean_search.hard_filter_failures, ...exact.missing_required], 6), format_warnings: unique([...(analysis.format_warnings || []), ...ats.extraction_phase.parser_warnings], 8), quick_wins: unique(['Use standard ATS headers: Experience, Skills, Education and Certifications.', ...exact.missing_required.slice(0, 4).map(term => `Add the exact keyword “${term}” only if you truly have that experience.`), ...(analysis.quick_wins || [])], 8), rewrite_priorities: unique([...(exact.missing_required || []), ...semantic.missing, ...(analysis.rewrite_priorities || [])], 10), overall_verdict: overallVerdict, overall_reason: `${ats.recruiter_view.reason} Score includes parser quality, exact keywords, accepted synonyms, management title evidence, Boolean search, experience gap and proof strength.`, analysis_version: 'ats-intelligence-v5-strict-dual-engine-title-aware' }
 }
