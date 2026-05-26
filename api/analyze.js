@@ -315,6 +315,32 @@ async function extractCvText(base64Data, mimeType) {
   throw new Error('Unsupported file type. Please upload a PDF or Word document.')
 }
 
+
+function createAnalyzeTimer() {
+  const startedAt = Date.now()
+  let last = startedAt
+  const steps = []
+
+  return {
+    mark(step, extra = {}) {
+      const now = Date.now()
+      const item = {
+        step,
+        stepMs: now - last,
+        totalMs: now - startedAt,
+        ...extra
+      }
+      last = now
+      steps.push(item)
+      console.log('[ANALYZE_TIMING]', JSON.stringify(item))
+      return item
+    },
+    steps() {
+      return steps
+    }
+  }
+}
+
 function hashContent(...parts) {
   return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
 }
@@ -468,11 +494,14 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   res.setHeader('Access-Control-Allow-Origin', '*')
 
+  const timer = createAnalyzeTimer()
+
   try {
+    timer.mark('start')
     const mark = createTimer('api/analyze')
     mark('start')
 
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName, debug = false, skipAi = false } = req.body
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing required fields' })
 
     let supabaseClient = null
@@ -491,10 +520,18 @@ export default async function handler(req, res) {
 
     mark('before_extract_text')
 
+    timer.mark('before_extract')
+
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(providedJobText.slice(0, 3500)) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
+
+    timer.mark('after_extract', {
+      jobChars: jobText?.length || 0,
+      cvChars: cvText?.length || 0,
+      mode: providedJobText ? 'paste' : 'url'
+    })
 
     mark('after_extract_text')
 
@@ -512,6 +549,8 @@ export default async function handler(req, res) {
 
     mark('before_claude')
 
+    timer.mark('before_claude')
+
     const message = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
       max_tokens: 900,
@@ -521,6 +560,8 @@ export default async function handler(req, res) {
     }, { timeout: 8500 })
 
     mark('after_claude')
+
+    timer.mark('after_claude')
 
     const raw = message.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let analysis
@@ -550,7 +591,8 @@ export default async function handler(req, res) {
     }
 
     mark('success')
-    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo })
+    timer.mark('success')
+    return res.status(200).json({ success: true, analysis, savedRow, rateLimit: rateLimitInfo, debug: debug ? timer.steps() : undefined })
   } catch (e) {
     console.error('Handler error:', e.message)
     if (e.name === 'APIConnectionTimeoutError' || e.code === 'ETIMEDOUT' || /timeout/i.test(e.message)) {
@@ -561,6 +603,6 @@ export default async function handler(req, res) {
       })
     }
     const statusCode = e.statusCode || 500
-    return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED' })
+    return res.status(statusCode).json({ error: e.message || 'Analysis failed', code: e.code || 'ANALYSIS_FAILED', debug: timer.steps() })
   }
 }
