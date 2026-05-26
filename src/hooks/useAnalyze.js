@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getDeviceId } from '../utils/deviceId'
+import { trackEvent, trackError } from '../utils/productAnalytics'
 
 function friendlyAnalyzeError(error, responseStatus, serverMessage) {
   if (responseStatus === 504 || responseStatus === 524) {
@@ -51,6 +52,8 @@ export function useAnalyze() {
 
   // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
+    const mode = jobText ? 'paste' : jobUrl ? 'url' : 'unknown'
+    trackEvent('analysis_started', { mode, hasCv: !!cvFile, jobChars: jobText?.length || 0 })
     setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
 
     // Client-side timeout matches Vercel function duration.
@@ -100,6 +103,7 @@ export function useAnalyze() {
         throw new Error('Invalid response from server. Please try again.')
       }
 
+      trackEvent('analysis_completed', { mode, score: data.analysis.display_score || data.analysis.match_probability || 0, saved: !!data.savedRow })
       setState({
         status: 'done',
         data: data.analysis,
@@ -109,7 +113,9 @@ export function useAnalyze() {
       })
     } catch (e) {
       clearTimeout(timeoutId)
-      setState({ status: 'error', data: null, error: friendlyAnalyzeError(e), savedRow: null, rateLimit: null })
+      const friendly = friendlyAnalyzeError(e)
+      trackError('analysis_failed', e, { mode, friendly })
+      setState({ status: 'error', data: null, error: friendly, savedRow: null, rateLimit: null })
     }
   }
 
