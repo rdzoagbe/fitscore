@@ -10,6 +10,7 @@ import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
 import './ui-polish.css'
 import './smart-sync-phase5.css'
+import './phase6-communication-assets.css'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
