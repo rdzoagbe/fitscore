@@ -8,6 +8,7 @@ import EmailVerifyGate from './components/EmailVerifyGate'
 import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
+import './ui-polish.css'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
