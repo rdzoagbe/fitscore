@@ -5,9 +5,124 @@ import { supabase } from '../lib/supabase'
 import './MessagesPage.css'
 import './MessagesPageStable.css'
 
+const URL_RE = /(https?:\/\/[^\s<>"')]+[^\s<>"').,;:])/gi
+
 function formatDate(value) {
   if (!value) return ''
   try { return new Date(value).toLocaleString() } catch { return value }
+}
+
+function decodeHtml(value = '') {
+  return String(value || '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\u00a0/g, ' ')
+}
+
+function cleanLinkLabel(url = '', index = 0) {
+  try {
+    const parsed = new URL(url)
+    const host = parsed.hostname.replace(/^www\./, '')
+    const jobId = parsed.pathname.match(/\/jobs\/view\/(\d+)/)?.[1]
+    if (host.includes('linkedin.com')) {
+      if (jobId) return `View LinkedIn job ${jobId}`
+      return 'Open LinkedIn link'
+    }
+    if (host.includes('smartrecruiters.com')) return 'Open application portal'
+    if (host.includes('greenhouse.io')) return 'Open Greenhouse application'
+    if (host.includes('lever.co')) return 'Open Lever application'
+    return `Open ${host}`
+  } catch {
+    return `Open link ${index + 1}`
+  }
+}
+
+function isSeparatorLine(line = '') {
+  return /^[-–—_\s]{8,}$/.test(String(line || '').trim())
+}
+
+function renderLineWithLinks(line = '', keyPrefix = 'line') {
+  const decoded = decodeHtml(line)
+  const parts = decoded.split(URL_RE)
+  let linkIndex = 0
+  return parts.map((part, index) => {
+    if (!part) return null
+    if (/^https?:\/\//i.test(part)) {
+      const label = cleanLinkLabel(part, linkIndex)
+      linkIndex += 1
+      return <a key={`${keyPrefix}-link-${index}`} className="mailReaderLink" href={part} target="_blank" rel="noopener noreferrer">{label}</a>
+    }
+    return <React.Fragment key={`${keyPrefix}-text-${index}`}>{part}</React.Fragment>
+  })
+}
+
+function EmailReader({ selected }) {
+  const body = decodeHtml(selected?.body || '')
+  const lines = body ? body.split(/\r?\n/) : []
+  const sender = selected?.from || 'Unknown sender'
+  const subject = selected?.subject || selected?.title || 'Email content'
+
+  return (
+    <section className="gmailReader">
+      <div className="gmailReaderToolbar">
+        <span>Email</span>
+        <em>{selected?.date || ''}</em>
+      </div>
+
+      <div className="gmailReaderHeader">
+        <div className="gmailAvatar">{sender.slice(0, 1).toUpperCase()}</div>
+        <div>
+          <h3>{subject}</h3>
+          <p><strong>{sender}</strong> <span>to me</span></p>
+        </div>
+      </div>
+
+      <div className="gmailReaderBody">
+        {lines.length ? lines.map((line, index) => {
+          if (isSeparatorLine(line)) return <hr key={`mail-hr-${index}`} />
+          const empty = !line.trim()
+          return <p key={`mail-line-${index}`} className={empty ? 'is-spacer' : ''}>{empty ? ' ' : renderLineWithLinks(line, `mail-${index}`)}</p>
+        }) : <p>No email body was returned for this signal.</p>}
+      </div>
+    </section>
+  )
+}
+
+function CalendarInvite({ selected }) {
+  const body = decodeHtml(selected?.body || '')
+  const lines = body.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  const title = selected?.subject || selected?.title || lines[0] || 'Calendar invitation'
+  const location = selected?.platform && selected.platform !== 'Calendar' ? selected.platform : ''
+  const attendees = selected?.from || ''
+
+  return (
+    <section className="calendarInvitePreview">
+      <div className="calendarInviteHeader">
+        <span>CAL</span>
+        <div>
+          <p>Calendar invitation</p>
+          <h3>{title}</h3>
+        </div>
+      </div>
+
+      <div className="calendarInviteFacts">
+        <div><span>When</span><strong>{selected?.date || 'Not specified'}</strong></div>
+        <div><span>Where</span><strong>{location || 'Not specified'}</strong></div>
+        <div><span>Attendees</span><strong>{attendees || 'Not specified'}</strong></div>
+        <div><span>Status</span><strong>{selected?.type || 'Detected'}</strong></div>
+      </div>
+
+      <div className="calendarInviteBody">
+        {(lines.length ? lines : [body || 'No invitation description was returned.']).map((line, index) => (
+          <p key={`calendar-line-${index}`}>{renderLineWithLinks(line, `calendar-${index}`)}</p>
+        ))}
+      </div>
+    </section>
+  )
 }
 
 async function getFreshAccessToken() {
@@ -111,27 +226,16 @@ function SignalList({ items, selectedId, onSelect }) {
   )
 }
 
-function SignalDetail({ selected }) {
+function SignalDetail({ selected, mode }) {
   if (!selected) {
     return <div className="messagesStableDetailEmpty"><strong>Select a signal</strong><p>Choose an item from the list to review the detected email or calendar event.</p></div>
   }
+
+  const isCalendar = mode === 'calendar'
+
   return (
-    <article className="messagesStableDetail">
-      <div className="messagesStableDetailHead">
-        <p>{selected.platform}</p>
-        <h2>{selected.subject}</h2>
-        <span>{selected.from} {selected.date ? `· ${selected.date}` : ''}</span>
-      </div>
-      <dl className="messagesStableFacts">
-        <div><dt>Company</dt><dd>{selected.company || 'Not detected'}</dd></div>
-        <div><dt>Role</dt><dd>{selected.role || 'Not detected'}</dd></div>
-        <div><dt>Status</dt><dd>{selected.type}</dd></div>
-        <div><dt>Confidence</dt><dd>{selected.confidence}</dd></div>
-      </dl>
-      <div className="messagesStableBody">
-        <strong>Message preview</strong>
-        <p>{selected.body || 'No preview text was returned for this signal.'}</p>
-      </div>
+    <article className="messagesStableDetail messagesReaderDetail">
+      {isCalendar ? <CalendarInvite selected={selected} /> : <EmailReader selected={selected} />}
     </article>
   )
 }
@@ -321,7 +425,7 @@ export default function MessagesPage({ setPage }) {
           </div>
           <div className="messagesStableSplit">
             <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} />
-            <SignalDetail selected={selected} />
+            <SignalDetail selected={selected} mode={tab} />
           </div>
         </section>
 
