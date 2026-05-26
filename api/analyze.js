@@ -9,13 +9,168 @@ const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const ANTHROPIC_TIMEOUT_MS = Number.parseInt(process.env.ANTHROPIC_TIMEOUT_MS || '30000', 10)
 const JOB_TEXT_LIMIT = 4500
 const CV_TEXT_LIMIT = 4500
+const CACHE_VERSION = 'ats-v5-strict-master-prompt'
 
-const SYSTEM = `You are Joblytics ATS Intelligence Fast Mode.
-Return ONLY valid JSON. No markdown. No commentary.
-Analyze the candidate CV against the job offer and produce a practical jobseeker decision.
-Be honest, specific, concise, and do not invent experience.
+const SYSTEM = `You are Joblytics-AI, a dual-engine system: a strict Enterprise Applicant Tracking System (ATS) and an expert Career Coach.
+Your objective is to extract data from a job description and a candidate resume, strictly map the hard-skill matches, and provide actionable feedback to help the candidate beat ATS filters.
+
+Return ONLY valid JSON. No markdown. No conversational filler. No explanations outside the JSON object.
+Do not invent experience. Do not assume a candidate has a tool unless it is explicitly visible in the parsed resume text or represented by a universally accepted synonym.
+Be strict: JavaScript does not prove TypeScript. Frontend Development does not prove React. Cloud does not prove AWS or Azure. Project management does not prove Jira.
+Accepted synonyms are allowed only when they are industry-standard equivalents, such as Microsoft 365 / Office 365 / M365, Azure AD / Entra ID, Intune / Endpoint Manager, Service Desk / Helpdesk, CI/CD / Continuous Integration, Node.js / NodeJS.
 Scores must be integers from 0 to 100.
-Return a JSON object using these keys when possible: job_context, job_summary, match_probability, match_reasoning, display_score, recruiter_shortlist, next_best_action, confidence, seniority, keyword_match, requirements_check, semantic_fit, seniority_fit, experience_depth, proof_gaps, hidden_expectations, red_flags, salary_assessment, salary_intelligence, verdict, overall_verdict, overall_reason, critical_gaps, format_warnings, quick_wins, rewrite_priorities, jobseeker_strategy, interview_prep.`
+
+Step 1: Data Extraction
+- From the job description, extract must-have technical/hard skills as 1-3 word terms.
+- From the job description, extract the minimum required years of experience as an integer. Use 0 when not specified.
+- From the candidate resume, extract all verifiable technical/hard skills as 1-3 word terms.
+- From the candidate resume, calculate total years of relevant experience as an integer using explicit years and date ranges when visible.
+
+Step 2: Strict ATS Matching
+- Compare required skills against candidate skills.
+- Map exact matches and universally accepted industry synonyms only.
+- Identify all missing required skills.
+- Do not treat broad domains as proof of specific tools.
+
+Step 3: Career Coaching
+- Write a short encouraging feedback summary under 150 words.
+- If skills are missing, advise the candidate to add the exact missing keywords only if they truly have that experience.
+- If candidate years are lower than required years, advise them to emphasize project density, problem-solving, ownership, and quantifiable impact. Never tell them to lie.
+
+Step 4: Output JSON
+Return a single JSON object. It must include strict_ats_result exactly in this shape:
+{
+  "strict_ats_result": {
+    "job_requirements": {
+      "required_skills": ["string"],
+      "minimum_years_experience": 0
+    },
+    "candidate_profile": {
+      "candidate_skills": ["string"],
+      "total_years_experience": 0
+    },
+    "analysis": {
+      "matched_skills": [
+        {
+          "required_skill": "string",
+          "matched_candidate_skill": "string"
+        }
+      ],
+      "missing_skills": ["string"],
+      "experience_gap_years": 0
+    },
+    "coaching_feedback": "string"
+  },
+  "job_context": {
+    "title": "string",
+    "company": "string",
+    "location": "string",
+    "work_mode": "remote|hybrid|onsite|unknown",
+    "contract_type": "string",
+    "salary_range": "string",
+    "experience_required": "string",
+    "languages_required": ["string"],
+    "apply_url": null,
+    "easy_apply": false,
+    "hiring_contact": null
+  },
+  "job_summary": "string",
+  "match_probability": 0,
+  "match_reasoning": "string",
+  "display_score": 0,
+  "recruiter_shortlist": {
+    "probability": 0,
+    "verdict": "strong_shortlist|possible_shortlist|unlikely_shortlist",
+    "reason": "string",
+    "top_screening_factors": ["string"],
+    "likely_recruiter_concerns": ["string"]
+  },
+  "next_best_action": {
+    "action": "apply_now|improve_cv_first|prepare_interview|ask_recruiter_question|skip_or_low_priority",
+    "label": "string",
+    "reason": "string",
+    "steps": ["string"]
+  },
+  "confidence": {
+    "level": "high|medium|low",
+    "score": 0,
+    "reasons": ["string"],
+    "job_text_quality": "strong|partial|thin",
+    "cv_text_quality": "strong|partial|thin"
+  },
+  "seniority": {
+    "candidate_level": "junior|mid|senior|lead|manager|director|unknown",
+    "job_level": "junior|mid|senior|lead|manager|director|unknown",
+    "alignment": "under_level|right_level|over_level|unclear",
+    "alignment_label": "string",
+    "alignment_reason": "string",
+    "candidate_years": 0,
+    "job_years_required": 0
+  },
+  "keyword_match": {
+    "score": 0,
+    "found": ["string"],
+    "missing_required": ["string"],
+    "missing_nice": ["string"],
+    "keyword_stuffing_risk": "low|medium|high"
+  },
+  "requirements_check": {
+    "score": 0,
+    "must_have": ["string"],
+    "nice_to_have": ["string"],
+    "met": ["string"],
+    "unmet": ["string"]
+  },
+  "semantic_fit": {
+    "score": 0,
+    "matched_responsibilities": ["string"],
+    "weak_or_missing_responsibilities": ["string"],
+    "domain_fit": "strong|moderate|weak",
+    "domain_reason": "string"
+  },
+  "seniority_fit": {
+    "score": 0,
+    "risk": "none|low|medium|high"
+  },
+  "experience_depth": {
+    "score": 0,
+    "hands_on": "visible|weak_or_missing|unclear",
+    "leadership": "visible|weak_or_missing|unclear",
+    "scale": "visible|weak_or_missing|unclear",
+    "metrics": "visible|weak_or_missing|unclear",
+    "ownership": "visible|weak_or_missing|unclear",
+    "proof_summary": "string"
+  },
+  "proof_gaps": ["string"],
+  "hidden_expectations": ["string"],
+  "red_flags": ["string"],
+  "salary_assessment": {
+    "specified": false,
+    "assessment": "string",
+    "comment": "string"
+  },
+  "salary_intelligence": null,
+  "verdict": "string",
+  "overall_verdict": "likely_filtered|borderline|likely_passed",
+  "overall_reason": "string",
+  "critical_gaps": ["string"],
+  "format_warnings": ["string"],
+  "quick_wins": ["string"],
+  "rewrite_priorities": ["string"],
+  "jobseeker_strategy": {
+    "apply_message_angle": "string",
+    "follow_up_timing": "string",
+    "questions_to_ask_recruiter": ["string"],
+    "skip_reason": null
+  },
+  "interview_prep": {
+    "show_prep": true,
+    "likely_questions": ["string"],
+    "your_edges": ["string"],
+    "weak_spots": ["string"],
+    "salary_negotiation_hint": "string"
+  }
+}`
 
 const WHITELIST = (process.env.RATE_LIMIT_WHITELIST || '').split(',').map(s => s.trim()).filter(Boolean)
 const HOURLY_LIMIT = 15
@@ -339,7 +494,7 @@ function buildLocalAnalysis(jobText, cvText, jobUrl, reason = 'AI provider unava
     job_source: jobUrl ? 'url' : 'pasted',
     cv_preview: cleanText(cvText, 800),
     cv_preview_truncated: cvText.trim().length > 800,
-    analysis_version: 'ats-intelligence-v3-fallback',
+    analysis_version: 'ats-intelligence-v5-fallback',
     fallback_used: true
   }
 }
@@ -400,7 +555,7 @@ function normalizeAnalysis(raw, jobUrl, cvText, jobText) {
   analysis.job_title = analysis.job_context?.title || null
   analysis.cv_preview = cleanText(cvText, 800)
   analysis.cv_preview_truncated = cvText.trim().length > 800
-  analysis.analysis_version = 'ats-intelligence-v3'
+  analysis.analysis_version = 'ats-intelligence-v5-master-prompt'
   analysis.fallback_used = false
   return enhanceAnalysisWithAts(analysis, jobText, cvText)
 }
@@ -429,10 +584,10 @@ async function runClaudeAnalysis(jobText, cvText) {
   const client = getAnthropicClient()
   const message = await client.messages.create({
     model: DEFAULT_MODEL,
-    max_tokens: 1200,
+    max_tokens: 1800,
     temperature: 0,
     system: SYSTEM,
-    messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n---\n\nCV:\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
+    messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
   }, { timeout: Number.isFinite(ANTHROPIC_TIMEOUT_MS) ? ANTHROPIC_TIMEOUT_MS : 30000 })
   const raw = message.content.map(block => block.text || '').join('').trim()
   return extractJsonObject(raw)
@@ -520,7 +675,7 @@ export default async function handler(req, res) {
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ success: false, error: 'Could not extract enough text from your CV. Make sure it is not a scanned image.', code: 'CV_TEXT_TOO_SHORT', debug: timer.steps() })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ success: false, error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.', code: 'JOB_TEXT_TOO_SHORT', debug: timer.steps() })
 
-    const cacheKey = hashContent('ats-v4', cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       timer.mark('cache_hit')
