@@ -6,5 +6,15 @@
     "api/smart-job-sync.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/((?!api/|assets/|favicon.ico|manifest.webmanifest|robots.txt|sitemap.xml).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
