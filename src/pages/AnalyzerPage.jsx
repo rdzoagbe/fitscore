@@ -15,6 +15,20 @@ import './AnalyzerPage.css'
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 const MIN_JOB_TEXT_LENGTH = 60
 
+function readClipperPayload() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('source') !== 'clipper') return null
+    const jobText = params.get('jobText') || ''
+    const jobUrl = params.get('jobUrl') || ''
+    const title = params.get('jobTitle') || ''
+    const company = params.get('company') || ''
+    return { jobText, jobUrl, title, company }
+  } catch {
+    return null
+  }
+}
+
 export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const { t } = useLang()
   const [jobUrl, setJobUrl] = useState('')
@@ -24,6 +38,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [showHistory, setShowHistory] = useState(false)
   const [msgIdx, setMsgIdx] = useState(0)
   const [uploadTrigger, setUploadTrigger] = useState(0)
+  const [clipperInfo, setClipperInfo] = useState(null)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
   const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
@@ -75,6 +90,22 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
 
+  useEffect(() => {
+    const payload = readClipperPayload()
+    if (!payload) return
+    setClipperInfo(payload)
+    if (payload.jobText && payload.jobText.trim().length >= MIN_JOB_TEXT_LENGTH) {
+      setJobText(payload.jobText)
+      setShowTextPaste(true)
+      setUserToggledMode(false)
+    } else if (payload.jobUrl) {
+      setJobUrl(normalizeJobUrl(payload.jobUrl))
+      setShowTextPaste(false)
+      setUserToggledMode(false)
+    }
+    window.history.replaceState({ page: 'analyzer' }, '', '/analyzer')
+  }, [])
+
   const switchToPasteMode = () => { setShowTextPaste(true); setUserToggledMode(true); setJobText('') }
   const handleUrlChange = e => {
     const value = e.target.value
@@ -97,7 +128,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
   const handleReset = useCallback(() => {
-    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); onClearPrefill?.()
+    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); setClipperInfo(null); onClearPrefill?.()
   }, [reset, onClearPrefill])
 
   useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
@@ -114,6 +145,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
         {displayStatus !== 'done' && <div className="analyzePro-layout">
           <section className="analyzePro-card">
             <div className="analyzePro-formHero"><p>{t('analyzer_kicker')}</p><h1>{t('analyzer_title')}</h1><p>{t('analyzer_subtitle')}</p></div>
+            {clipperInfo && <TipCard type="success" title="Job clipped from browser" body={`${clipperInfo.title || 'Job'}${clipperInfo.company ? ` at ${clipperInfo.company}` : ''} was imported into the analyzer. Upload or confirm your CV, then run the match.`} />}
             <CvPanel uploadTrigger={uploadTrigger} />
             <div className="card" style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
