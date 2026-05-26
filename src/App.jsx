@@ -126,12 +126,17 @@ export default function App() {
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
   if (!hasAcceptedCurrentTerms(user)) return <TermsGate />
 
+  const selectAndGo = (analysis, targetPage) => {
+    setSelectedAnalysis(analysis)
+    setPage(targetPage)
+  }
+
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <CareerDashboardPage setPage={setPage} />
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
-      case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
-      case 'coach': return <CvCoachPage />
+      case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => selectAndGo(a, 'analyzer')} onBuildCv={a => selectAndGo(a, 'cv-builder')} onGenerateMessage={a => selectAndGo(a, 'coach')} />
+      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} />
       case 'profile': return <ProfileOptimizerPage />
       case 'billing': return <BillingPage />
       case 'messages': return <MessagesPage setPage={setPage} />
