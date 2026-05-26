@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import Anthropic from '@anthropic-ai/sdk'
 import crypto from 'crypto'
+import { enhanceAnalysisWithAts } from './ats-engine.js'
 
 export const config = { maxDuration: 60 }
 
@@ -401,7 +402,7 @@ function normalizeAnalysis(raw, jobUrl, cvText, jobText) {
   analysis.cv_preview_truncated = cvText.trim().length > 800
   analysis.analysis_version = 'ats-intelligence-v3'
   analysis.fallback_used = false
-  return analysis
+  return enhanceAnalysisWithAts(analysis, jobText, cvText)
 }
 
 function extractJsonObject(raw = '') {
@@ -519,7 +520,7 @@ export default async function handler(req, res) {
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ success: false, error: 'Could not extract enough text from your CV. Make sure it is not a scanned image.', code: 'CV_TEXT_TOO_SHORT', debug: timer.steps() })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ success: false, error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.', code: 'JOB_TEXT_TOO_SHORT', debug: timer.steps() })
 
-    const cacheKey = hashContent('ats-v3', cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const cacheKey = hashContent('ats-v4', cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       timer.mark('cache_hit')
@@ -530,7 +531,7 @@ export default async function handler(req, res) {
     let aiProviderError = null
 
     if (skipAi) {
-      analysis = buildLocalAnalysis(jobText, cvText, jobUrl, 'AI skipped by request.')
+      analysis = enhanceAnalysisWithAts(buildLocalAnalysis(jobText, cvText, jobUrl, 'AI skipped by request.'), jobText, cvText)
     } else {
       try {
         timer.mark('before_claude', { model: DEFAULT_MODEL, timeoutMs: ANTHROPIC_TIMEOUT_MS })
@@ -540,13 +541,13 @@ export default async function handler(req, res) {
       } catch (e) {
         aiProviderError = providerError(e)
         console.error('Claude analysis failed:', JSON.stringify(aiProviderError))
-        analysis = buildLocalAnalysis(jobText, cvText, jobUrl, publicErrorMessage(e, aiProviderError.status))
+        analysis = enhanceAnalysisWithAts(buildLocalAnalysis(jobText, cvText, jobUrl, publicErrorMessage(e, aiProviderError.status)), jobText, cvText)
         analysis.provider_error = aiProviderError
       }
     }
 
     const savedRow = await saveAnalysis(supabase, userId, cacheKey, analysis, jobUrl, cvFileName)
-    timer.mark('success', { fallback: !!aiProviderError || !!skipAi })
+    timer.mark('success', { fallback: !!aiProviderError || !!skipAi, version: analysis.analysis_version })
     return res.status(200).json({ success: true, analysis, savedRow, fallback: !!aiProviderError || !!skipAi, providerError: debug ? aiProviderError : undefined, rateLimit, debug: debug ? timer.steps() : undefined })
   } catch (e) {
     const statusCode = getHttpStatus(e)
