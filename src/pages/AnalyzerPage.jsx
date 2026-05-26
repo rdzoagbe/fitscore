@@ -11,6 +11,7 @@ import CvPanel from '../components/CvPanel'
 import TipCard from '../components/TipCard'
 import UpgradePrompt from '../components/UpgradePrompt'
 import './AnalyzerPage.css'
+import './analyzer-action-hub.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 const MIN_JOB_TEXT_LENGTH = 60
@@ -27,6 +28,16 @@ function readClipperPayload() {
   } catch {
     return null
   }
+}
+
+function AnalyzeShortcut({ icon, title, text, onClick }) {
+  return (
+    <button type="button" className="analyzeHub-shortcut" onClick={onClick}>
+      <span>{icon}</span>
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </button>
+  )
 }
 
 export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
@@ -171,7 +182,17 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               </button>
             </div>
           </section>
-          <aside className="analyzePro-side">
+          <aside className="analyzePro-side analyzeHub-side">
+            <div className="analyzePro-sideCard analyzeHub-card">
+              <p className="analyzePro-kicker">Action hub</p>
+              <h3>After analysis, move faster</h3>
+              <p>Use these shortcuts to continue the workflow without returning to the Dashboard.</p>
+              <div className="analyzeHub-shortcuts">
+                <AnalyzeShortcut icon="H" title="History" text="Review saved analyses in the compact table." onClick={() => setPage('history')} />
+                <AnalyzeShortcut icon="CV" title="CV Coach" text="Generate cover letters and recruiter messages." onClick={() => setPage('coach')} />
+                <AnalyzeShortcut icon="M" title="Smart Sync" text="Track recruiter replies and interviews." onClick={() => setPage('messages')} />
+              </div>
+            </div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_workflow')}</p><h3>{t('analyzer_workflow_title')}</h3><div className="analyzePro-steps"><div className="analyzePro-step"><span>1</span><div><strong>{t('analyzer_step1_title')}</strong><small>{t('analyzer_step1_body')}</small></div></div><div className="analyzePro-step"><span>2</span><div><strong>{t('analyzer_step2_title')}</strong><small>{t('analyzer_step2_body')}</small></div></div><div className="analyzePro-step"><span>3</span><div><strong>{t('analyzer_step3_title')}</strong><small>{t('analyzer_step3_body')}</small></div></div></div></div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_tip')}</p><h3>{t('analyzer_tip_title')}</h3><p>{t('analyzer_tip_body')}</p></div>
           </aside>
