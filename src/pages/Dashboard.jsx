@@ -2,79 +2,24 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
-import ScoreHistoryChart from '../components/ScoreHistoryChart'
 import StatusPill from '../components/StatusPill'
 import DeleteAllModal from '../components/DeleteAllModal'
+import { sanitizeAnalysisForDisplay } from '../utils/analysisSanitizer'
 import './HistoryPage.css'
 import './JobTrackerPhase4.css'
+import './history-master-detail.css'
 
-const TRACKER_META_VERSION = 'joblytics_tracker_meta_v1'
+const PAGE_SIZE = 8
 
 function scoreValue(analysis) {
-  const score = Number(analysis?.score)
+  const score = Number(analysis?.score ?? analysis?.result?.display_score ?? analysis?.result?.match_probability)
   return Number.isFinite(score) ? Math.round(score) : 0
 }
 
-function scoreColor(score) {
-  if (score >= 70) return '#4caf7d'
-  if (score >= 50) return '#f5a623'
-  return '#ff6b6b'
-}
-
-function getTrackerStorageKey(userId) {
-  return `${TRACKER_META_VERSION}_${userId || 'local'}`
-}
-
-function loadTrackerMeta(userId) {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(getTrackerStorageKey(userId)) || '{}')
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveTrackerMeta(userId, meta) {
-  try { localStorage.setItem(getTrackerStorageKey(userId), JSON.stringify(meta || {})) } catch {}
-}
-
-function safeText(value, fallback = '') {
-  return typeof value === 'string' && value.trim() ? value.trim() : fallback
-}
-
-function getJobTitle(analysis, fallback) {
-  return safeText(
-    analysis.job_title || analysis.result?.job_context?.title,
-    fallback
-  )
-}
-
-function getJobCompany(analysis) {
-  const company = analysis.result?.job_context?.company
-  return company && company !== 'Not specified' ? company : ''
-}
-
-function getJobInfo(analysis, t) {
-  const ctx = analysis.result?.job_context || {}
-  const fallbackTitle = (() => {
-    try { return new URL(analysis.job_url).hostname.replace('www.', '') } catch { return t('history_job_analysis') }
-  })()
-
-  return {
-    title: getJobTitle(analysis, fallbackTitle),
-    company: getJobCompany(analysis),
-    location: ctx.location && ctx.location !== 'Not specified' ? ctx.location : '',
-    salary: ctx.salary_range && ctx.salary_range !== 'Not specified' ? ctx.salary_range : '',
-    workMode: ctx.work_mode && ctx.work_mode !== 'unknown' ? ctx.work_mode : '',
-    contract: ctx.contract_type && ctx.contract_type !== 'unknown' ? ctx.contract_type : '',
-    sourceUrl: analysis.job_url && analysis.job_url !== 'manual_paste' ? analysis.job_url : '',
-    nextBestAction: analysis.result?.next_best_action?.label || analysis.result?.next_best_action?.action || '',
-    recruiterRisk: analysis.result?.recruiter_shortlist?.likely_recruiter_concerns?.[0] || analysis.result?.critical_gaps?.[0] || ''
-  }
-}
-
-function getPipelineStatus(analysis) {
-  return analysis.application_status || 'saved'
+function scoreTone(score) {
+  if (score >= 75) return 'strong'
+  if (score >= 55) return 'medium'
+  return 'weak'
 }
 
 function getStatusLabel(status) {
@@ -88,537 +33,393 @@ function getStatusLabel(status) {
   })[status || 'saved'] || 'Saved'
 }
 
-function isDueSoon(dateValue) {
-  if (!dateValue) return false
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const target = new Date(dateValue)
-  target.setHours(0, 0, 0, 0)
-  const diff = target.getTime() - today.getTime()
-  return diff <= 2 * 24 * 60 * 60 * 1000
+function getPipelineStatus(analysis) {
+  return analysis?.application_status || 'saved'
 }
 
-function StatCard({ label, value, helper }) {
-  return (
-    <article className="historyWide-stat">
-      <p>{label}</p>
-      <strong>{value}</strong>
-      <span>{helper}</span>
-    </article>
-  )
+function safeText(value, fallback = '') {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
 }
 
-function ProgressLine({ label, value, color }) {
+function getJobTitle(analysis, t) {
+  const result = analysis?.result || {}
+  const fallbackTitle = (() => {
+    try { return new URL(analysis.job_url).hostname.replace('www.', '') } catch { return t('history_job_analysis', 'Job analysis') }
+  })()
+  return safeText(analysis?.job_title || result?.job_context?.title, fallbackTitle)
+}
+
+function getJobCompany(analysis) {
+  const company = analysis?.result?.job_context?.company
+  return company && company !== 'Not specified' ? company : ''
+}
+
+function getJobDisplay(analysis, t) {
+  const result = analysis?.result || {}
+  const ctx = result.job_context || {}
+  return {
+    title: getJobTitle(analysis, t),
+    company: getJobCompany(analysis),
+    location: ctx.location && ctx.location !== 'Not specified' ? ctx.location : '',
+    salary: ctx.salary_range && ctx.salary_range !== 'Not specified' ? ctx.salary_range : '',
+    workMode: ctx.work_mode && ctx.work_mode !== 'unknown' ? ctx.work_mode : '',
+    contract: ctx.contract_type && ctx.contract_type !== 'unknown' ? ctx.contract_type : '',
+    sourceUrl: analysis?.job_url && analysis.job_url !== 'manual_paste' ? analysis.job_url : '',
+    summary: result.job_summary || result.match_reasoning || '',
+    verdict: result.recruiter_shortlist?.verdict || result.overall_verdict || '',
+    recruiterReason: result.recruiter_shortlist?.reason || result.overall_reason || result.match_reasoning || '',
+    nextAction: result.next_best_action?.label || result.next_best_action?.action || '',
+    nextReason: result.next_best_action?.reason || '',
+    createdAt: analysis?.created_at
+  }
+}
+
+function listOf(value, limit = 6) {
+  return Array.isArray(value) ? value.filter(Boolean).slice(0, limit) : []
+}
+
+function verdictLabel(value, t) {
+  return ({
+    likely_passed: t('likely_passed', 'Likely passed'),
+    borderline: t('borderline', 'Borderline'),
+    likely_filtered: t('likely_filtered', 'Likely filtered'),
+    strong_shortlist: 'Strong shortlist',
+    possible_shortlist: 'Possible shortlist',
+    unlikely_shortlist: 'Unlikely shortlist'
+  })[value] || t('verdict_unknown', 'Unknown')
+}
+
+function formatDate(value, lang = 'en') {
+  if (!value) return '—'
+  const localeMap = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-PT' }
+  return new Date(value).toLocaleDateString(localeMap[lang] || 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function formatTime(value, lang = 'en') {
+  if (!value) return ''
+  const localeMap = { en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE', it: 'it-IT', pt: 'pt-PT' }
+  return new Date(value).toLocaleTimeString(localeMap[lang] || 'en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+function StatCard({ label, value, helper, icon }) {
   return (
-    <div className="historyWide-progressLine">
+    <article className="historyMD-stat">
+      <span>{icon}</span>
       <div>
-        <span>{label}</span>
-        <strong style={{ color }}>{value}%</strong>
-      </div>
-      <em>
-        <i style={{ width: `${value}%`, background: color }} />
-      </em>
-    </div>
-  )
-}
-
-function PipelineCard({ title, count, helper, tone, items, onSelectAnalysis }) {
-  return (
-    <article className={`jobTracker-column jobTracker-column--${tone}`}>
-      <div className="jobTracker-columnHead">
-        <div>
-          <strong>{title}</strong>
-          <span>{helper}</span>
-        </div>
-        <em>{count}</em>
-      </div>
-
-      <div className="jobTracker-miniList">
-        {items.slice(0, 4).map(item => (
-          <button key={item.id} type="button" onClick={() => onSelectAnalysis(item)}>
-            <strong>{item.display.title}</strong>
-            <span>{item.display.company || item.display.location || `${scoreValue(item)}% match`}</span>
-          </button>
-        ))}
-        {items.length === 0 && <p>No jobs yet in this stage.</p>}
+        <p>{label}</p>
+        <strong>{value}</strong>
+        <em>{helper}</em>
       </div>
     </article>
   )
 }
 
-function TrackerMetaEditor({ analysis, meta, onChange }) {
-  const current = meta[analysis.id] || {}
-  const update = patch => onChange(analysis.id, { ...current, ...patch, updatedAt: new Date().toISOString() })
-
+function EmptyState({ title, text, action, onAction }) {
   return (
-    <div className="jobTracker-metaEditor" onClick={event => event.stopPropagation()}>
-      <label>
-        <span>Next action</span>
-        <input
-          value={current.nextAction || ''}
-          onChange={event => update({ nextAction: event.target.value })}
-          placeholder="Follow up, prepare interview, send CV..."
-        />
-      </label>
-      <label>
-        <span>Reminder</span>
-        <input
-          type="date"
-          value={current.dueDate || ''}
-          onChange={event => update({ dueDate: event.target.value })}
-        />
-      </label>
-      <label className="jobTracker-noteField">
-        <span>Notes</span>
-        <textarea
-          value={current.note || ''}
-          onChange={event => update({ note: event.target.value })}
-          placeholder="Recruiter name, salary range, follow-up context..."
-          rows={2}
-        />
-      </label>
+    <div className="historyMD-empty">
+      <span>H</span>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      {action && <button type="button" onClick={onAction}>{action}</button>}
     </div>
   )
 }
 
-export default function Dashboard({ onNewAnalysis, onSelectAnalysis }) {
+function DetailList({ title, items, empty, tone = 'neutral' }) {
+  return (
+    <div className={`historyMD-detailList historyMD-detailList--${tone}`}>
+      <strong>{title}</strong>
+      {items.length ? (
+        <ul>{items.map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}</ul>
+      ) : <p>{empty}</p>}
+    </div>
+  )
+}
+
+export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, onGenerateMessage }) {
   const { user } = useAuth()
   const { t, lang } = useLang()
-
   const [analyses, setAnalyses] = useState([])
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('recent')
   const [search, setSearch] = useState('')
-  const [trackerMeta, setTrackerMeta] = useState({})
+  const [selectedId, setSelectedId] = useState(null)
+  const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    fetchAnalyses()
-    setTrackerMeta(loadTrackerMeta(user?.id))
-  }, [])
-
-  const updateTrackerMeta = (analysisId, nextValue) => {
-    setTrackerMeta(current => {
-      const next = { ...current, [analysisId]: nextValue }
-      saveTrackerMeta(user?.id, next)
-      return next
-    })
-  }
+  useEffect(() => { fetchAnalyses() }, [])
 
   const fetchAnalyses = async () => {
+    setLoading(true)
     const { data } = await supabase
       .from('analyses')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(80)
+      .limit(120)
 
     setAnalyses(data || [])
+    setSelectedId(data?.[0]?.id || null)
     setLoading(false)
   }
 
   const deleteAnalysis = async (id, event) => {
-    event.stopPropagation()
+    event?.stopPropagation?.()
     setDeleting(id)
     await supabase.from('analyses').delete().eq('id', id)
     setAnalyses(prev => prev.filter(item => item.id !== id))
-    setTrackerMeta(current => {
-      const next = { ...current }
-      delete next[id]
-      saveTrackerMeta(user?.id, next)
-      return next
-    })
+    setSelectedId(current => current === id ? null : current)
     setDeleting(null)
   }
 
   const handleDeleteAll = async () => {
     if (!user) throw new Error('Not signed in')
-
-    const { error } = await supabase
-      .from('analyses')
-      .delete()
-      .eq('user_id', user.id)
-
+    const { error } = await supabase.from('analyses').delete().eq('user_id', user.id)
     if (error) throw error
-
     setAnalyses([])
-    setTrackerMeta({})
-    saveTrackerMeta(user?.id, {})
+    setSelectedId(null)
     setDeleteAllOpen(false)
-    setDeleting(null)
   }
 
-  const localeMap = {
-    en: 'en-US',
-    fr: 'fr-FR',
-    es: 'es-ES',
-    de: 'de-DE',
-    it: 'it-IT',
-    pt: 'pt-PT'
-  }
-
-  const formatDate = value =>
-    new Date(value).toLocaleDateString(localeMap[lang] || 'en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
-
-  const verdictLabel = value => ({
-    likely_passed: t('likely_passed', t('history_likely_passed')),
-    borderline: t('borderline', 'Borderline'),
-    likely_filtered: t('likely_filtered', 'Likely filtered')
-  })[value] || t('verdict_unknown')
-
-  const enrichedAnalyses = useMemo(() => analyses.map(item => ({
-    ...item,
-    display: getJobInfo(item, t),
-    tracker: trackerMeta[item.id] || {}
-  })), [analyses, trackerMeta, t])
+  const enriched = useMemo(() => analyses.map(item => {
+    const result = sanitizeAnalysisForDisplay(item.result || {})
+    return {
+      ...item,
+      result,
+      score: scoreValue({ ...item, result }),
+      display: getJobDisplay({ ...item, result }, t)
+    }
+  }), [analyses, t])
 
   const stats = useMemo(() => {
-    const scores = analyses.map(scoreValue)
-    const avgScore = scores.length
-      ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-      : 0
-
-    const bestScore = scores.length ? Math.max(...scores) : 0
-    const passedCount = analyses.filter(item => item.result?.overall_verdict === 'likely_passed').length
-    const borderlineCount = analyses.filter(item => item.result?.overall_verdict === 'borderline').length
-    const filteredCount = analyses.filter(item => item.result?.overall_verdict === 'likely_filtered').length
-
-    return {
-      avgScore,
-      bestScore,
-      passedCount,
-      borderlineCount,
-      filteredCount
-    }
-  }, [analyses])
-
-  const pipeline = useMemo(() => {
-    const buckets = {
-      saved: [],
-      applied: [],
-      interview: [],
-      offer: [],
-      rejected: [],
-      withdrawn: []
-    }
-    enrichedAnalyses.forEach(item => {
-      const key = getPipelineStatus(item)
-      if (buckets[key]) buckets[key].push(item)
-      else buckets.saved.push(item)
-    })
-    return buckets
-  }, [enrichedAnalyses])
-
-  const trackerStats = useMemo(() => {
-    const active = pipeline.saved.length + pipeline.applied.length + pipeline.interview.length + pipeline.offer.length
-    const dueSoon = enrichedAnalyses.filter(item => isDueSoon(item.tracker?.dueDate)).length
-    const withNotes = enrichedAnalyses.filter(item => item.tracker?.note || item.tracker?.nextAction).length
-    return { active, dueSoon, withNotes }
-  }, [pipeline, enrichedAnalyses])
-
-  const total = analyses.length || 1
-  const passedPercent = Math.round((stats.passedCount / total) * 100)
-  const borderlinePercent = Math.round((stats.borderlineCount / total) * 100)
-  const filteredPercent = Math.round((stats.filteredCount / total) * 100)
+    const scores = enriched.map(item => item.score).filter(score => Number.isFinite(score))
+    const avg = scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0
+    const strong = enriched.filter(item => item.score >= 75).length
+    const needsWork = enriched.filter(item => item.score < 55).length
+    const latest = enriched[0]
+    return { total: enriched.length, avg, strong, needsWork, latest }
+  }, [enriched])
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
-
-    return enrichedAnalyses
+    return enriched
       .filter(item => {
-        const matchFilter = filter === 'all' || item.result?.overall_verdict === filter
-        const title = item.display.title || ''
-        const company = item.display.company || ''
-        const url = item.job_url || ''
-        const status = getStatusLabel(getPipelineStatus(item))
-        const trackerText = `${item.tracker?.nextAction || ''} ${item.tracker?.note || ''}`
-
-        const matchSearch =
-          !query ||
-          title.toLowerCase().includes(query) ||
-          company.toLowerCase().includes(query) ||
-          url.toLowerCase().includes(query) ||
-          status.toLowerCase().includes(query) ||
-          trackerText.toLowerCase().includes(query)
-
-        return matchFilter && matchSearch
+        const verdict = item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict || ''
+        const tone = scoreTone(item.score)
+        const matchFilter = filter === 'all' || filter === verdict || filter === tone || filter === getPipelineStatus(item)
+        const haystack = `${item.display.title} ${item.display.company} ${item.display.location} ${item.display.contract} ${item.display.workMode} ${item.job_url || ''} ${getStatusLabel(getPipelineStatus(item))}`.toLowerCase()
+        return matchFilter && (!query || haystack.includes(query))
       })
       .sort((a, b) => {
-        if (sortBy === 'priority') return scoreValue(b) - scoreValue(a)
-        if (sortBy === 'followup') return Number(isDueSoon(b.tracker?.dueDate)) - Number(isDueSoon(a.tracker?.dueDate))
+        if (sortBy === 'score') return b.score - a.score
+        if (sortBy === 'company') return (a.display.company || a.display.title).localeCompare(b.display.company || b.display.title)
         return new Date(b.created_at) - new Date(a.created_at)
       })
-  }, [enrichedAnalyses, filter, search, sortBy])
+  }, [enriched, search, filter, sortBy])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const visibleRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  useEffect(() => { setPage(1) }, [search, filter, sortBy])
+  useEffect(() => {
+    if (!selectedId && filtered[0]?.id) setSelectedId(filtered[0].id)
+    if (selectedId && filtered.length && !filtered.some(item => item.id === selectedId)) setSelectedId(filtered[0].id)
+  }, [filtered, selectedId])
+
+  const selected = filtered.find(item => item.id === selectedId) || filtered[0] || null
+  const selectedScore = selected?.score || 0
+  const selectedTone = scoreTone(selectedScore)
+  const selectedResult = selected?.result || {}
+  const selectedDisplay = selected?.display || {}
+  const foundKeywords = listOf(selectedResult.keyword_match?.found, 8)
+  const missingKeywords = listOf(selectedResult.keyword_match?.missing_required, 8)
+  const quickWins = listOf(selectedResult.quick_wins, 5)
+  const gaps = listOf(selectedResult.critical_gaps?.length ? selectedResult.critical_gaps : selectedResult.proof_gaps, 5)
+  const met = listOf(selectedResult.requirements_check?.met, 5)
+  const unmet = listOf(selectedResult.requirements_check?.unmet, 5)
 
   const filters = [
-    { value: 'all', label: t('history_filter_all') },
-    { value: 'likely_passed', label: t('history_filter_passed') },
-    { value: 'borderline', label: t('history_filter_borderline') },
-    { value: 'likely_filtered', label: t('history_filter_filtered') }
-  ]
-
-  const pipelineColumns = [
-    { key: 'saved', title: 'Saved', helper: 'Jobs to review', tone: 'saved' },
-    { key: 'applied', title: 'Applied', helper: 'Applications sent', tone: 'applied' },
-    { key: 'interview', title: 'Interview', helper: 'Prepare and follow up', tone: 'interview' },
-    { key: 'offer', title: 'Offer', helper: 'Negotiate / decide', tone: 'offer' },
-    { key: 'rejected', title: 'Rejected', helper: 'Archive and learn', tone: 'rejected' },
-    { key: 'withdrawn', title: 'Archived', helper: 'Closed or skipped', tone: 'archived' }
+    { value: 'all', label: 'All' },
+    { value: 'strong', label: 'Strong' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'weak', label: 'Needs work' },
+    { value: 'saved', label: 'Saved' },
+    { value: 'applied', label: 'Applied' },
+    { value: 'interview', label: 'Interview' }
   ]
 
   return (
-    <div className="historyWide-page page-enter">
-      <div className="historyWide-glow historyWide-glowOne" />
-      <div className="historyWide-glow historyWide-glowTwo" />
-
-      <main className="historyWide-shell">
-        <section className="historyWide-hero">
+    <div className="historyMD-page page-enter">
+      <main className="historyMD-shell">
+        <section className="historyMD-hero">
           <div>
-            <p className="historyWide-kicker">Job tracker / career CRM</p>
-            <h1>{t('history_title')}</h1>
-            <p>{t('history_intro')}</p>
-
-            <div className="historyWide-actions">
-              <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
-                {t('history_new_check')}
-              </button>
-
-              {analyses.length > 0 && (
-                <button type="button" className="historyWide-dangerBtn" onClick={() => setDeleteAllOpen(true)}>
-                  {t('history_delete_all')}
-                </button>
-              )}
-            </div>
+            <p className="historyMD-kicker">History</p>
+            <h1>{t('history_saved_title', 'Your saved analyses')}</h1>
+            <span>{t('history_saved_intro', 'Review previous job analyses quickly, compare scores, and reopen the full report only when needed.')}</span>
           </div>
-
-          <aside className="historyWide-heroPanel">
-            <div className="historyWide-orb">
-              <strong>{stats.avgScore}</strong>
-              <span>{t('history_avg_score_short')}</span>
-            </div>
-            <div>
-              <p>Pipeline health</p>
-              <h2>{trackerStats.active} active jobs</h2>
-              <span>{trackerStats.dueSoon} follow-ups due soon · {trackerStats.withNotes} with CRM notes</span>
-            </div>
-          </aside>
+          <div className="historyMD-actions">
+            <button type="button" className="historyMD-primary" onClick={onNewAnalysis}>+ {t('history_new_check', 'New analysis')}</button>
+            {analyses.length > 0 && <button type="button" className="historyMD-ghost historyMD-danger" onClick={() => setDeleteAllOpen(true)}>{t('history_delete_all', 'Delete all')}</button>}
+          </div>
         </section>
 
         {!loading && analyses.length > 0 && (
-          <section className="historyWide-stats">
-            <StatCard label={t('history_average_score')} value={`${stats.avgScore}%`} helper={t('history_across_checks')} />
-            <StatCard label={t('history_best_score')} value={`${stats.bestScore}%`} helper={t('history_highest_match')} />
-            <StatCard label="Active pipeline" value={trackerStats.active} helper="Saved, applied, interviews and offers" />
-            <StatCard label="Follow-up due" value={trackerStats.dueSoon} helper="Reminder date within 48 hours" />
+          <section className="historyMD-stats">
+            <StatCard icon="T" label="Total analyses" value={stats.total} helper="Saved reports" />
+            <StatCard icon="A" label="Average fit score" value={`${stats.avg}%`} helper="Across all analyses" />
+            <StatCard icon="S" label="Strong matches" value={stats.strong} helper="75% and above" />
+            <StatCard icon="N" label="Needs work" value={stats.needsWork} helper="Below 55%" />
           </section>
         )}
 
-        {!loading && analyses.length > 0 && (
-          <section className="historyWide-card jobTracker-board">
-            <div className="historyWide-sectionHead jobTracker-boardHead">
-              <div>
-                <p className="historyWide-kicker">Phase 4 · Career CRM</p>
-                <h2>Application pipeline</h2>
-                <p>Move jobs with the status pill, then use notes, next actions and reminder dates to manage every application like a CRM.</p>
-              </div>
-              <button type="button" className="historyWide-primaryBtn" onClick={() => setSortBy('followup')}>Show follow-ups first</button>
-            </div>
-
-            <div className="jobTracker-pipelineGrid">
-              {pipelineColumns.map(column => (
-                <PipelineCard
-                  key={column.key}
-                  title={column.title}
-                  helper={column.helper}
-                  tone={column.tone}
-                  count={pipeline[column.key]?.length || 0}
-                  items={pipeline[column.key] || []}
-                  onSelectAnalysis={onSelectAnalysis}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {!loading && analyses.length >= 2 && (
-          <section className="historyWide-insights">
-            <article className="historyWide-card historyWide-chartCard">
-              <p className="historyWide-kicker">{t('history_score_trend')}</p>
-              <h2>{t('history_progress_time')}</h2>
-              <div className="historyWide-chartBox">
-                <ScoreHistoryChart analyses={analyses} t={t} />
-              </div>
-            </article>
-
-            <article className="historyWide-card">
-              <p className="historyWide-kicker">{t('history_verdict_breakdown')}</p>
-              <h2>{t('history_match_quality')}</h2>
-
-              <div className="historyWide-progressStack">
-                <ProgressLine label={t('likely_passed', t('history_likely_passed'))} value={passedPercent} color="#4caf7d" />
-                <ProgressLine label={t('borderline', 'Borderline')} value={borderlinePercent} color="#f5a623" />
-                <ProgressLine label={t('likely_filtered', 'Likely filtered')} value={filteredPercent} color="#ff6b6b" />
-              </div>
-            </article>
-          </section>
-        )}
-
-        <section className="historyWide-card historyWide-resultsCard">
-          <div className="historyWide-sectionHead">
+        <section className="historyMD-card historyMD-master">
+          <div className="historyMD-masterHead">
             <div>
-              <p className="historyWide-kicker">Tracked applications</p>
-              <h2>{t('history_saved_title')}</h2>
-              <p>{t('history_saved_intro')}</p>
+              <p className="historyMD-kicker">Saved analyses</p>
+              <h2>{filtered.length} result{filtered.length === 1 ? '' : 's'}</h2>
+            </div>
+            <div className="historyMD-toolbar">
+              <label className="historyMD-search">
+                <span>⌕</span>
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by job, company, location or status..." />
+              </label>
+              <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
+                <option value="recent">Newest</option>
+                <option value="score">Highest score</option>
+                <option value="company">Company A-Z</option>
+              </select>
             </div>
           </div>
 
           {!loading && analyses.length > 0 && (
-            <div className="historyWide-toolbar">
-              <label className="historyWide-search">
-                <span>⌕</span>
-                <input
-                  type="text"
-                  placeholder={t('history_search_placeholder')}
-                  value={search}
-                  onChange={event => setSearch(event.target.value)}
-                />
-              </label>
-
-              <div className="historyWide-filterGroup">
-                {filters.map(item => (
-                  <button
-                    key={item.value}
-                    type="button"
-                    className={filter === item.value ? 'is-active' : ''}
-                    onClick={() => setFilter(item.value)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                className="historyWide-sortBtn"
-                onClick={() => setSortBy(value => value === 'recent' ? 'priority' : value === 'priority' ? 'followup' : 'recent')}
-              >
-                {sortBy === 'priority'
-                  ? `⭐ ${t('history_sort_priority')}`
-                  : sortBy === 'followup'
-                    ? '🔔 Follow-ups first'
-                    : `🕐 ${t('history_sort_recent')}`}
-              </button>
+            <div className="historyMD-filters">
+              {filters.map(item => <button key={item.value} type="button" className={filter === item.value ? 'is-active' : ''} onClick={() => setFilter(item.value)}>{item.label}</button>)}
             </div>
           )}
 
-          {loading && (
-            <div className="historyWide-grid">
-              {[1, 2, 3, 4, 5, 6].map(item => (
-                <div key={item} className="historyWide-skeleton" />
-              ))}
-            </div>
-          )}
+          {loading && <div className="historyMD-skeletonList">{[1,2,3,4].map(item => <span key={item} />)}</div>}
 
           {!loading && analyses.length === 0 && (
-            <div className="historyWide-empty">
-              <div>📋</div>
-              <h3>{t('history_no_analyses')}</h3>
-              <p>{t('history_no_analyses_desc')}</p>
-              <button type="button" className="historyWide-primaryBtn" onClick={onNewAnalysis}>
-                {t('history_start_analyzing')}
-              </button>
-            </div>
+            <EmptyState title={t('history_no_analyses', 'No analyses yet')} text={t('history_no_analyses_desc', 'Run your first job analysis and it will appear here.')} action={t('history_start_analyzing', 'Start analyzing')} onAction={onNewAnalysis} />
           )}
 
           {!loading && analyses.length > 0 && filtered.length === 0 && (
-            <div className="historyWide-empty">
-              <h3>{t('history_no_filter_match')}</h3>
-              <p>{t('history_try_filter')}</p>
-            </div>
+            <EmptyState title={t('history_no_filter_match', 'No matching analyses')} text={t('history_try_filter', 'Try another search or filter.')} />
           )}
 
           {!loading && filtered.length > 0 && (
-            <div className="historyWide-grid jobTracker-cardGrid">
-              {filtered.map(analysis => {
-                const score = scoreValue(analysis)
-                const color = scoreColor(score)
-                const company = analysis.display.company
-                const location = analysis.display.location
-                const meta = trackerMeta[analysis.id] || {}
+            <>
+              <div className="historyMD-tableWrap">
+                <table className="historyMD-table">
+                  <thead>
+                    <tr>
+                      <th>Job title</th>
+                      <th>Company</th>
+                      <th>Fit score</th>
+                      <th>Verdict</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRows.map(item => {
+                      const tone = scoreTone(item.score)
+                      const active = selected?.id === item.id
+                      return (
+                        <tr key={item.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(item.id)}>
+                          <td>
+                            <strong>{item.display.title}</strong>
+                            <span>{item.display.location || item.display.workMode || item.display.contract || 'Saved analysis'}</span>
+                          </td>
+                          <td>{item.display.company || '—'}</td>
+                          <td><b className={`historyMD-score historyMD-score--${tone}`}>{item.score}%</b></td>
+                          <td><em className={`historyMD-verdict historyMD-verdict--${tone}`}>{verdictLabel(item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict, t)}</em></td>
+                          <td><StatusPill analysis={item} onUpdate={updated => setAnalyses(prev => prev.map(row => row.id === updated.id ? updated : row))} compact /></td>
+                          <td><span>{formatDate(item.created_at, lang)}</span><small>{formatTime(item.created_at, lang)}</small></td>
+                          <td>
+                            <button type="button" onClick={event => { event.stopPropagation(); onSelectAnalysis?.(item) }}>Open</button>
+                            <button type="button" className="historyMD-deleteBtn" disabled={deleting === item.id} onClick={event => deleteAnalysis(item.id, event)}>×</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-                return (
-                  <article key={analysis.id} className="historyWide-item jobTracker-jobCard" onClick={() => onSelectAnalysis(analysis)}>
-                    <div className="historyWide-itemTop">
-                      <div className="historyWide-score" style={{ color, borderColor: color }}>
-                        {score}%
-                      </div>
-
-                      <button
-                        type="button"
-                        className="historyWide-delete"
-                        onClick={event => deleteAnalysis(analysis.id, event)}
-                        disabled={deleting === analysis.id}
-                        aria-label={t('history_delete_analysis')}
-                      >
-                        ×
-                      </button>
-                    </div>
-
-                    <h3>{analysis.display.title}</h3>
-                    {company && <p className="historyWide-company">@ {company}</p>}
-
-                    <div className="historyWide-meta">
-                      <span style={{ color, borderColor: `${color}55`, background: `${color}18` }}>
-                        {verdictLabel(analysis.result?.overall_verdict)}
-                      </span>
-                      <em>{formatDate(analysis.created_at)}</em>
-                      {location && <em>📍 {location.split(',')[0]}</em>}
-                    </div>
-
-                    <div className="jobTracker-detailGrid">
-                      <span><b>Status</b>{getStatusLabel(getPipelineStatus(analysis))}</span>
-                      <span><b>Work mode</b>{analysis.display.workMode || 'Not set'}</span>
-                      <span><b>Contract</b>{analysis.display.contract || 'Not set'}</span>
-                      <span><b>Salary</b>{analysis.display.salary || 'Not stated'}</span>
-                    </div>
-
-                    {(analysis.display.nextBestAction || analysis.display.recruiterRisk || meta.nextAction || meta.dueDate) && (
-                      <div className={`jobTracker-nextAction${isDueSoon(meta.dueDate) ? ' is-due' : ''}`}>
-                        <strong>{meta.nextAction || analysis.display.nextBestAction || 'Recommended next action'}</strong>
-                        <p>{meta.dueDate ? `Reminder: ${formatDate(meta.dueDate)}` : analysis.display.recruiterRisk || 'Open the analysis to review details.'}</p>
-                      </div>
-                    )}
-
-                    <div className="historyWide-status">
-                      <StatusPill
-                        analysis={analysis}
-                        onUpdate={updated => setAnalyses(prev => prev.map(item => item.id === updated.id ? updated : item))}
-                        compact
-                      />
-                    </div>
-
-                    <TrackerMetaEditor analysis={analysis} meta={trackerMeta} onChange={updateTrackerMeta} />
-                  </article>
-                )
-              })}
-            </div>
+              <div className="historyMD-pagination">
+                <span>Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                <div>
+                  <button type="button" disabled={safePage <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>‹</button>
+                  <strong>{safePage}</strong>
+                  <button type="button" disabled={safePage >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>›</button>
+                </div>
+              </div>
+            </>
           )}
         </section>
+
+        {!loading && selected && (
+          <section className="historyMD-card historyMD-detail">
+            <div className="historyMD-detailHeader">
+              <div>
+                <p className="historyMD-kicker">Selected analysis</p>
+                <h2>{selectedDisplay.title}</h2>
+                <span>{selectedDisplay.company || 'Company not specified'} · {formatDate(selected.created_at, lang)} {formatTime(selected.created_at, lang)}</span>
+              </div>
+              <div className={`historyMD-detailScore historyMD-detailScore--${selectedTone}`}>
+                <strong>{selectedScore}%</strong>
+                <span>{verdictLabel(selectedResult.overall_verdict || selectedResult.recruiter_shortlist?.verdict, t)}</span>
+              </div>
+            </div>
+
+            <div className="historyMD-detailGrid">
+              <article className="historyMD-detailSummary">
+                <p>{selectedDisplay.summary || selectedResult.match_reasoning || 'No summary returned for this analysis.'}</p>
+                <div className="historyMD-miniFacts">
+                  <span><b>Work mode</b>{selectedDisplay.workMode || 'Not set'}</span>
+                  <span><b>Contract</b>{selectedDisplay.contract || 'Not set'}</span>
+                  <span><b>Salary</b>{selectedDisplay.salary || 'Not stated'}</span>
+                  <span><b>Status</b>{getStatusLabel(getPipelineStatus(selected))}</span>
+                </div>
+                {(selectedDisplay.recruiterReason || selectedDisplay.nextAction) && (
+                  <div className="historyMD-recruiterBox">
+                    <strong>Recruiter screening summary</strong>
+                    <p>{selectedDisplay.recruiterReason || selectedDisplay.nextReason || 'Review the missing proof points before applying.'}</p>
+                  </div>
+                )}
+              </article>
+
+              <div className="historyMD-keywordPanel">
+                <strong>Missing keywords</strong>
+                <div>{missingKeywords.length ? missingKeywords.map(item => <span key={item}>{item}</span>) : <p>No missing keywords returned.</p>}</div>
+                <strong>Found in CV</strong>
+                <div>{foundKeywords.length ? foundKeywords.map(item => <span key={item} className="is-found">{item}</span>) : <p>No found keywords returned.</p>}</div>
+              </div>
+            </div>
+
+            <div className="historyMD-lists">
+              <DetailList title="Quick wins" items={quickWins} empty="No quick wins returned." tone="good" />
+              <DetailList title="Gaps to address" items={gaps} empty="No major gaps returned." tone="bad" />
+              <DetailList title="Requirements met" items={met} empty="No met requirements returned." tone="good" />
+              <DetailList title="Requirements missing" items={unmet} empty="No missing requirements returned." tone="bad" />
+            </div>
+
+            <div className="historyMD-detailActions">
+              <button type="button" className="historyMD-primary" onClick={() => onSelectAnalysis?.(selected)}>Open full analysis</button>
+              <button type="button" className="historyMD-ghost" onClick={onNewAnalysis}>Re-run analysis</button>
+              <button type="button" className="historyMD-ghost" onClick={() => onBuildCv?.(selected)} disabled={!onBuildCv}>Generate tailored CV</button>
+              <button type="button" className="historyMD-ghost" onClick={() => onGenerateMessage?.(selected)} disabled={!onGenerateMessage}>Generate message</button>
+            </div>
+          </section>
+        )}
       </main>
 
-      {deleteAllOpen && (
-        <DeleteAllModal
-          count={analyses.length}
-          onConfirm={handleDeleteAll}
-          onClose={() => setDeleteAllOpen(false)}
-        />
-      )}
+      {deleteAllOpen && <DeleteAllModal count={analyses.length} onConfirm={handleDeleteAll} onClose={() => setDeleteAllOpen(false)} />}
     </div>
   )
 }
