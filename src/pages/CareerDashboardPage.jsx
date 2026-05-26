@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
+import { useCvPersist } from '../hooks/useCvPersist'
 import { useDailyChallenge } from '../hooks/useDailyChallenge'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
@@ -54,6 +55,121 @@ function PathCard({ icon, title, text, progress, onClick }) {
   )
 }
 
+function JourneyStep({ step, index, isNext, setPage, t }) {
+  const stateClass = step.done ? 'is-done' : isNext ? 'is-next' : step.locked ? 'is-locked' : 'is-ready'
+  return (
+    <article className={`careerDash-journeyStep ${stateClass}`}>
+      <div className="careerDash-journeyMarker">
+        <span>{step.done ? '✓' : index + 1}</span>
+      </div>
+      <div className="careerDash-journeyCopy">
+        <div className="careerDash-journeyTitleRow">
+          <strong>{step.title}</strong>
+          <em>{step.done ? t('journey_done', 'Done') : isNext ? t('journey_next', 'Next') : step.locked ? t('journey_locked', 'Later') : t('journey_ready', 'Ready')}</em>
+        </div>
+        <p>{step.text}</p>
+        <button type="button" disabled={step.locked && !isNext} onClick={() => setPage?.(step.page)}>
+          {step.done ? step.doneLabel : step.actionLabel}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function JourneyChecklist({ hasCv, hasAnalysis, analysesCount, bestScore, setPage, t }) {
+  const steps = [
+    {
+      title: t('journey_upload_cv_title', 'Upload your master CV'),
+      text: hasCv ? t('journey_upload_cv_done', 'Your CV is saved locally and ready to reuse across job analyses.') : t('journey_upload_cv_text', 'Start by uploading the CV you want Joblytics to use as your source of truth.'),
+      actionLabel: t('journey_upload_cv_cta', 'Upload CV'),
+      doneLabel: t('journey_update_cv_cta', 'Update CV'),
+      page: 'analyzer',
+      done: hasCv
+    },
+    {
+      title: t('journey_analyze_job_title', 'Analyze a target job'),
+      text: hasAnalysis ? t('journey_analyze_job_done', { count: analysesCount }, `{count} analysis saved. Use your latest score to decide whether to apply or improve first.`) : t('journey_analyze_job_text', 'Paste a job offer or use a URL to get match score, missing keywords and recruiter risks.'),
+      actionLabel: t('journey_analyze_job_cta', 'Run ATS analysis'),
+      doneLabel: t('journey_analyze_another_cta', 'Analyze another job'),
+      page: 'analyzer',
+      done: hasAnalysis,
+      locked: !hasCv
+    },
+    {
+      title: t('journey_tailor_cv_title', 'Generate a tailored CV version'),
+      text: hasAnalysis ? t('journey_tailor_cv_text', 'Turn the analysis gaps into a job-aligned CV draft before you apply.') : t('journey_tailor_cv_locked', 'This unlocks after your first job analysis.'),
+      actionLabel: t('journey_tailor_cv_cta', 'Build tailored CV'),
+      doneLabel: t('journey_tailor_cv_cta', 'Build tailored CV'),
+      page: 'cv-builder',
+      done: false,
+      locked: !hasAnalysis
+    },
+    {
+      title: t('journey_generate_message_title', 'Generate your application message'),
+      text: hasAnalysis ? t('journey_generate_message_text', 'Create a cover letter or recruiter message using the same job context and CV proof.') : t('journey_generate_message_locked', 'This becomes stronger once a job has been analyzed.'),
+      actionLabel: t('journey_generate_message_cta', 'Open CV Coach'),
+      doneLabel: t('journey_generate_message_cta', 'Open CV Coach'),
+      page: 'coach',
+      done: false,
+      locked: !hasAnalysis
+    },
+    {
+      title: t('journey_track_application_title', 'Track the application'),
+      text: hasAnalysis ? t('journey_track_application_text', 'Save every role in History so you can follow status, score and next action.') : t('journey_track_application_locked', 'History fills up after you run analyses.'),
+      actionLabel: t('journey_track_application_cta', 'Open History'),
+      doneLabel: t('journey_track_application_cta', 'Open History'),
+      page: 'history',
+      done: hasAnalysis,
+      locked: !hasAnalysis
+    },
+    {
+      title: t('journey_sync_updates_title', 'Sync recruiter updates'),
+      text: t('journey_sync_updates_text', 'Connect mail and calendar to detect replies, interviews, rejections and follow-ups.'),
+      actionLabel: t('journey_sync_updates_cta', 'Open Smart Sync'),
+      doneLabel: t('journey_sync_updates_cta', 'Open Smart Sync'),
+      page: 'messages',
+      done: false,
+      locked: false
+    }
+  ]
+
+  const doneCount = steps.filter(step => step.done).length
+  const nextIndex = steps.findIndex(step => !step.done && !step.locked)
+  const progress = Math.round((doneCount / steps.length) * 100)
+  const nextStep = steps[nextIndex >= 0 ? nextIndex : steps.length - 1]
+
+  return (
+    <section className="careerDash-card careerDash-journey">
+      <div className="careerDash-cardHeader careerDash-journeyHeader">
+        <div>
+          <p className="careerDash-kicker">{t('journey_kicker', 'Command center')}</p>
+          <h2>{t('journey_title', 'Your job-search workflow')}</h2>
+          <p>{t('journey_desc', 'Follow this sequence to move from a generic CV to a tracked, job-specific application.')}</p>
+        </div>
+        <div className="careerDash-journeyScore">
+          <strong>{progress}%</strong>
+          <span>{t('journey_complete', 'complete')}</span>
+        </div>
+      </div>
+
+      <div className="careerDash-nextActionBox">
+        <div>
+          <p>{t('journey_next_action', 'Recommended next action')}</p>
+          <strong>{nextStep.title}</strong>
+          <span>{bestScore ? t('journey_score_context', { score: bestScore }, `Best score so far: {score}%. Keep improving the next application.`) : t('journey_no_score_context', 'No score yet. Start with one analysis to unlock better guidance.')}</span>
+        </div>
+        <button type="button" onClick={() => setPage?.(nextStep.page)}>{nextStep.actionLabel}</button>
+      </div>
+
+      <div className="careerDash-journeyGrid">
+        {steps.map((step, index) => (
+          <JourneyStep key={step.title} step={step} index={index} isNext={index === nextIndex} setPage={setPage} t={t} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function MatchedJobCard({ job, onAnalyze, t }) {
   const prefix = `jobmatch_${job.key}`
   return (
@@ -86,6 +202,7 @@ function MatchedJobCard({ job, onAnalyze, t }) {
 export default function CareerDashboardPage({ setPage }) {
   const { user } = useAuth()
   const { t } = useLang()
+  const { cvFile } = useCvPersist()
   const { challenge, progress, completedToday, completeChallenge } = useDailyChallenge()
   const metrics = useProgressMetrics(progress)
   const [openChallenge, setOpenChallenge] = useState(true)
@@ -134,8 +251,8 @@ export default function CareerDashboardPage({ setPage }) {
 
             <div>
               <p className="careerDash-panelLabel">{t('dash_next_action')}</p>
-              <h2>{t('dash_complete_challenge')}</h2>
-              <p>{t('dash_compound')}</p>
+              <h2>{cvFile ? t('dash_complete_challenge') : t('journey_upload_cv_title', 'Upload your master CV')}</h2>
+              <p>{cvFile ? t('dash_compound') : t('journey_upload_cv_text', 'Start by uploading the CV you want Joblytics to use as your source of truth.')}</p>
             </div>
           </aside>
         </section>
@@ -146,6 +263,15 @@ export default function CareerDashboardPage({ setPage }) {
           <ScoreCard label={t('dash_best_score')} value={metrics.bestScore ? `${metrics.bestScore}%` : '—'} helper={t('dash_highest_match')} tone="accent" />
           <ScoreCard label={t('dash_current_streak')} value={`${metrics.currentStreak || 0}d`} helper={t('dash_career_actions')} tone="warm" />
         </section>
+
+        <JourneyChecklist
+          hasCv={!!cvFile}
+          hasAnalysis={(metrics.analysesCount || 0) > 0}
+          analysesCount={metrics.analysesCount || 0}
+          bestScore={metrics.bestScore || 0}
+          setPage={setPage}
+          t={t}
+        />
 
         <section className="careerDash-card careerDash-matchedJobs">
           <div className="careerDash-cardHeader">
