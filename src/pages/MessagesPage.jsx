@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { supabase } from '../lib/supabase'
 import './MessagesPage.css'
+import './MessagesPageStable.css'
 
 function formatDate(value) {
   if (!value) return ''
