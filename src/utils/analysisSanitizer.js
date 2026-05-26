@@ -52,10 +52,15 @@ function safeObj(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 }
 
+function cloneAnalysis(input) {
+  if (typeof structuredClone === 'function') return structuredClone(input)
+  return JSON.parse(JSON.stringify(input))
+}
+
 export function sanitizeAnalysisForDisplay(input) {
   if (!input || typeof input !== 'object') return input
 
-  const data = structuredClone ? structuredClone(input) : JSON.parse(JSON.stringify(input))
+  const data = cloneAnalysis(input)
 
   data.keyword_match = safeObj(data.keyword_match)
   data.requirements_check = safeObj(data.requirements_check)
