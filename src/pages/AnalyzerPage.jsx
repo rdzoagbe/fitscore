@@ -3,6 +3,7 @@ import { useLang } from '../context/LangContext'
 import { useAnalyze } from '../hooks/useAnalyze'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { useJobUrlHistory } from '../hooks/useJobUrlHistory'
+import { sanitizeAnalysisForDisplay } from '../utils/analysisSanitizer'
 import ResultsView from '../components/ResultsView'
 import Confetti from '../components/Confetti'
 import PWAInstallPrompt from '../components/PWAInstallPrompt'
@@ -102,7 +103,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
   useEffect(() => { if (status === 'done' && data?.display_score >= 70) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2600) } }, [status, data])
 
-  const displayData = viewingAnalysis?.result || data
+  const rawDisplayData = viewingAnalysis?.result || data
+  const displayData = rawDisplayData ? sanitizeAnalysisForDisplay(rawDisplayData) : rawDisplayData
   const displayStatus = viewingAnalysis ? 'done' : status
 
   return (
