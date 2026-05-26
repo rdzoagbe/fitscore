@@ -53,9 +53,9 @@ export function useAnalyze() {
   const analyze = async (jobUrl, cvFile, jobText = null) => {
     setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
 
-    // Client-side timeout stays above the server-side processing window.
+    // Client-side timeout matches Vercel function duration.
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 70000)
+    const timeoutId = setTimeout(() => controller.abort(), 65000)
 
     try {
       const cvBase64 = await new Promise((resolve, reject) => {
@@ -65,7 +65,7 @@ export function useAnalyze() {
         reader.readAsDataURL(cvFile)
       })
 
-      const res = await fetch('/api/analyze-v4', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
