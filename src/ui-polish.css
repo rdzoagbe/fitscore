@@ -42,6 +42,331 @@ select:focus-visible {
   text-wrap: pretty;
 }
 
+/* ─── Phase 2: Analyzer trust and explainability ────────────────────── */
+.resultTrust-panel {
+  margin: 18px 0;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid rgba(16,24,43,.12);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.90));
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: clamp(16px, 2vw, 22px);
+  overflow: hidden;
+}
+
+.resultTrust-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.resultTrust-header p,
+.resultTrust-recruiter p {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+
+.resultTrust-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(24px, 3.4vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  font-weight: 850;
+}
+
+.resultTrust-header span {
+  display: block;
+  max-width: 760px;
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.resultTrust-confidence {
+  flex: 0 0 auto;
+  width: 122px;
+  min-height: 122px;
+  border: 1px solid rgba(16,24,43,.10);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  padding: 12px;
+}
+
+.resultTrust-confidence strong {
+  font-family: Georgia, Newsreader, serif;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -.07em;
+  font-weight: 500;
+}
+
+.resultTrust-confidence span,
+.resultTrust-confidence em {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-style: normal;
+}
+
+.resultTrust-confidence em {
+  letter-spacing: .06em;
+  opacity: .8;
+}
+
+.resultTrust-confidenceReasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resultTrust-confidenceReasons span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(67,85,111,.08);
+  border: 1px solid rgba(67,85,111,.12);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.resultTrust-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.resultTrust-factor {
+  min-width: 0;
+  border: 1px solid rgba(16,24,43,.10);
+  border-radius: 20px;
+  background: rgba(255,255,255,.66);
+  padding: 15px;
+  display: grid;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.resultTrust-factorTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.resultTrust-factorTop strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+
+.resultTrust-factorTop p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.resultTrust-factorTop span {
+  flex: 0 0 auto;
+  min-width: 50px;
+  min-height: 34px;
+  border: 1px solid;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.resultTrust-meter {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(16,24,43,.10);
+  overflow: hidden;
+}
+
+.resultTrust-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.resultTrust-risk {
+  display: block;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(185,134,59,.10);
+  color: var(--amber);
+  font-style: normal;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.resultTrust-factor ul,
+.resultTrust-evidence ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.resultTrust-factor li,
+.resultTrust-evidence li {
+  position: relative;
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.resultTrust-factor li::before,
+.resultTrust-evidence li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: .58em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.resultTrust-factor small {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.resultTrust-evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.resultTrust-evidence {
+  border: 1px solid rgba(16,24,43,.10);
+  border-radius: 20px;
+  background: rgba(255,255,255,.66);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.resultTrust-evidence > div strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+
+.resultTrust-evidence > div span {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.resultTrust-evidence p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.resultTrust-evidence--good {
+  background: rgba(85,124,100,.07);
+  border-color: rgba(85,124,100,.18);
+}
+
+.resultTrust-evidence--good li::before {
+  background: var(--green);
+}
+
+.resultTrust-evidence--bad {
+  background: rgba(184,92,85,.06);
+  border-color: rgba(184,92,85,.18);
+}
+
+.resultTrust-evidence--bad li::before {
+  background: var(--red);
+}
+
+.resultTrust-evidence--warn {
+  background: rgba(185,134,59,.07);
+  border-color: rgba(185,134,59,.18);
+}
+
+.resultTrust-evidence--warn li::before {
+  background: var(--amber);
+}
+
+.resultTrust-recruiter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid rgba(164,81,43,.18);
+  background: var(--accent-bg);
+  border-radius: 22px;
+  padding: 17px;
+}
+
+.resultTrust-recruiter strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+  text-transform: capitalize;
+}
+
+.resultTrust-recruiter span {
+  display: block;
+  margin-top: 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.resultTrust-recruiter b {
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  color: var(--accent);
+  background: var(--bg-card);
+  border: 1px solid rgba(164,81,43,.22);
+  font-size: 20px;
+}
+
 /* ─── CV Builder / Rebuilder ─────────────────────────────────────────── */
 .cvBuilder-page {
   min-height: 100dvh;
@@ -499,18 +824,39 @@ select:focus-visible {
 }
 
 /* ─── Responsive polish ─────────────────────────────────────────────── */
+@media (max-width: 1180px) {
+  .resultTrust-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resultTrust-factor:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 980px) {
   .cvBuilder-flow {
     grid-template-columns: 1fr;
   }
 
   .cvBuilder-head,
-  .cvBuilder-previewHead {
+  .cvBuilder-previewHead,
+  .resultTrust-header {
     display: grid;
   }
 
   .cvBuilder-head > strong,
-  .cvBuilder-previewHead > span {
+  .cvBuilder-previewHead > span,
+  .resultTrust-confidence {
+    justify-self: start;
+  }
+
+  .resultTrust-evidenceGrid,
+  .resultTrust-recruiter {
+    grid-template-columns: 1fr;
+  }
+
+  .resultTrust-recruiter b {
     justify-self: start;
   }
 }
@@ -528,9 +874,36 @@ select:focus-visible {
   .messagesList,
   .messagesConversation,
   .newSyncPanel,
-  .smartTrackingPanel {
+  .smartTrackingPanel,
+  .resultTrust-panel {
     border-radius: 22px !important;
     padding: 18px !important;
+  }
+
+  .resultTrust-grid,
+  .resultTrust-evidenceGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .resultTrust-factor:last-child {
+    grid-column: auto;
+  }
+
+  .resultTrust-factorTop {
+    display: grid;
+  }
+
+  .resultTrust-factorTop span {
+    justify-self: start;
+  }
+
+  .resultTrust-confidence {
+    width: 102px;
+    min-height: 102px;
+  }
+
+  .resultTrust-confidence strong {
+    font-size: 29px;
   }
 
   .cvBuilder-step {
@@ -566,7 +939,8 @@ select:focus-visible {
     font-size: 30px;
   }
 
-  .cvBuilder-head h2 {
+  .cvBuilder-head h2,
+  .resultTrust-header h2 {
     font-size: 25px;
   }
 
