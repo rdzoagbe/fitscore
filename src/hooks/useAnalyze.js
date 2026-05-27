@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { getDeviceId } from '../utils/deviceId'
 import { trackEvent, trackError } from '../utils/productAnalytics'
 
@@ -44,6 +45,95 @@ function friendlyAnalyzeError(error, responseStatus, serverMessage) {
   }
 
   return raw || 'Analysis failed. Please try again.'
+}
+
+function scoreValue(analysis) {
+  const score = Number(analysis?.display_score ?? analysis?.match_probability ?? 0)
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0
+}
+
+function getAnalysisTitle(analysis) {
+  return analysis?.job_context?.job_title || analysis?.job_context?.title || analysis?.job_title || 'Job analysis'
+}
+
+async function makeClientCacheKey({ userId, jobUrl, jobText, cvFileName }) {
+  const raw = ['client-save-v1', userId || '', jobUrl || 'manual_paste', jobText || '', cvFileName || ''].join('||')
+  try {
+    const bytes = new TextEncoder().encode(raw)
+    const hash = await crypto.subtle.digest('SHA-256', bytes)
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  }
+}
+
+async function saveAnalysisClientSide({ user, analysis, jobUrl, jobText, cvFile }) {
+  if (!user?.id || !analysis) return null
+
+  const cacheKey = await makeClientCacheKey({
+    userId: user.id,
+    jobUrl: jobUrl || null,
+    jobText: jobText || null,
+    cvFileName: cvFile?.name || null
+  })
+
+  const basePayload = {
+    user_id: user.id,
+    job_url: jobUrl || 'manual_paste',
+    job_title: getAnalysisTitle(analysis),
+    score: scoreValue(analysis),
+    result: analysis,
+    cv_file_path: null,
+    cv_file_name: cvFile?.name || null,
+    cache_key: cacheKey
+  }
+
+  try {
+    const { data: existing } = await supabase
+      .from('analyses')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('cache_key', cacheKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from('analyses')
+        .update(basePayload)
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data || null
+    }
+
+    const { data, error } = await supabase
+      .from('analyses')
+      .insert(basePayload)
+      .select()
+      .single()
+    if (error) throw error
+    return data || null
+  } catch (error) {
+    console.warn('Client-side analysis save failed:', error?.message || error)
+
+    // Last-resort fallback for older databases where cache_key may not be available or writable.
+    try {
+      const { cache_key, ...payloadWithoutCacheKey } = basePayload
+      const { data, error: insertError } = await supabase
+        .from('analyses')
+        .insert(payloadWithoutCacheKey)
+        .select()
+        .single()
+      if (insertError) throw insertError
+      return data || null
+    } catch (secondError) {
+      console.warn('Client-side analysis fallback save failed:', secondError?.message || secondError)
+      return null
+    }
+  }
 }
 
 export function useAnalyze() {
@@ -103,12 +193,17 @@ export function useAnalyze() {
         throw new Error('Invalid response from server. Please try again.')
       }
 
-      trackEvent('analysis_completed', { mode, score: data.analysis.display_score || data.analysis.match_probability || 0, saved: !!data.savedRow })
+      let savedRow = data.savedRow || null
+      if (!savedRow && user?.id) {
+        savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+      }
+
+      trackEvent('analysis_completed', { mode, score: data.analysis.display_score || data.analysis.match_probability || 0, saved: !!savedRow })
       setState({
         status: 'done',
         data: data.analysis,
         error: null,
-        savedRow: data.savedRow || null,
+        savedRow,
         rateLimit: data.rateLimit || null
       })
     } catch (e) {
