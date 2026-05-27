@@ -342,23 +342,63 @@ async function fetchJobText(url) {
   return text.slice(0, JOB_TEXT_LIMIT)
 }
 
-async function extractCvText(base64Data, mimeType = '') {
-  try {
-    const buffer = Buffer.from(base64Data, 'base64')
-    if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
+async function ocrCvWithClaude(base64Data, client) {
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } },
+        { type: 'text', text: 'Extract all text from this CV/resume document. Return only the raw text content, no commentary.' }
+      ]
+    }]
+  })
+  return response.content[0]?.text || ''
+}
+
+async function extractCvText(base64Data, mimeType = '', anthropicClient = null) {
+  const buffer = Buffer.from(base64Data, 'base64')
+
+  if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
+    let pdfText = ''
+    try {
       const { default: pdfParse } = await import('pdf-parse/lib/pdf-parse.js')
-      return (await pdfParse(buffer)).text
+      pdfText = (await pdfParse(buffer)).text || ''
+    } catch (e) {
+      console.log('[CV_EXTRACT] pdf-parse failed, will try OCR:', e.message)
     }
-    if (mimeType.includes('word') || mimeType.includes('officedocument')) {
-      const mammoth = await import('mammoth')
-      return (await mammoth.extractRawText({ buffer })).value
+
+    if (pdfText.trim().length >= 50) return pdfText
+
+    if (anthropicClient) {
+      try {
+        console.log('[CV_OCR] Scanned PDF detected, falling back to Claude OCR')
+        const ocrText = await ocrCvWithClaude(base64Data, anthropicClient)
+        if (ocrText.trim().length >= 50) return ocrText
+      } catch (e) {
+        console.log('[CV_OCR] Claude OCR fallback failed:', e.message)
+      }
     }
-  } catch (e) {
-    const err = new Error(`Could not extract text from your CV: ${e.message}`)
+
+    const err = new Error('Could not extract text from your CV. If it is a scanned image, try a text-based PDF or convert it to Word first.')
     err.statusCode = 400
     err.code = 'CV_PARSE_FAILED'
     throw err
   }
+
+  if (mimeType.includes('word') || mimeType.includes('officedocument')) {
+    try {
+      const mammoth = await import('mammoth')
+      return (await mammoth.extractRawText({ buffer })).value
+    } catch (e) {
+      const err = new Error(`Could not extract text from your CV: ${e.message}`)
+      err.statusCode = 400
+      err.code = 'CV_PARSE_FAILED'
+      throw err
+    }
+  }
+
   const err = new Error('Unsupported file type. Please upload a PDF or Word document.')
   err.statusCode = 400
   err.code = 'UNSUPPORTED_FILE_TYPE'
@@ -616,10 +656,12 @@ async function streamingHandler(req, res) {
       return res.end()
     }
 
+    const client = getAnthropicClient()
+
     send({ t: 'status', msg: 'extracting' })
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(cleanText(providedJobText, JOB_TEXT_LIMIT)) : fetchJobText(jobUrl),
-      extractCvText(cvBase64, cvMimeType)
+      extractCvText(cvBase64, cvMimeType, client)
     ])
 
     if (!cvText || cvText.trim().length < 50) {
@@ -639,7 +681,6 @@ async function streamingHandler(req, res) {
     }
 
     send({ t: 'status', msg: 'analyzing' })
-    const client = getAnthropicClient()
     let raw = ''
 
     const stream = client.messages.stream({
@@ -749,9 +790,11 @@ export default async function handler(req, res) {
     if (!rateLimit.allowed) return res.status(429).json({ success: false, error: rateLimit.message, rate_limited: true, reason: rateLimit.reason })
 
     timer.mark('before_extract')
+    let earlyClient = null
+    try { earlyClient = getAnthropicClient() } catch {}
     const [jobText, cvText] = await Promise.all([
       providedJobText ? Promise.resolve(cleanText(providedJobText, JOB_TEXT_LIMIT)) : fetchJobText(jobUrl),
-      extractCvText(cvBase64, cvMimeType)
+      extractCvText(cvBase64, cvMimeType, earlyClient)
     ])
     timer.mark('after_extract', { jobChars: jobText?.length || 0, cvChars: cvText?.length || 0, mode: providedJobText ? 'paste' : 'url' })
 

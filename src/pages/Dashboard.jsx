@@ -182,9 +182,28 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
     return counts
   }, [enriched])
 
+  const enrichedWithDelta = useMemo(() => {
+    const byKey = new Map()
+    enriched.forEach(item => {
+      const key = item.job_url && item.job_url !== 'manual_paste'
+        ? item.job_url
+        : `t:${(item.display.title || '').toLowerCase().slice(0, 40)}`
+      if (!byKey.has(key)) byKey.set(key, [])
+      byKey.get(key).push(item)
+    })
+    const deltas = new Map()
+    for (const group of byKey.values()) {
+      const sorted = [...group].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      sorted.forEach((item, i) => {
+        deltas.set(item.id, i === 0 ? null : item.score - sorted[i - 1].score)
+      })
+    }
+    return enriched.map(item => ({ ...item, scoreDelta: deltas.get(item.id) ?? null }))
+  }, [enriched])
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return enriched.filter(item => {
+    return enrichedWithDelta.filter(item => {
       const verdict = item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict || ''
       const tone = scoreTone(item.score)
       const matchFilter = filter === 'all' || filter === verdict || filter === tone || filter === getPipelineStatus(item)
@@ -195,7 +214,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
       if (sortBy === 'company') return (a.display.company || a.display.title).localeCompare(b.display.company || b.display.title)
       return new Date(b.created_at) - new Date(a.created_at)
     })
-  }, [enriched, search, filter, sortBy])
+  }, [enrichedWithDelta, search, filter, sortBy])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
@@ -265,7 +284,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
           {loading && <div className="historyMD-skeletonList">{[1,2,3,4].map(item => <span key={item} />)}</div>}
           {!loading && analyses.length === 0 && <EmptyState title={t('history_no_analyses', 'No analyses yet')} text={t('history_no_analyses_desc', 'Run your first job analysis and it will appear here.')} action={t('history_start_analyzing', 'Start analyzing')} onAction={onNewAnalysis} />}
           {!loading && analyses.length > 0 && filtered.length === 0 && <EmptyState title={t('history_no_filter_match', 'No matching analyses')} text={t('history_try_filter', 'Try another search or filter.')} />}
-          {!loading && filtered.length > 0 && <><div className="historyMD-tableWrap"><table className="historyMD-table"><thead><tr><th>Job title</th><th>Company</th><th>Fit score</th><th>Verdict</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>{visibleRows.map(item => { const tone = scoreTone(item.score); const active = selected?.id === item.id; return <tr key={item.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(item.id)}><td><strong>{item.display.title}</strong><span>{item.display.location || item.display.workMode || item.display.contract || 'Saved analysis'}</span></td><td>{item.display.company || '—'}</td><td><b className={`historyMD-score historyMD-score--${tone}`}>{item.score}%</b></td><td><em className={`historyMD-verdict historyMD-verdict--${tone}`}>{verdictLabel(item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict, t)}</em></td><td><StatusPill analysis={item} onUpdate={updated => setAnalyses(prev => prev.map(row => row.id === updated.id ? updated : row))} compact /></td><td><span>{formatDate(item.created_at, lang)}</span><small>{formatTime(item.created_at, lang)}</small></td><td><button type="button" onClick={event => { event.stopPropagation(); onSelectAnalysis?.(item) }}>Open</button><button type="button" className="historyMD-deleteBtn" disabled={deleting === item.id} onClick={event => deleteAnalysis(item.id, event)}>×</button></td></tr> })}</tbody></table></div><div className="historyMD-pagination"><span>Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span><div><button type="button" disabled={safePage <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>‹</button><strong>{safePage}</strong><button type="button" disabled={safePage >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>›</button></div></div></>}
+          {!loading && filtered.length > 0 && <><div className="historyMD-tableWrap"><table className="historyMD-table"><thead><tr><th>Job title</th><th>Company</th><th>Fit score</th><th>Verdict</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>{visibleRows.map(item => { const tone = scoreTone(item.score); const active = selected?.id === item.id; return <tr key={item.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(item.id)}><td><strong>{item.display.title}</strong><span>{item.display.location || item.display.workMode || item.display.contract || 'Saved analysis'}</span></td><td>{item.display.company || '—'}</td><td><b className={`historyMD-score historyMD-score--${tone}`}>{item.score}%</b>{item.scoreDelta !== null && item.scoreDelta !== 0 && <small style={{color:item.scoreDelta>0?'#10b981':'#ef4444',marginLeft:4,fontWeight:700}}>{item.scoreDelta>0?'+':''}{item.scoreDelta}</small>}</td><td><em className={`historyMD-verdict historyMD-verdict--${tone}`}>{verdictLabel(item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict, t)}</em></td><td><StatusPill analysis={item} onUpdate={updated => setAnalyses(prev => prev.map(row => row.id === updated.id ? updated : row))} compact /></td><td><span>{formatDate(item.created_at, lang)}</span><small>{formatTime(item.created_at, lang)}</small></td><td><button type="button" onClick={event => { event.stopPropagation(); onSelectAnalysis?.(item) }}>Open</button><button type="button" className="historyMD-deleteBtn" disabled={deleting === item.id} onClick={event => deleteAnalysis(item.id, event)}>×</button></td></tr> })}</tbody></table></div><div className="historyMD-pagination"><span>Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span><div><button type="button" disabled={safePage <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>‹</button><strong>{safePage}</strong><button type="button" disabled={safePage >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>›</button></div></div></>}
         </section>
 
         {!loading && selected && <section className="historyMD-card historyMD-detail"><div className="historyMD-detailHeader"><div><p className="historyMD-kicker">Selected analysis</p><h2>{selectedDisplay.title}</h2><span>{selectedDisplay.company || 'Company not specified'} · {formatDate(selected.created_at, lang)} {formatTime(selected.created_at, lang)}</span></div><div className={`historyMD-detailScore historyMD-detailScore--${selectedTone}`}><strong>{selectedScore}%</strong><span>{verdictLabel(selectedResult.overall_verdict || selectedResult.recruiter_shortlist?.verdict, t)}</span></div></div><div className="historyMD-detailGrid"><article className="historyMD-detailSummary"><p>{selectedDisplay.summary || selectedResult.match_reasoning || 'No summary returned for this analysis.'}</p><div className="historyMD-miniFacts"><span><b>Work mode</b>{selectedDisplay.workMode || 'Not set'}</span><span><b>Contract</b>{selectedDisplay.contract || 'Not set'}</span><span><b>Salary</b>{selectedDisplay.salary || 'Not stated'}</span><span><b>Status</b>{getStatusLabel(getPipelineStatus(selected))}</span></div>{(selectedDisplay.recruiterReason || selectedDisplay.nextAction) && <div className="historyMD-recruiterBox"><strong>Recruiter screening summary</strong><p>{selectedDisplay.recruiterReason || selectedDisplay.nextReason || 'Review the missing proof points before applying.'}</p></div>}</article><div className="historyMD-keywordPanel"><strong>Missing keywords</strong><div>{missingKeywords.length ? missingKeywords.map(item => <span key={item}>{item}</span>) : <p>No missing keywords returned.</p>}</div><strong>Found in CV</strong><div>{foundKeywords.length ? foundKeywords.map(item => <span key={item} className="is-found">{item}</span>) : <p>No found keywords returned.</p>}</div></div></div><div className="historyMD-lists"><DetailList title="Quick wins" items={quickWins} empty="No quick wins returned." tone="good" /><DetailList title="Gaps to address" items={gaps} empty="No major gaps returned." tone="bad" /><DetailList title="Requirements met" items={met} empty="No met requirements returned." tone="good" /><DetailList title="Requirements missing" items={unmet} empty="No missing requirements returned." tone="bad" /></div><div className="historyMD-detailActions"><button type="button" className="historyMD-primary" onClick={() => onSelectAnalysis?.(selected)}>Open full analysis</button><button type="button" className="historyMD-ghost" onClick={onNewAnalysis}>Re-run analysis</button><button type="button" className="historyMD-ghost" onClick={() => onBuildCv?.(selected)} disabled={!onBuildCv}>Generate tailored CV</button><button type="button" className="historyMD-ghost" onClick={() => onGenerateMessage?.(selected)} disabled={!onGenerateMessage}>Generate message</button></div></section>}
