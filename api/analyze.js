@@ -367,7 +367,7 @@ export default async function handler(req, res) {
       model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001',
       max_tokens: 1800,
       temperature: 0,
-      system: SYSTEM,
+      system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: `JOB OFFER:\n${jobText.slice(0, 5500)}\n\n---\n\nCV:\n${cvText.slice(0, 5500)}` }]
     }, { timeout: 7000 })
 

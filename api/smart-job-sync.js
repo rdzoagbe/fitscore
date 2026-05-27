@@ -1037,6 +1037,60 @@ function eventRowToCalendar(row = {}) {
   })
 }
 
+async function linkSyncEventsToAnalyses(supabase, userId, emails, calendar) {
+  const STATUS_RANK = { applied: 1, interview: 2, offer: 3, rejected: 99 }
+  const normalize = s => String(s || '').toLowerCase()
+    .replace(/\s+(inc|ltd|llc|sa|sas|srl|gmbh|bv|corp|co)\.?\s*$/i, '').trim()
+
+  const signals = [...emails, ...calendar].filter(s =>
+    ['interview', 'offer', 'rejected'].includes(s.detected_status) &&
+    (s.confidence ?? 0) >= 0.75 &&
+    s.company && normalize(s.company) !== 'unknown' && normalize(s.company) !== 'detected'
+  )
+  if (!signals.length) return 0
+
+  const { data: analyses, error } = await supabase
+    .from('analyses')
+    .select('id, job_title, result, application_status')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error || !analyses?.length) return 0
+
+  const toUpdate = []
+  for (const signal of signals) {
+    const sigCompany = normalize(signal.company)
+    if (!sigCompany) continue
+    const newStatus = signal.detected_status
+    const newRank = STATUS_RANK[newStatus] || 0
+
+    for (const analysis of analyses) {
+      if (toUpdate.find(u => u.id === analysis.id)) continue
+      const aCompany = normalize(analysis.result?.job_context?.company || analysis.job_title || '')
+      if (!aCompany || aCompany.length < 3) continue
+      if (!aCompany.includes(sigCompany) && !sigCompany.includes(aCompany)) continue
+
+      const currentRank = STATUS_RANK[analysis.application_status] || 0
+      const shouldUpdate = newStatus === 'rejected'
+        ? analysis.application_status !== 'rejected'
+        : newRank > currentRank
+
+      if (shouldUpdate) toUpdate.push({ id: analysis.id, newStatus })
+    }
+  }
+
+  let updated = 0
+  for (const { id, newStatus } of toUpdate) {
+    const { error: e } = await supabase
+      .from('analyses')
+      .update({ application_status: newStatus, status_updated_at: new Date().toISOString() })
+      .eq('id', id)
+    if (!e) updated++
+  }
+  return updated
+}
+
 async function loadStoredSyncEvents(supabase, userId) {
   const { isoStart, isoNow } = monthWindow()
 
@@ -1255,6 +1309,8 @@ export default async function handler(req, res) {
     const responseEmails = storedEvents.error ? emails : storedEvents.emails
     const responseCalendar = storedEvents.error ? calendar : storedEvents.calendar
 
+    const analysesUpdated = await linkSyncEventsToAnalyses(supabase, user.id, responseEmails, responseCalendar)
+
     return res.status(200).json({
       success: errors.length === 0,
       connected: true,
@@ -1262,7 +1318,7 @@ export default async function handler(req, res) {
       providerEmails: connections.map(c => ({ provider: c.provider, email: c.provider_email || null })),
       scanned: responseEmails.length + responseCalendar.length,
       eventsStored,
-      analysesUpdated: 0, // TODO: link sync events to analyses/job opportunities
+      analysesUpdated,
       breakdown: {
         emailSignals: responseEmails.length,
         calendarSignals: responseCalendar.length,
