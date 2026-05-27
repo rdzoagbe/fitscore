@@ -52,7 +52,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [clipperInfo, setClipperInfo] = useState(null)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
-  const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
+  const { status, data, error, savedRow, rateLimit, streamProgress, analyze, reset } = useAnalyze()
   const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
@@ -174,7 +174,16 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               </>}
               {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
               {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
-              {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
+              {status === 'loading' && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontSize: 13 }}>{LOADING_MSGS[msgIdx]}</p>
+                  {streamProgress > 0 && (
+                    <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${streamProgress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.4s ease' }} />
+                    </div>
+                  )}
+                </div>
+              )}
               <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze && !restrictedJobBoard} style={{ width: '100%', marginTop: 14 }}>
                 {status === 'loading'
                   ? t('analyzer_analyzing')

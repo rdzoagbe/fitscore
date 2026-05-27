@@ -137,16 +137,14 @@ async function saveAnalysisClientSide({ user, analysis, jobUrl, jobText, cvFile 
 }
 
 export function useAnalyze() {
-  const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
   const { user, session } = useAuth()
 
-  // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
     const mode = jobText ? 'paste' : jobUrl ? 'url' : 'unknown'
     trackEvent('analysis_started', { mode, hasCv: !!cvFile, jobChars: jobText?.length || 0 })
-    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
+    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
 
-    // Client-side timeout matches Vercel function duration.
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 65000)
 
@@ -158,62 +156,89 @@ export function useAnalyze() {
         reader.readAsDataURL(cvFile)
       })
 
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          'X-Joblytics-Device-Id': getDeviceId()
-        },
-        body: JSON.stringify({
-          jobUrl: jobUrl || null,
-          jobText: jobText || null,
-          cvBase64,
-          cvMimeType: cvFile.type,
-          cvFileName: cvFile.name,
-          userId: user?.id || null
-        }),
-        signal: controller.signal
+      const body = JSON.stringify({
+        jobUrl: jobUrl || null,
+        jobText: jobText || null,
+        cvBase64,
+        cvMimeType: cvFile.type,
+        cvFileName: cvFile.name,
+        userId: user?.id || null
       })
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        'X-Joblytics-Device-Id': getDeviceId()
+      }
 
+      const res = await fetch('/api/analyze?stream=1', {
+        method: 'POST', headers, body, signal: controller.signal
+      })
       clearTimeout(timeoutId)
 
-      // Handle non-JSON responses gracefully.
-      let data = null
       const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        try { data = await res.json() } catch {}
-      }
 
-      if (!res.ok) {
-        throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
-      }
+      if (contentType.includes('text/event-stream')) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let charsReceived = 0
 
-      if (!data || !data.analysis) {
-        throw new Error('Invalid response from server. Please try again.')
-      }
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop()
 
-      let savedRow = data.savedRow || null
-      if (!savedRow && user?.id) {
-        savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
-      }
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            let event
+            try { event = JSON.parse(line.slice(6)) } catch { continue }
 
-      trackEvent('analysis_completed', { mode, score: data.analysis.display_score || data.analysis.match_probability || 0, saved: !!savedRow })
-      setState({
-        status: 'done',
-        data: data.analysis,
-        error: null,
-        savedRow,
-        rateLimit: data.rateLimit || null
-      })
+            if (event.t === 'd') {
+              charsReceived += (event.c || '').length
+              const progress = Math.min(90, 10 + Math.round((charsReceived / 1800) * 80))
+              setState(prev => ({ ...prev, streamProgress: progress }))
+            } else if (event.t === 'status') {
+              setState(prev => ({ ...prev, streamProgress: event.msg === 'analyzing' ? 15 : 5 }))
+            } else if (event.t === 'done') {
+              let savedRow = event.savedRow || null
+              if (!savedRow && user?.id) {
+                savedRow = await saveAnalysisClientSide({ user, analysis: event.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+              }
+              trackEvent('analysis_completed', { mode, score: event.analysis?.display_score || 0, saved: !!savedRow, streamed: true })
+              setState({ status: 'done', data: event.analysis, error: null, savedRow, rateLimit: event.rateLimit || null, streamProgress: 100 })
+              return
+            } else if (event.t === 'err') {
+              throw new Error(friendlyAnalyzeError(null, event.status, event.error))
+            }
+          }
+        }
+        throw new Error('Analysis stream ended unexpectedly. Please try again.')
+      } else {
+        // Fallback: regular JSON (e.g. Vercel edge returning non-SSE error)
+        let data = null
+        if (contentType.includes('application/json')) {
+          try { data = await res.json() } catch {}
+        }
+        if (!res.ok) throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
+        if (!data?.analysis) throw new Error('Invalid response from server. Please try again.')
+
+        let savedRow = data.savedRow || null
+        if (!savedRow && user?.id) {
+          savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+        }
+        trackEvent('analysis_completed', { mode, score: data.analysis?.display_score || 0, saved: !!savedRow })
+        setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, streamProgress: 100 })
+      }
     } catch (e) {
       clearTimeout(timeoutId)
       const friendly = friendlyAnalyzeError(e)
       trackError('analysis_failed', e, { mode, friendly })
-      setState({ status: 'error', data: null, error: friendly, savedRow: null, rateLimit: null })
+      setState({ status: 'error', data: null, error: friendly, savedRow: null, rateLimit: null, streamProgress: 0 })
     }
   }
 
-  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
   return { ...state, analyze, reset }
 }

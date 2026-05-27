@@ -173,6 +173,15 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
     return { total: enriched.length, avg, strong, needsWork, latest }
   }, [enriched])
 
+  const pipelineCounts = useMemo(() => {
+    const counts = { applied: 0, interview: 0, offer: 0, rejected: 0 }
+    enriched.forEach(item => {
+      const s = getPipelineStatus(item)
+      if (s in counts) counts[s]++
+    })
+    return counts
+  }, [enriched])
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
     return enriched.filter(item => {
@@ -215,6 +224,40 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
         <section className="historyMD-hero"><div><p className="historyMD-kicker">History</p><h1>{t('history_saved_title', 'Your saved analyses')}</h1><span>{t('history_saved_intro', 'Review previous job analyses quickly, compare scores, and reopen the full report only when needed.')}</span></div><div className="historyMD-actions"><button type="button" className="historyMD-primary" onClick={onNewAnalysis}>+ {t('history_new_check', 'New analysis')}</button>{analyses.length > 0 && <button type="button" className="historyMD-ghost historyMD-danger" onClick={() => setDeleteAllOpen(true)}>{t('history_delete_all', 'Delete all')}</button>}</div></section>
 
         {!loading && analyses.length > 0 && <section className="historyMD-stats"><StatCard icon="T" label="Total analyses" value={stats.total} helper="Saved reports" /><StatCard icon="A" label="Average fit score" value={`${stats.avg}%`} helper="Across all analyses" /><StatCard icon="S" label="Strong matches" value={stats.strong} helper="75% and above" /><StatCard icon="N" label="Needs work" value={stats.needsWork} helper="Below 55%" /></section>}
+
+        {!loading && analyses.length > 0 && (
+          <section className="historyMD-card" style={{ padding: '16px 20px' }}>
+            <p className="historyMD-kicker" style={{ marginBottom: 12 }}>Application funnel</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {[
+                { key: 'applied', label: 'Applied', color: '#3b82f6' },
+                { key: 'interview', label: 'Interview', color: '#8b5cf6' },
+                { key: 'offer', label: 'Offer', color: '#10b981' },
+                { key: 'rejected', label: 'Rejected', color: '#ef4444' }
+              ].map(({ key, label, color }) => {
+                const count = pipelineCounts[key]
+                const active = filter === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFilter(active ? 'all' : key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
+                      borderRadius: 10, border: `1.5px solid ${active ? color : 'var(--border)'}`,
+                      background: active ? `${color}18` : 'var(--bg-input)',
+                      color: active ? color : 'var(--text-secondary)',
+                      fontWeight: 700, cursor: 'pointer', fontSize: 13, transition: 'all 0.15s'
+                    }}
+                  >
+                    <span style={{ fontSize: 18, fontWeight: 800, color }}>{count}</span>
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="historyMD-card historyMD-master">
           <div className="historyMD-masterHead"><div><p className="historyMD-kicker">Saved analyses</p><h2>{filtered.length} result{filtered.length === 1 ? '' : 's'}</h2></div><div className="historyMD-toolbar"><label className="historyMD-search"><span>⌕</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by job, company, location or status..." /></label><select value={sortBy} onChange={event => setSortBy(event.target.value)}><option value="recent">Newest</option><option value="score">Highest score</option><option value="company">Company A-Z</option></select></div></div>

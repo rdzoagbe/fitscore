@@ -586,11 +586,93 @@ async function runClaudeAnalysis(jobText, cvText) {
     model: DEFAULT_MODEL,
     max_tokens: 1800,
     temperature: 0,
-    system: SYSTEM,
+    system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
   }, { timeout: Number.isFinite(ANTHROPIC_TIMEOUT_MS) ? ANTHROPIC_TIMEOUT_MS : 30000 })
   const raw = message.content.map(block => block.text || '').join('').trim()
   return extractJsonObject(raw)
+}
+
+async function streamingHandler(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+  res.setHeader('Cache-Control', 'no-cache, no-transform')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+
+  const send = data => res.write(`data: ${JSON.stringify(data)}\n\n`)
+
+  try {
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body || {}
+    if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) {
+      send({ t: 'err', status: 400, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
+      return res.end()
+    }
+
+    const supabase = await getSupabaseClient()
+    const rateLimit = await checkRateLimit(supabase, userId)
+    if (!rateLimit.allowed) {
+      send({ t: 'err', status: 429, error: rateLimit.message, code: 'RATE_LIMITED' })
+      return res.end()
+    }
+
+    send({ t: 'status', msg: 'extracting' })
+    const [jobText, cvText] = await Promise.all([
+      providedJobText ? Promise.resolve(cleanText(providedJobText, JOB_TEXT_LIMIT)) : fetchJobText(jobUrl),
+      extractCvText(cvBase64, cvMimeType)
+    ])
+
+    if (!cvText || cvText.trim().length < 50) {
+      send({ t: 'err', status: 400, error: 'Could not extract enough text from your CV. Make sure it is not a scanned image.', code: 'CV_TEXT_TOO_SHORT' })
+      return res.end()
+    }
+    if (!jobText || jobText.trim().length < 100) {
+      send({ t: 'err', status: 400, error: 'The job description is too short.', code: 'JOB_TEXT_TOO_SHORT' })
+      return res.end()
+    }
+
+    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const cached = await readCachedAnalysis(supabase, userId, cacheKey)
+    if (cached) {
+      send({ t: 'done', analysis: cached, cached: true, rateLimit })
+      return res.end()
+    }
+
+    send({ t: 'status', msg: 'analyzing' })
+    const client = getAnthropicClient()
+    let raw = ''
+
+    const stream = client.messages.stream({
+      model: DEFAULT_MODEL,
+      max_tokens: 1800,
+      temperature: 0,
+      system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
+    })
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        raw += event.delta.text
+        send({ t: 'd', c: event.delta.text })
+      }
+    }
+
+    let analysis
+    try {
+      const aiResult = extractJsonObject(raw)
+      analysis = normalizeAnalysis(aiResult, jobUrl, cvText, jobText)
+    } catch (e) {
+      analysis = enhanceAnalysisWithAts(buildLocalAnalysis(jobText, cvText, jobUrl, e.message), jobText, cvText)
+    }
+
+    const savedRow = await saveAnalysis(supabase, userId, cacheKey, analysis, jobUrl, cvFileName)
+    send({ t: 'done', analysis, savedRow, rateLimit })
+    res.end()
+  } catch (e) {
+    const statusCode = getHttpStatus(e)
+    send({ t: 'err', status: statusCode, error: publicErrorMessage(e, statusCode), code: providerError(e).code })
+    res.end()
+  }
 }
 
 function getHttpStatus(e) {
@@ -653,6 +735,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' })
+  if (req.query.stream === '1') return streamingHandler(req, res)
 
   const timer = createAnalyzeTimer()
 
