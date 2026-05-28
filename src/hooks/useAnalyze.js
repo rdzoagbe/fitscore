@@ -143,7 +143,7 @@ export function useAnalyze() {
   const analyze = async (jobUrl, cvFile, jobText = null) => {
     const mode = jobText ? 'paste' : jobUrl ? 'url' : 'unknown'
     trackEvent('analysis_started', { mode, hasCv: !!cvFile, jobChars: jobText?.length || 0 })
-    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
+    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null, planLimit: null, streamProgress: 0 })
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 65000)
@@ -207,7 +207,7 @@ export function useAnalyze() {
                 savedRow = await saveAnalysisClientSide({ user, analysis: event.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
               }
               trackEvent('analysis_completed', { mode, score: event.analysis?.display_score || 0, saved: !!savedRow, streamed: true })
-              setState({ status: 'done', data: event.analysis, error: null, savedRow, rateLimit: event.rateLimit || null, streamProgress: 100 })
+              setState({ status: 'done', data: event.analysis, error: null, savedRow, rateLimit: event.rateLimit || null, planLimit: event.planLimit || null, streamProgress: 100 })
               return
             } else if (event.t === 'err') {
               throw new Error(friendlyAnalyzeError(null, event.status, event.error))
@@ -229,7 +229,7 @@ export function useAnalyze() {
           savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
         }
         trackEvent('analysis_completed', { mode, score: data.analysis?.display_score || 0, saved: !!savedRow })
-        setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, streamProgress: 100 })
+        setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, planLimit: data.planLimit || null, streamProgress: 100 })
       }
     } catch (e) {
       clearTimeout(timeoutId)
@@ -239,6 +239,6 @@ export function useAnalyze() {
     }
   }
 
-  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
+  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, planLimit: null, streamProgress: 0 })
   return { ...state, analyze, reset }
 }

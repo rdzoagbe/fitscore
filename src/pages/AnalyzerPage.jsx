@@ -58,7 +58,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [clipperInfo, setClipperInfo] = useState(null)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
-  const { status, data, error, savedRow, rateLimit, streamProgress, analyze, reset } = useAnalyze()
+  const { status, data, error, savedRow, rateLimit, planLimit, streamProgress, analyze, reset } = useAnalyze()
   const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
@@ -178,6 +178,11 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                 <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
                 {jobText.trim().length > 0 && !canAnalyzePaste && <TipCard type="warning" title={t('analyzer_add_more_title')} body={t('analyzer_add_more_body', { min: MIN_JOB_TEXT_LENGTH, progress: pasteProgress })} />}
               </>}
+              {planLimit?.plan === 'free' && planLimit?.limit > 0 && (
+                <p style={{ fontSize: 12, color: planLimit.used >= planLimit.limit - 1 ? 'var(--accent)' : 'var(--text-secondary)', textAlign: 'center', margin: '8px 0 0' }}>
+                  {planLimit.used} / {planLimit.limit} {t('analyzer_analyses_used', 'analyses used this month')}
+                </p>
+              )}
               {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
               {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
               {status === 'loading' && (
