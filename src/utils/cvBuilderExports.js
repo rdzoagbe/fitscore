@@ -1,7 +1,3 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } from 'docx'
-import { saveAs } from 'file-saver'
-import { jsPDF } from 'jspdf'
-
 const ACCENT = 'B5663C'
 const NAVY = '10182B'
 const MUTED = '5F6472'
@@ -9,30 +5,6 @@ const MUTED = '5F6472'
 const clean = value => String(value || '').replace(/\s+/g, ' ').trim()
 const fileSafe = value => clean(value).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 50) || 'adapted-cv'
 const asList = values => Array.isArray(values) ? values.map(clean).filter(Boolean) : []
-
-function heading(text) {
-  return new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    spacing: { before: 240, after: 100 },
-    border: { bottom: { color: ACCENT, space: 3, style: BorderStyle.SINGLE, size: 6 } },
-    children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: 22, font: 'Calibri' })]
-  })
-}
-
-function body(text) {
-  return new Paragraph({
-    spacing: { after: 100 },
-    children: [new TextRun({ text: clean(text), color: NAVY, size: 20, font: 'Calibri' })]
-  })
-}
-
-function bullet(text) {
-  return new Paragraph({
-    bullet: { level: 0 },
-    spacing: { after: 70 },
-    children: [new TextRun({ text: clean(text), color: NAVY, size: 20, font: 'Calibri' })]
-  })
-}
 
 export function makeCvBuilderExportModel(preview) {
   const p = preview || {}
@@ -64,6 +36,27 @@ export function makeCvBuilderExportModel(preview) {
 }
 
 export async function downloadCvBuilderDocx(preview, opts = {}) {
+  const [{ Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle }, { saveAs }] = await Promise.all([
+    import('docx'),
+    import('file-saver')
+  ])
+
+  const heading = text => new Paragraph({
+    heading: HeadingLevel.HEADING_2,
+    spacing: { before: 240, after: 100 },
+    border: { bottom: { color: ACCENT, space: 3, style: BorderStyle.SINGLE, size: 6 } },
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: 22, font: 'Calibri' })]
+  })
+  const body = text => new Paragraph({
+    spacing: { after: 100 },
+    children: [new TextRun({ text: clean(text), color: NAVY, size: 20, font: 'Calibri' })]
+  })
+  const bullet = text => new Paragraph({
+    bullet: { level: 0 },
+    spacing: { after: 70 },
+    children: [new TextRun({ text: clean(text), color: NAVY, size: 20, font: 'Calibri' })]
+  })
+
   const model = makeCvBuilderExportModel(preview)
   const fileName = opts.fileName || `Joblytics-Adapted-CV-${fileSafe(model.title)}.docx`
 
@@ -120,7 +113,9 @@ export async function downloadCvBuilderDocx(preview, opts = {}) {
   saveAs(blob, fileName)
 }
 
-export function downloadCvBuilderPdf(preview, opts = {}) {
+export async function downloadCvBuilderPdf(preview, opts = {}) {
+  const { jsPDF } = await import('jspdf')
+
   const model = makeCvBuilderExportModel(preview)
   const fileName = opts.fileName || `Joblytics-Adapted-CV-${fileSafe(model.title)}.pdf`
   const pdf = new jsPDF({ unit: 'pt', format: 'a4' })

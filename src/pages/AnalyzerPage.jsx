@@ -30,10 +30,16 @@ function readClipperPayload() {
   }
 }
 
+const HUB_ICONS = {
+  history: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  coach: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  sync: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+}
+
 function AnalyzeShortcut({ icon, title, text, onClick }) {
   return (
     <button type="button" className="analyzeHub-shortcut" onClick={onClick}>
-      <span>{icon}</span>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{HUB_ICONS[icon] ?? icon}</span>
       <strong>{title}</strong>
       <p>{text}</p>
     </button>
@@ -61,7 +67,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const LOADING_MSGS = LOADING_MSGS_KEY.map(k => t(k))
   const isLimitError = status === 'error' && /limit|upgrade/i.test(String(error || ''))
   const normalizeJobUrl = value => {
-    const withoutHiddenChars = String(value || '').replace(/[\u200B-\u200D\uFEFF]/g, '')
+    const withoutHiddenChars = String(value || '').replace(/[​-‍﻿]/g, '')
     const trimmed = withoutHiddenChars.trim()
     if (!trimmed) return ''
     const compactUrl = trimmed.replace(/\s+/g, '')
@@ -197,9 +203,9 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               <h3>After analysis, move faster</h3>
               <p>Use these shortcuts to continue the workflow without returning to the Dashboard.</p>
               <div className="analyzeHub-shortcuts">
-                <AnalyzeShortcut icon="H" title="History" text="Review saved analyses in the compact table." onClick={() => setPage('history')} />
-                <AnalyzeShortcut icon="CV" title="CV Coach" text="Generate cover letters and recruiter messages." onClick={() => setPage('coach')} />
-                <AnalyzeShortcut icon="M" title="Smart Sync" text="Track recruiter replies and interviews." onClick={() => setPage('messages')} />
+                <AnalyzeShortcut icon="history" title="History" text="Review saved analyses in the compact table." onClick={() => setPage('history')} />
+                <AnalyzeShortcut icon="coach" title="CV Coach" text="Generate cover letters and recruiter messages." onClick={() => setPage('coach')} />
+                <AnalyzeShortcut icon="sync" title="Smart Sync" text="Track recruiter replies and interviews." onClick={() => setPage('messages')} />
               </div>
             </div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_workflow')}</p><h3>{t('analyzer_workflow_title')}</h3><div className="analyzePro-steps"><div className="analyzePro-step"><span>1</span><div><strong>{t('analyzer_step1_title')}</strong><small>{t('analyzer_step1_body')}</small></div></div><div className="analyzePro-step"><span>2</span><div><strong>{t('analyzer_step2_title')}</strong><small>{t('analyzer_step2_body')}</small></div></div><div className="analyzePro-step"><span>3</span><div><strong>{t('analyzer_step3_title')}</strong><small>{t('analyzer_step3_body')}</small></div></div></div></div>

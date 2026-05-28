@@ -1,35 +1,33 @@
-import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle } from 'docx'
-import { saveAs } from 'file-saver'
-
 const ACCENT = 'E07856'
 const TEXT_PRIMARY = '1A1B22'
 const TEXT_SECONDARY = '5C6066'
 
-const heading = (text) => new Paragraph({
-  spacing: { before: 240, after: 120 },
-  border: { bottom: { color: ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 } },
-  children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: 22, font: 'Calibri' })]
-})
-
-const subHeading = (text) => new Paragraph({
-  spacing: { before: 120, after: 60 },
-  children: [new TextRun({ text, bold: true, color: TEXT_PRIMARY, size: 22, font: 'Calibri' })]
-})
-
-const body = (text) => new Paragraph({
-  spacing: { after: 80 },
-  children: [new TextRun({ text, color: TEXT_PRIMARY, size: 20, font: 'Calibri' })]
-})
-
-const bullet = (text) => new Paragraph({
-  spacing: { after: 60 },
-  bullet: { level: 0 },
-  children: [new TextRun({ text, color: TEXT_PRIMARY, size: 20, font: 'Calibri' })]
-})
-
-const lineBreak = () => new Paragraph({ children: [new TextRun({ text: '' })], spacing: { after: 100 } })
-
 export async function generateOptimizedCvDocx(optimized, opts = {}) {
+  const [{ Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle }, { saveAs }] = await Promise.all([
+    import('docx'),
+    import('file-saver')
+  ])
+
+  const heading = text => new Paragraph({
+    spacing: { before: 240, after: 120 },
+    border: { bottom: { color: ACCENT, space: 4, style: BorderStyle.SINGLE, size: 6 } },
+    children: [new TextRun({ text: text.toUpperCase(), bold: true, color: ACCENT, size: 22, font: 'Calibri' })]
+  })
+  const subHeading = text => new Paragraph({
+    spacing: { before: 120, after: 60 },
+    children: [new TextRun({ text, bold: true, color: TEXT_PRIMARY, size: 22, font: 'Calibri' })]
+  })
+  const body = text => new Paragraph({
+    spacing: { after: 80 },
+    children: [new TextRun({ text, color: TEXT_PRIMARY, size: 20, font: 'Calibri' })]
+  })
+  const bullet = text => new Paragraph({
+    spacing: { after: 60 },
+    bullet: { level: 0 },
+    children: [new TextRun({ text, color: TEXT_PRIMARY, size: 20, font: 'Calibri' })]
+  })
+  const lineBreak = () => new Paragraph({ children: [new TextRun({ text: '' })], spacing: { after: 100 } })
+
   const { fileName = 'CV-optimized.docx' } = opts
   const o = optimized || {}
   const h = o.header || {}
@@ -100,7 +98,6 @@ export async function generateOptimizedCvDocx(optimized, opts = {}) {
 
   if (hasSkills) {
     children.push(heading('Skills'))
-
     if (skills.technical?.length) {
       children.push(new Paragraph({
         spacing: { after: 80 },
@@ -110,7 +107,6 @@ export async function generateOptimizedCvDocx(optimized, opts = {}) {
         ]
       }))
     }
-
     if (skills.soft?.length) {
       children.push(new Paragraph({
         spacing: { after: 80 },
@@ -120,7 +116,6 @@ export async function generateOptimizedCvDocx(optimized, opts = {}) {
         ]
       }))
     }
-
     if (skills.languages?.length) {
       children.push(new Paragraph({
         spacing: { after: 80 },
@@ -159,10 +154,7 @@ export async function generateOptimizedCvDocx(optimized, opts = {}) {
     creator: 'Joblytics',
     title: 'Optimized CV',
     styles: { default: { document: { run: { font: 'Calibri', size: 20 } } } },
-    sections: [{
-      properties: { page: { margin: { top: 720, right: 900, bottom: 720, left: 900 } } },
-      children
-    }]
+    sections: [{ properties: { page: { margin: { top: 720, right: 900, bottom: 720, left: 900 } } }, children }]
   })
 
   const blob = await Packer.toBlob(doc)

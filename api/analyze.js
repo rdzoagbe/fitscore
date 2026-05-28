@@ -306,10 +306,19 @@ function extractBestJobTextFromHtml(html = '') {
 
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
+
+  if (restrictedBoard) {
+    const err = new Error(`${restrictedBoard} blocks automated reading. Please paste the job description directly using text mode.`)
+    err.statusCode = 400
+    err.code = 'RESTRICTED_JOB_BOARD'
+    throw err
+  }
+
   let res
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
+    const timeout = setTimeout(() => controller.abort(), 3000)
+
     res = await fetch(url, {
       signal: controller.signal,
       headers: {

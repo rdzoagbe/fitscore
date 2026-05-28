@@ -274,11 +274,11 @@ export default function CvBuilderCard({ selected }) {
     setExporting('')
   }
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     if (!editedPreview) return
     setError('')
     setExporting('pdf')
-    try { downloadCvBuilderPdf(editedPreview) } catch (e) { setError(e.message || 'Could not export PDF document.') }
+    try { await downloadCvBuilderPdf(editedPreview) } catch (e) { setError(e.message || 'Could not export PDF document.') }
     setExporting('')
   }
 
