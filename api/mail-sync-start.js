@@ -127,7 +127,7 @@ function providerConfig(provider, appUrl, loginHint) {
     const tenant = process.env.MICROSOFT_TENANT_ID || 'common'
     return {
       clientId: cleanEnv(process.env.MICROSOFT_CLIENT_ID),
-      redirectUri: cleanEnv(process.env.MICROSOFT_REDIRECT_URI) || `${appUrl}/api/microsoft-sync-callback`,
+      redirectUri: cleanEnv(process.env.MICROSOFT_REDIRECT_URI) || `${appUrl}/api/smart-sync-microsoft-callback`,
       authUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
       params: {
         response_mode: 'query',
