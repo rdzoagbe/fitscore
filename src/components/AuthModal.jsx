@@ -88,7 +88,7 @@ function PasswordField({ value, onChange, onEnter, onFocus, placeholder, showPas
   )
 }
 
-export default function AuthModal({ initialMode = 'signin', onClose }) {
+export default function AuthModal({ initialMode = 'signin', onClose, initialError = '' }) {
   const { signIn, signUp, signInWithGoogle, signInWithMicrosoft, signInWithLinkedIn } = useAuth()
   const { t } = useLang()
   const [mode, setMode] = useState(initialMode)
@@ -98,7 +98,7 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
   const [passwordHelpOpen, setPasswordHelpOpen] = useState(false)
   const [suggestions, setSuggestions] = useState(() => [generateStrongPassword(), generateStrongPassword(), generateStrongPassword()])
   const [acceptedLegal, setAcceptedLegal] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError)
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -112,9 +112,9 @@ export default function AuthModal({ initialMode = 'signin', onClose }) {
   const requireLegalForSignup = () => { if (mode === 'signup' && !acceptedLegal) { setError(t('legal_required_signup')); return false } if (mode === 'signup' && !signupPasswordStrongEnough) { setPasswordHelpOpen(true); setError(t('password_too_weak', 'Please use a stronger password. Use at least 16 characters, include upper/lowercase letters, a number, a symbol, and avoid common words or sequences.')); return false } return true }
   const handleSubmit = async () => { setError(''); setSuccess(''); if (!requireLegalForSignup()) return; setLoading(true); try { if (mode === 'signin') { const { error } = await signIn(email, password); if (error) throw error } else { const { error } = await signUp(email, password, 'signup_email_checkbox'); if (error) throw error; setSuccess(t('account_created')) } } catch (e) { setError(e.message) } setLoading(false) }
   const requireLegalForOAuth = () => { if (mode === 'signup' && !acceptedLegal) { setError(t('legal_required_oauth')); return false } return true }
-  const handleGoogle = async () => { setError(''); if (!requireLegalForOAuth()) return; const { error } = await signInWithGoogle(mode === 'signup' ? 'signup_google_checkbox' : 'signin_google'); if (error) setError(error.message) }
-  const handleMicrosoft = async () => { setError(''); if (!requireLegalForOAuth()) return; const { error } = await signInWithMicrosoft(mode === 'signup' ? 'signup_microsoft_checkbox' : 'signin_microsoft'); if (error) setError(error.message) }
-  const handleLinkedIn = async e => { e.preventDefault(); setError(''); if (!requireLegalForOAuth()) return; const { error } = await signInWithLinkedIn(mode === 'signup' ? 'signup_linkedin_checkbox' : 'signin_linkedin'); if (error) setError(error.message) }
+  const handleGoogle = async () => { setError(''); if (!requireLegalForOAuth()) return; try { const { error } = await signInWithGoogle(mode === 'signup' ? 'signup_google_checkbox' : 'signin_google'); if (error) setError(error.message) } catch (e) { setError(e?.message || 'Google sign-in failed. Please try again.') } }
+  const handleMicrosoft = async () => { setError(''); if (!requireLegalForOAuth()) return; try { const { error } = await signInWithMicrosoft(mode === 'signup' ? 'signup_microsoft_checkbox' : 'signin_microsoft'); if (error) setError(error.message) } catch (e) { setError(e?.message || 'Microsoft sign-in failed. Please try again.') } }
+  const handleLinkedIn = async e => { e.preventDefault(); setError(''); if (!requireLegalForOAuth()) return; try { const { error } = await signInWithLinkedIn(mode === 'signup' ? 'signup_linkedin_checkbox' : 'signin_linkedin'); if (error) setError(error.message) } catch (e) { setError(e?.message || 'LinkedIn sign-in failed. Please try again.') } }
   const useSuggestion = value => { setPassword(value); setShowPassword(true); setPasswordHelpOpen(false); setError('') }
   const createDisabled = loading || !email || !password || (mode === 'signup' && (!acceptedLegal || !signupPasswordStrongEnough))
 

@@ -61,12 +61,27 @@ function OAuthCallback() {
     const completeOAuth = async () => {
       const url = new URL(window.location.href)
       const code = url.searchParams.get('code')
+      const error = url.searchParams.get('error')
+      const errorDescription = url.searchParams.get('error_description')
+
+      if (error) {
+        console.error('OAuth provider error:', error, errorDescription)
+        if (!cancelled) {
+          window.history.replaceState({ page: 'signin_error' }, '', '/')
+          window.location.href = `/?auth_error=${encodeURIComponent(errorDescription || error)}`
+        }
+        return
+      }
 
       try {
-        if (code) await supabase.auth.exchangeCodeForSession(code)
-        else await supabase.auth.getSession()
-      } catch (error) {
-        console.error('OAuth callback failed:', error)
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) console.warn('Code exchange error (may already be handled):', exchangeError.message)
+        } else {
+          await supabase.auth.getSession()
+        }
+      } catch (err) {
+        console.error('OAuth callback failed:', err)
       }
 
       if (!cancelled) {
