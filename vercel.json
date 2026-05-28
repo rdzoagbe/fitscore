@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/favicon.ico",
+      "destination": "/icons/icon.svg"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },
