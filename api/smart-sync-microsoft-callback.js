@@ -102,7 +102,7 @@ function getProviderConfig(provider, appUrl) {
       profileUrl: 'https://graph.microsoft.com/v1.0/me',
       clientId: process.env.MICROSOFT_CLIENT_ID,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/microsoft-sync-callback`
+      redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${appUrl}/api/smart-sync-microsoft-callback`
     }
   }
   throw new Error('Unsupported sync provider.')
