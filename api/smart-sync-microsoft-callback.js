@@ -92,7 +92,7 @@ function getProviderConfig(provider, appUrl) {
       profileUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/mail-sync-callback`
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/google-sync-callback`
     }
   }
   if (provider === 'microsoft') {

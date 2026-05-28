@@ -13,6 +13,14 @@
       "destination": "/icons/icon.svg"
     },
     {
+      "source": "/api/mail-sync-callback",
+      "destination": "/api/smart-sync-microsoft-callback"
+    },
+    {
+      "source": "/api/google-sync-callback",
+      "destination": "/api/smart-sync-microsoft-callback"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     },
