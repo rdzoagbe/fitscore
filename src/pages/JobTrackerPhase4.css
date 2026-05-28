@@ -1,0 +1,273 @@
+/* Phase 4 — Job tracker / career CRM */
+
+.jobTracker-board {
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.jobTracker-boardHead {
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.jobTracker-boardHead p:not(.historyWide-kicker) {
+  max-width: 780px;
+  line-height: 1.65;
+}
+
+.jobTracker-pipelineGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.jobTracker-column {
+  min-height: 228px;
+  border: 1px solid rgba(16,24,43,.10);
+  background: rgba(255,255,255,.62);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: 0 12px 32px rgba(16,24,43,.055);
+}
+
+.jobTracker-column--saved { background: rgba(67,85,111,.06); }
+.jobTracker-column--applied { background: rgba(123,140,255,.07); }
+.jobTracker-column--interview { background: rgba(255,142,107,.08); }
+.jobTracker-column--offer { background: rgba(76,175,125,.08); }
+.jobTracker-column--rejected { background: rgba(255,107,107,.07); }
+.jobTracker-column--archived { background: rgba(141,163,189,.08); }
+
+.jobTracker-columnHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(16,24,43,.08);
+}
+
+.jobTracker-columnHead strong {
+  display: block;
+  color: #10182B;
+  font-size: 14px;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+
+.jobTracker-columnHead span {
+  display: block;
+  margin-top: 4px;
+  color: #5F6472;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.jobTracker-columnHead em {
+  flex: 0 0 auto;
+  min-width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(16,24,43,.08);
+  color: #10182B;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.jobTracker-miniList {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.jobTracker-miniList button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(16,24,43,.08);
+  background: rgba(255,253,248,.76);
+  border-radius: 14px;
+  padding: 10px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.jobTracker-miniList button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(181,102,60,.28);
+  background: rgba(255,253,248,.96);
+}
+
+.jobTracker-miniList button strong {
+  display: block;
+  color: #10182B;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+
+.jobTracker-miniList button span,
+.jobTracker-miniList p {
+  display: block;
+  margin: 4px 0 0;
+  color: #5F6472;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.jobTracker-miniList p {
+  padding: 12px;
+  border: 1px dashed rgba(16,24,43,.12);
+  border-radius: 14px;
+  background: rgba(255,253,248,.45);
+}
+
+.jobTracker-cardGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.jobTracker-jobCard {
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.jobTracker-detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.jobTracker-detailGrid span {
+  min-width: 0;
+  border: 1px solid rgba(16,24,43,.08);
+  background: rgba(255,255,255,.55);
+  border-radius: 13px;
+  padding: 9px 10px;
+  color: #5F6472;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.jobTracker-detailGrid b {
+  display: block;
+  margin-bottom: 4px;
+  color: #B5663C;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
+.jobTracker-nextAction {
+  margin-top: 12px;
+  border: 1px solid rgba(181,102,60,.18);
+  background: rgba(181,102,60,.08);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.jobTracker-nextAction.is-due {
+  border-color: rgba(184,92,85,.24);
+  background: rgba(184,92,85,.09);
+}
+
+.jobTracker-nextAction strong {
+  display: block;
+  color: #10182B;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.jobTracker-nextAction p {
+  margin: 5px 0 0;
+  color: #5F6472;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.jobTracker-metaEditor {
+  display: grid;
+  grid-template-columns: 1.1fr .75fr;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.jobTracker-metaEditor label {
+  display: grid;
+  gap: 5px;
+}
+
+.jobTracker-metaEditor label span {
+  color: #B5663C;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.jobTracker-metaEditor input,
+.jobTracker-metaEditor textarea {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(16,24,43,.10);
+  background: rgba(255,255,255,.68);
+  border-radius: 12px;
+  color: #10182B;
+  font: inherit;
+  font-size: 12px;
+  padding: 9px 10px;
+  outline: none;
+}
+
+.jobTracker-metaEditor textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.jobTracker-metaEditor input:focus,
+.jobTracker-metaEditor textarea:focus {
+  border-color: rgba(181,102,60,.36);
+  box-shadow: 0 0 0 4px rgba(181,102,60,.10);
+}
+
+.jobTracker-noteField {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1320px) {
+  .jobTracker-pipelineGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .jobTracker-cardGrid,
+  .jobTracker-pipelineGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .jobTracker-boardHead {
+    display: grid;
+    align-items: start;
+  }
+
+  .jobTracker-boardHead .historyWide-primaryBtn {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 620px) {
+  .jobTracker-detailGrid,
+  .jobTracker-metaEditor {
+    grid-template-columns: 1fr;
+  }
+
+  .jobTracker-jobCard {
+    min-height: 0;
+  }
+}

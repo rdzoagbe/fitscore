@@ -148,6 +148,14 @@ export default function SyncSettingsPage({ setPage }) {
               <div><span>Last error</span><strong>{status.lastError || 'None'}</strong></div>
             </div>
 
+            {!status.connected && (
+              <div style={{ margin: '12px 0', padding: '12px 14px', borderRadius: 10, background: 'var(--bg-input)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>Beta — Google unverified app notice</strong>
+                After clicking Connect Google, you will see a Google warning screen saying this app is unverified.
+                This is expected while Smart Sync is in beta. Click <em>Advanced</em> then <em>Go to Joblytics (unsafe)</em> to proceed.
+                Joblytics only reads email headers and snippets — no email content is stored or shared.
+              </div>
+            )}
             <div className="syncSettingsActions">
               <button type="button" onClick={() => connectProvider('google')} disabled={Boolean(actionLoading)}>{actionLoading === 'google' ? 'Connecting...' : 'Connect Google'}</button>
               <button type="button" onClick={() => connectProvider('microsoft')} disabled={Boolean(actionLoading)}>{actionLoading === 'microsoft' ? 'Connecting...' : 'Connect Microsoft'}</button>

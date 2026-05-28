@@ -3,6 +3,7 @@ import { useLang } from '../context/LangContext'
 import { useAnalyze } from '../hooks/useAnalyze'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { useJobUrlHistory } from '../hooks/useJobUrlHistory'
+import { sanitizeAnalysisForDisplay } from '../utils/analysisSanitizer'
 import ResultsView from '../components/ResultsView'
 import Confetti from '../components/Confetti'
 import PWAInstallPrompt from '../components/PWAInstallPrompt'
@@ -10,9 +11,40 @@ import CvPanel from '../components/CvPanel'
 import TipCard from '../components/TipCard'
 import UpgradePrompt from '../components/UpgradePrompt'
 import './AnalyzerPage.css'
+import './analyzer-action-hub.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
 const MIN_JOB_TEXT_LENGTH = 60
+
+function readClipperPayload() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('source') !== 'clipper') return null
+    const jobText = params.get('jobText') || ''
+    const jobUrl = params.get('jobUrl') || ''
+    const title = params.get('jobTitle') || ''
+    const company = params.get('company') || ''
+    return { jobText, jobUrl, title, company }
+  } catch {
+    return null
+  }
+}
+
+const HUB_ICONS = {
+  history: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  coach: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  sync: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+}
+
+function AnalyzeShortcut({ icon, title, text, onClick }) {
+  return (
+    <button type="button" className="analyzeHub-shortcut" onClick={onClick}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{HUB_ICONS[icon] ?? icon}</span>
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </button>
+  )
+}
 
 export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
   const { t } = useLang()
@@ -23,9 +55,10 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [showHistory, setShowHistory] = useState(false)
   const [msgIdx, setMsgIdx] = useState(0)
   const [uploadTrigger, setUploadTrigger] = useState(0)
+  const [clipperInfo, setClipperInfo] = useState(null)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
-  const { status, data, error, savedRow, rateLimit, analyze, reset } = useAnalyze()
+  const { status, data, error, savedRow, rateLimit, streamProgress, analyze, reset } = useAnalyze()
   const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
   const [viewingAnalysis, setViewingAnalysis] = useState(prefillAnalysis || null)
@@ -34,7 +67,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const LOADING_MSGS = LOADING_MSGS_KEY.map(k => t(k))
   const isLimitError = status === 'error' && /limit|upgrade/i.test(String(error || ''))
   const normalizeJobUrl = value => {
-    const withoutHiddenChars = String(value || '').replace(/[\u200B-\u200D\uFEFF]/g, '')
+    const withoutHiddenChars = String(value || '').replace(/[​-‍﻿]/g, '')
     const trimmed = withoutHiddenChars.trim()
     if (!trimmed) return ''
     const compactUrl = trimmed.replace(/\s+/g, '')
@@ -74,6 +107,22 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
 
+  useEffect(() => {
+    const payload = readClipperPayload()
+    if (!payload) return
+    setClipperInfo(payload)
+    if (payload.jobText && payload.jobText.trim().length >= MIN_JOB_TEXT_LENGTH) {
+      setJobText(payload.jobText)
+      setShowTextPaste(true)
+      setUserToggledMode(false)
+    } else if (payload.jobUrl) {
+      setJobUrl(normalizeJobUrl(payload.jobUrl))
+      setShowTextPaste(false)
+      setUserToggledMode(false)
+    }
+    window.history.replaceState({ page: 'analyzer' }, '', '/analyzer')
+  }, [])
+
   const switchToPasteMode = () => { setShowTextPaste(true); setUserToggledMode(true); setJobText('') }
   const handleUrlChange = e => {
     const value = e.target.value
@@ -96,13 +145,14 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
   const handleReset = useCallback(() => {
-    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); onClearPrefill?.()
+    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); setClipperInfo(null); onClearPrefill?.()
   }, [reset, onClearPrefill])
 
   useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
   useEffect(() => { if (status === 'done' && data?.display_score >= 70) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2600) } }, [status, data])
 
-  const displayData = viewingAnalysis?.result || data
+  const rawDisplayData = viewingAnalysis?.result || data
+  const displayData = rawDisplayData ? sanitizeAnalysisForDisplay(rawDisplayData) : rawDisplayData
   const displayStatus = viewingAnalysis ? 'done' : status
 
   return (
@@ -112,6 +162,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
         {displayStatus !== 'done' && <div className="analyzePro-layout">
           <section className="analyzePro-card">
             <div className="analyzePro-formHero"><p>{t('analyzer_kicker')}</p><h1>{t('analyzer_title')}</h1><p>{t('analyzer_subtitle')}</p></div>
+            {clipperInfo && <TipCard type="success" title="Job clipped from browser" body={`${clipperInfo.title || 'Job'}${clipperInfo.company ? ` at ${clipperInfo.company}` : ''} was imported into the analyzer. Upload or confirm your CV, then run the match.`} />}
             <CvPanel uploadTrigger={uploadTrigger} />
             <div className="card" style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -129,7 +180,16 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               </>}
               {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
               {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
-              {status === 'loading' && <p style={{ color: 'var(--text-secondary)', marginTop: 12 }}>{LOADING_MSGS[msgIdx]}</p>}
+              {status === 'loading' && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontSize: 13 }}>{LOADING_MSGS[msgIdx]}</p>
+                  {streamProgress > 0 && (
+                    <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${streamProgress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.4s ease' }} />
+                    </div>
+                  )}
+                </div>
+              )}
               <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze && !restrictedJobBoard} style={{ width: '100%', marginTop: 14 }}>
                 {status === 'loading'
                   ? t('analyzer_analyzing')
@@ -137,7 +197,17 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               </button>
             </div>
           </section>
-          <aside className="analyzePro-side">
+          <aside className="analyzePro-side analyzeHub-side">
+            <div className="analyzePro-sideCard analyzeHub-card">
+              <p className="analyzePro-kicker">Action hub</p>
+              <h3>After analysis, move faster</h3>
+              <p>Use these shortcuts to continue the workflow without returning to the Dashboard.</p>
+              <div className="analyzeHub-shortcuts">
+                <AnalyzeShortcut icon="history" title="History" text="Review saved analyses in the compact table." onClick={() => setPage('history')} />
+                <AnalyzeShortcut icon="coach" title="CV Coach" text="Generate cover letters and recruiter messages." onClick={() => setPage('coach')} />
+                <AnalyzeShortcut icon="sync" title="Smart Sync" text="Track recruiter replies and interviews." onClick={() => setPage('messages')} />
+              </div>
+            </div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_workflow')}</p><h3>{t('analyzer_workflow_title')}</h3><div className="analyzePro-steps"><div className="analyzePro-step"><span>1</span><div><strong>{t('analyzer_step1_title')}</strong><small>{t('analyzer_step1_body')}</small></div></div><div className="analyzePro-step"><span>2</span><div><strong>{t('analyzer_step2_title')}</strong><small>{t('analyzer_step2_body')}</small></div></div><div className="analyzePro-step"><span>3</span><div><strong>{t('analyzer_step3_title')}</strong><small>{t('analyzer_step3_body')}</small></div></div></div></div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_tip')}</p><h3>{t('analyzer_tip_title')}</h3><p>{t('analyzer_tip_body')}</p></div>
           </aside>
