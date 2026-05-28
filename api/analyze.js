@@ -177,6 +177,60 @@ const HOURLY_LIMIT = 15
 const DAILY_LIMIT = 50
 const WHITELIST_DAILY = 500
 
+const MONTHLY_PLAN_LIMITS = { free: 3, starter: 40, pro: 200 }
+
+function normalizePlan(value) {
+  const plan = String(value || '').toLowerCase().trim()
+  if (['pro', 'premium', 'professional'].includes(plan)) return 'pro'
+  if (['starter', 'plus', 'basic', 'paid', 'tier'].includes(plan)) return 'starter'
+  return 'free'
+}
+
+function startOfMonthIso() {
+  const now = new Date()
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
+}
+
+async function checkPlanLimit(supabase, userId) {
+  if (!supabase || !userId) return { allowed: true }
+  try {
+    if (WHITELIST.includes(userId)) return { allowed: true, plan: 'pro', limit: MONTHLY_PLAN_LIMITS.pro }
+
+    const { data: { user } } = await supabase.auth.admin.getUserById(userId)
+    if (!user) return { allowed: true }
+
+    const meta = { ...(user.user_metadata || {}), ...(user.app_metadata || {}) }
+    const status = String(meta.subscription_status || meta.stripe_subscription_status || '').toLowerCase()
+    const rawPlan = meta.subscription_plan || meta.plan || meta.price_plan || meta.product_plan || meta.tier
+    const planId = normalizePlan(rawPlan)
+    const activePlan = (planId !== 'free' && ['active', 'trialing', 'paid'].includes(status)) ? planId : 'free'
+    const limit = MONTHLY_PLAN_LIMITS[activePlan] ?? MONTHLY_PLAN_LIMITS.free
+
+    const { count } = await supabase
+      .from('analyses')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', startOfMonthIso())
+
+    const used = count ?? 0
+    if (used >= limit) {
+      const planLabel = activePlan === 'free' ? 'Free' : activePlan === 'starter' ? 'Starter' : 'Pro'
+      return {
+        allowed: false,
+        plan: activePlan,
+        used,
+        limit,
+        message: `${planLabel} plan limit reached (${limit} analyses/month). Upgrade to continue.`,
+        code: 'PLAN_LIMIT_REACHED'
+      }
+    }
+    return { allowed: true, plan: activePlan, used, limit }
+  } catch (e) {
+    console.log('Plan limit check skipped:', e.message)
+    return { allowed: true }
+  }
+}
+
 function createAnalyzeTimer() {
   const startedAt = Date.now()
   let last = startedAt
@@ -797,6 +851,9 @@ export default async function handler(req, res) {
     const supabase = await getSupabaseClient()
     const rateLimit = await checkRateLimit(supabase, userId)
     if (!rateLimit.allowed) return res.status(429).json({ success: false, error: rateLimit.message, rate_limited: true, reason: rateLimit.reason })
+
+    const planLimit = await checkPlanLimit(supabase, userId)
+    if (!planLimit.allowed) return res.status(429).json({ success: false, error: planLimit.message, rate_limited: true, code: planLimit.code, reason: 'plan_limit', plan: planLimit.plan, used: planLimit.used, limit: planLimit.limit })
 
     timer.mark('before_extract')
     let earlyClient = null
