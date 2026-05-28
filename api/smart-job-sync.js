@@ -1149,8 +1149,32 @@ async function scanMicrosoft(accessToken) {
       const senderName = message.from?.emailAddress?.name || ''
       const snippet = message.bodyPreview || ''
       const body = cleanBody(String(message.body?.content || '').replace(/<[^>]+>/g, ' '), 1800)
+
+      if (isNoiseSender(senderName, from)) continue
+
+      const jobSignalText = `${subject} ${snippet} ${body}`
+      if (isNoiseJobText(jobSignalText)) continue
+
+      if (
+        !containsAny(jobSignalText, REFUS_KW) &&
+        !containsAny(jobSignalText, ENTRETIEN_KW) &&
+        !containsAny(jobSignalText, EN_COURS_KW) &&
+        !containsAny(jobSignalText, OFFER_KW) &&
+        !containsAny(jobSignalText, [
+          'application', 'candidature', 'recruiter', 'recrutement',
+          'career', 'careers', 'job', 'jobs', 'talent', 'hiring',
+          'poste', 'opportunité', 'opportunity',
+          'viewed your application', 'application was sent',
+          'thank you for applying', 'merci pour votre candidature'
+        ])
+      ) continue
+
+      if (isJobRecommendationOnly(subject, snippet, body, from)) continue
+
       const platform = detectPlatform(senderName, from)
-      const company = extractCompany(senderName, from, subject)
+      if (!isRealJobSignal({ subject, snippet: `${snippet} ${body}`.slice(0, 1500), senderName, senderEmail: from, platform })) continue
+
+      const company = inferCompanyFromEmailSubject(subject, senderName, from)
 
       emails.push(buildEmail({
         id: message.id,
