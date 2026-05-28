@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joblytics Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main class="clipper">
+    <section class="hero">
+      <p>Joblytics clipper</p>
+      <h1>Capture this job</h1>
+      <span>Extract job details and open them in Joblytics Analyzer.</span>
+    </section>
+    <section class="preview" id="preview"><div class="loading">Reading this page...</div></section>
+    <section class="actions">
+      <button id="openJoblytics" class="primary">Open in Joblytics</button>
+      <button id="copyJob" class="secondary">Copy job text</button>
+      <button id="refresh" class="ghost">Refresh extraction</button>
+    </section>
+    <section class="settings">
+      <label><span>Analyzer URL</span><input id="appUrl" type="url" placeholder="https://your-app.vercel.app/analyzer"></label>
+      <button id="saveUrl">Save URL</button>
+    </section>
+    <p class="note">No data is sent automatically.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+.phase8-page {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(181,102,60,.12), transparent 30%),
+    radial-gradient(circle at 88% 4%, rgba(67,85,111,.10), transparent 32%),
+    var(--bg);
+}
+
+.phase8-shell {
+  max-width: 1220px;
+}
+
+.phase8-hero {
+  align-items: stretch;
+}
+
+.phase8-hero h1 {
+  max-width: 820px;
+}
+
+.phase8-status {
+  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.82));
+}
+
+.phase8-valueGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.phase8-valueMoment {
+  border: 1px solid var(--border);
+  background: rgba(255,253,248,.88);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 16px 42px rgba(16,24,43,.06);
+}
+
+.phase8-valueMoment span {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-bg);
+  margin-bottom: 12px;
+}
+
+.phase8-valueMoment strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+
+.phase8-valueMoment p {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.phase8-grid {
+  align-items: stretch;
+}
+
+.phase8-plan {
+  display: flex;
+  flex-direction: column;
+}
+
+.phase8-bestFor {
+  margin: 14px 0 0;
+  border: 1px solid rgba(181,102,60,.16);
+  background: var(--accent-bg);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.phase8-bestFor span,
+.phase8-sectionHead p {
+  display: block;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.phase8-bestFor strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.phase8-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.phase8-limits span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.62);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.phase8-comparison,
+.phase8-upgradeMoments {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  background: rgba(255,253,248,.92);
+  border-radius: 30px;
+  padding: clamp(18px, 3vw, 28px);
+  box-shadow: 0 22px 60px rgba(16,24,43,.07);
+}
+
+.phase8-sectionHead {
+  margin-bottom: 18px;
+}
+
+.phase8-sectionHead h2 {
+  margin: 6px 0 0;
+  color: var(--text-primary);
+  font-family: Georgia, Newsreader, serif;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+  letter-spacing: -.065em;
+  font-weight: 500;
+}
+
+.phase8-sectionHead span {
+  display: block;
+  margin-top: 9px;
+  max-width: 740px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.phase8-tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255,255,255,.66);
+}
+
+.phase8-tableWrap table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.phase8-tableWrap th,
+.phase8-tableWrap td {
+  padding: 15px 16px;
+  text-align: left;
+  border-bottom: 1px solid rgba(16,24,43,.08);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.phase8-tableWrap th {
+  color: var(--text-primary);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(250,247,241,.86);
+}
+
+.phase8-tableWrap tr:last-child td {
+  border-bottom: 0;
+}
+
+.phase8-tableWrap td:first-child {
+  color: var(--text-primary);
+  font-weight: 900;
+}
+
+.phase8-momentList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px;
+}
+
+.phase8-momentList article {
+  border: 1px solid rgba(16,24,43,.10);
+  background: rgba(255,255,255,.64);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.phase8-momentList strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.phase8-momentList p {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.phase8-infoGrid {
+  margin-top: 18px;
+}
+
+@media (max-width: 1100px) {
+  .phase8-valueGrid,
+  .phase8-momentList {
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .phase8-valueGrid,
+  .phase8-momentList {
+    grid-template-columns: 1fr;
+  }
+
+  .phase8-comparison,
+  .phase8-upgradeMoments {
+    border-radius: 24px;
+    padding: 18px;
+  }
+}

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { getDeviceId } from '../utils/deviceId'
+import { trackEvent, trackError } from '../utils/productAnalytics'
 
 function friendlyAnalyzeError(error, responseStatus, serverMessage) {
   if (responseStatus === 504 || responseStatus === 524) {
@@ -45,15 +47,104 @@ function friendlyAnalyzeError(error, responseStatus, serverMessage) {
   return raw || 'Analysis failed. Please try again.'
 }
 
+function scoreValue(analysis) {
+  const score = Number(analysis?.display_score ?? analysis?.match_probability ?? 0)
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 0
+}
+
+function getAnalysisTitle(analysis) {
+  return analysis?.job_context?.job_title || analysis?.job_context?.title || analysis?.job_title || 'Job analysis'
+}
+
+async function makeClientCacheKey({ userId, jobUrl, jobText, cvFileName }) {
+  const raw = ['client-save-v1', userId || '', jobUrl || 'manual_paste', jobText || '', cvFileName || ''].join('||')
+  try {
+    const bytes = new TextEncoder().encode(raw)
+    const hash = await crypto.subtle.digest('SHA-256', bytes)
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  }
+}
+
+async function saveAnalysisClientSide({ user, analysis, jobUrl, jobText, cvFile }) {
+  if (!user?.id || !analysis) return null
+
+  const cacheKey = await makeClientCacheKey({
+    userId: user.id,
+    jobUrl: jobUrl || null,
+    jobText: jobText || null,
+    cvFileName: cvFile?.name || null
+  })
+
+  const basePayload = {
+    user_id: user.id,
+    job_url: jobUrl || 'manual_paste',
+    job_title: getAnalysisTitle(analysis),
+    score: scoreValue(analysis),
+    result: analysis,
+    cv_file_path: null,
+    cv_file_name: cvFile?.name || null,
+    cache_key: cacheKey
+  }
+
+  try {
+    const { data: existing } = await supabase
+      .from('analyses')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('cache_key', cacheKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from('analyses')
+        .update(basePayload)
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data || null
+    }
+
+    const { data, error } = await supabase
+      .from('analyses')
+      .insert(basePayload)
+      .select()
+      .single()
+    if (error) throw error
+    return data || null
+  } catch (error) {
+    console.warn('Client-side analysis save failed:', error?.message || error)
+
+    // Last-resort fallback for older databases where cache_key may not be available or writable.
+    try {
+      const { cache_key, ...payloadWithoutCacheKey } = basePayload
+      const { data, error: insertError } = await supabase
+        .from('analyses')
+        .insert(payloadWithoutCacheKey)
+        .select()
+        .single()
+      if (insertError) throw insertError
+      return data || null
+    } catch (secondError) {
+      console.warn('Client-side analysis fallback save failed:', secondError?.message || secondError)
+      return null
+    }
+  }
+}
+
 export function useAnalyze() {
-  const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const [state, setState] = useState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
   const { user, session } = useAuth()
 
-  // jobUrl OR jobText — one must be provided
   const analyze = async (jobUrl, cvFile, jobText = null) => {
-    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null })
+    const mode = jobText ? 'paste' : jobUrl ? 'url' : 'unknown'
+    trackEvent('analysis_started', { mode, hasCv: !!cvFile, jobChars: jobText?.length || 0 })
+    setState({ status: 'loading', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
 
-    // Client-side timeout matches Vercel hobby cap (60s)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 65000)
 
@@ -65,54 +156,89 @@ export function useAnalyze() {
         reader.readAsDataURL(cvFile)
       })
 
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          'X-Joblytics-Device-Id': getDeviceId()
-        },
-        body: JSON.stringify({
-          jobUrl: jobUrl || null,
-          jobText: jobText || null,
-          cvBase64,
-          cvMimeType: cvFile.type,
-          cvFileName: cvFile.name,
-          userId: user?.id || null
-        }),
-        signal: controller.signal
+      const body = JSON.stringify({
+        jobUrl: jobUrl || null,
+        jobText: jobText || null,
+        cvBase64,
+        cvMimeType: cvFile.type,
+        cvFileName: cvFile.name,
+        userId: user?.id || null
       })
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        'X-Joblytics-Device-Id': getDeviceId()
+      }
 
+      const res = await fetch('/api/analyze?stream=1', {
+        method: 'POST', headers, body, signal: controller.signal
+      })
       clearTimeout(timeoutId)
 
-      // Handle non-JSON responses gracefully (504 from Vercel returns HTML)
-      let data = null
       const contentType = res.headers.get('content-type') || ''
-      if (contentType.includes('application/json')) {
-        try { data = await res.json() } catch {}
-      }
 
-      if (!res.ok) {
-        throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
-      }
+      if (contentType.includes('text/event-stream')) {
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let charsReceived = 0
 
-      if (!data || !data.analysis) {
-        throw new Error('Invalid response from server. Please try again.')
-      }
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop()
 
-      setState({
-        status: 'done',
-        data: data.analysis,
-        error: null,
-        savedRow: data.savedRow || null,
-        rateLimit: data.rateLimit || null
-      })
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            let event
+            try { event = JSON.parse(line.slice(6)) } catch { continue }
+
+            if (event.t === 'd') {
+              charsReceived += (event.c || '').length
+              const progress = Math.min(90, 10 + Math.round((charsReceived / 1800) * 80))
+              setState(prev => ({ ...prev, streamProgress: progress }))
+            } else if (event.t === 'status') {
+              setState(prev => ({ ...prev, streamProgress: event.msg === 'analyzing' ? 15 : 5 }))
+            } else if (event.t === 'done') {
+              let savedRow = event.savedRow || null
+              if (!savedRow && user?.id) {
+                savedRow = await saveAnalysisClientSide({ user, analysis: event.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+              }
+              trackEvent('analysis_completed', { mode, score: event.analysis?.display_score || 0, saved: !!savedRow, streamed: true })
+              setState({ status: 'done', data: event.analysis, error: null, savedRow, rateLimit: event.rateLimit || null, streamProgress: 100 })
+              return
+            } else if (event.t === 'err') {
+              throw new Error(friendlyAnalyzeError(null, event.status, event.error))
+            }
+          }
+        }
+        throw new Error('Analysis stream ended unexpectedly. Please try again.')
+      } else {
+        // Fallback: regular JSON (e.g. Vercel edge returning non-SSE error)
+        let data = null
+        if (contentType.includes('application/json')) {
+          try { data = await res.json() } catch {}
+        }
+        if (!res.ok) throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
+        if (!data?.analysis) throw new Error('Invalid response from server. Please try again.')
+
+        let savedRow = data.savedRow || null
+        if (!savedRow && user?.id) {
+          savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+        }
+        trackEvent('analysis_completed', { mode, score: data.analysis?.display_score || 0, saved: !!savedRow })
+        setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, streamProgress: 100 })
+      }
     } catch (e) {
       clearTimeout(timeoutId)
-      setState({ status: 'error', data: null, error: friendlyAnalyzeError(e), savedRow: null, rateLimit: null })
+      const friendly = friendlyAnalyzeError(e)
+      trackError('analysis_failed', e, { mode, friendly })
+      setState({ status: 'error', data: null, error: friendly, savedRow: null, rateLimit: null, streamProgress: 0 })
     }
   }
 
-  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null })
+  const reset = () => setState({ status: 'idle', data: null, error: null, savedRow: null, rateLimit: null, streamProgress: 0 })
   return { ...state, analyze, reset }
 }

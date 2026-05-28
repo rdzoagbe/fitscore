@@ -791,7 +791,7 @@ async function scanGoogle(accessToken) {
       }
 
       const detail = await getJson(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
         accessToken
       )
 

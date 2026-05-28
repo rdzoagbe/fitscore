@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { useLang } from '../context/LangContext'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { generateOptimizedCvDocx } from '../utils/cvDocx'
+import CommunicationAssetsCard from './CommunicationAssetsCard'
 
-export default function OptimizeCvCard({ selected }) {
+function OptimizeCvPanel({ selected }) {
   const { t, lang } = useLang()
   const { cvFile } = useCvPersist()
   const [optimized, setOptimized] = useState(null)
@@ -21,7 +22,6 @@ export default function OptimizeCvCard({ selected }) {
     setError('')
     setOptimized(null)
     try {
-      // Read CV file as base64
       const cvBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader()
         reader.onload = () => resolve(reader.result.split(',')[1])
@@ -106,74 +106,29 @@ export default function OptimizeCvCard({ selected }) {
 
         {optimized && (
           <div>
-            {/* What changed */}
             {optimized.changes_made?.length > 0 && (
               <div style={{ marginBottom: 14, padding: '10px 12px', background: 'rgba(76,175,125,0.06)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 10 }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: '#4caf7d', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 6 }}>
                   ✨ {t('cv_optimize_changes') || 'What changed'}
                 </p>
                 <ul style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: 16, margin: 0 }}>
-                  {optimized.changes_made.map((change, i) => (
-                    <li key={i}>{change}</li>
-                  ))}
+                  {optimized.changes_made.map((change, i) => <li key={i}>{change}</li>)}
                 </ul>
               </div>
             )}
 
-            {/* Preview — collapsed sections */}
             <div style={{ background: 'var(--bg-input)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, maxHeight: 360, overflowY: 'auto' }}>
-              {optimized.header?.full_name && (
-                <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, textAlign: 'center' }}>
-                  {optimized.header.full_name}
-                </p>
-              )}
-              {optimized.header?.title && (
-                <p style={{ fontSize: 13, color: 'var(--accent)', textAlign: 'center', marginBottom: 12 }}>
-                  {optimized.header.title}
-                </p>
-              )}
-
-              {optimized.summary && (
-                <>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, marginTop: 10, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
-                    {t('cv_section_profile') || 'Profile'}
-                  </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
-                    {optimized.summary}
-                  </p>
-                </>
-              )}
-
-              {optimized.experience?.length > 0 && (
-                <>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, marginTop: 10, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>
-                    {t('cv_section_experience') || 'Experience'} ({optimized.experience.length})
-                  </p>
-                  {optimized.experience.slice(0, 2).map((exp, i) => (
-                    <div key={i} style={{ marginBottom: 10 }}>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {exp.title} {exp.company ? `@ ${exp.company}` : ''}
-                      </p>
-                      {exp.dates && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 4 }}>{exp.dates}</p>}
-                      {exp.bullets?.[0] && <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>• {exp.bullets[0]}</p>}
-                    </div>
-                  ))}
-                  {optimized.experience.length > 2 && (
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: 6 }}>
-                      + {optimized.experience.length - 2} {t('more_in_doc') || 'more in the document'}
-                    </p>
-                  )}
-                </>
-              )}
+              {optimized.header?.full_name && <p style={{ fontFamily: 'Syne, sans-serif', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, textAlign: 'center' }}>{optimized.header.full_name}</p>}
+              {optimized.header?.title && <p style={{ fontSize: 13, color: 'var(--accent)', textAlign: 'center', marginBottom: 12 }}>{optimized.header.title}</p>}
+              {optimized.summary && <><p style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, marginTop: 10, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>{t('cv_section_profile') || 'Profile'}</p><p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>{optimized.summary}</p></>}
+              {optimized.experience?.length > 0 && <><p style={{ fontSize: 9, fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, marginTop: 10, paddingBottom: 4, borderBottom: '1px solid var(--border)' }}>{t('cv_section_experience') || 'Experience'} ({optimized.experience.length})</p>{optimized.experience.slice(0, 2).map((exp, i) => <div key={i} style={{ marginBottom: 10 }}><p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{exp.title} {exp.company ? `@ ${exp.company}` : ''}</p>{exp.dates && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 4 }}>{exp.dates}</p>}{exp.bullets?.[0] && <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>• {exp.bullets[0]}</p>}</div>)}{optimized.experience.length > 2 && <p style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: 6 }}>+ {optimized.experience.length - 2} {t('more_in_doc') || 'more in the document'}</p>}</>}
             </div>
 
             <p style={{ fontSize: 10, color: 'var(--text-hint)', lineHeight: 1.5, marginBottom: 12, fontStyle: 'italic', textAlign: 'center' }}>
               ℹ️ {optimized.honest_disclaimer || (t('cv_optimize_disclaimer') || 'Review carefully and edit before sending. AI does not verify facts.')}
             </p>
 
-            {error && (
-              <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 10 }}>⚠ {error}</p>
-            )}
+            {error && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 10 }}>⚠ {error}</p>}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button onClick={download} disabled={downloading} className="btn-primary" style={{ width: '100%' }}>
@@ -187,5 +142,14 @@ export default function OptimizeCvCard({ selected }) {
         )}
       </div>
     </div>
+  )
+}
+
+export default function OptimizeCvCard({ selected }) {
+  return (
+    <>
+      <CommunicationAssetsCard selected={selected} />
+      <OptimizeCvPanel selected={selected} />
+    </>
   )
 }

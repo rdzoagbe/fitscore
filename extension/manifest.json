@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Joblytics Job Clipper",
+  "description": "Clip job descriptions from job boards and send them to Joblytics for CV matching.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Clip job to Joblytics"
+  },
+  "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

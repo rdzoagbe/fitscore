@@ -8,6 +8,12 @@ import EmailVerifyGate from './components/EmailVerifyGate'
 import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
+import SmartSyncUxBridge from './components/SmartSyncUxBridge'
+import './ui-polish.css'
+import './smart-sync-phase5.css'
+import './phase6-communication-assets.css'
+import './cv-coach-layout-fix.css'
+import './smart-sync-inbox-polish.css'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
@@ -57,11 +63,8 @@ function OAuthCallback() {
       const code = url.searchParams.get('code')
 
       try {
-        if (code) {
-          await supabase.auth.exchangeCodeForSession(code)
-        } else {
-          await supabase.auth.getSession()
-        }
+        if (code) await supabase.auth.exchangeCodeForSession(code)
+        else await supabase.auth.getSession()
       } catch (error) {
         console.error('OAuth callback failed:', error)
       }
@@ -73,10 +76,7 @@ function OAuthCallback() {
     }
 
     completeOAuth()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   return <AppLoading />
@@ -122,12 +122,17 @@ export default function App() {
   if (user.email && !user.email_confirmed_at && user.app_metadata?.provider === 'email') return <EmailVerifyGate />
   if (!hasAcceptedCurrentTerms(user)) return <TermsGate />
 
+  const selectAndGo = (analysis, targetPage) => {
+    setSelectedAnalysis(analysis)
+    setPage(targetPage)
+  }
+
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <CareerDashboardPage setPage={setPage} />
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
-      case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => { setSelectedAnalysis(a); setPage('analyzer') }} />
-      case 'coach': return <CvCoachPage />
+      case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => selectAndGo(a, 'analyzer')} onBuildCv={a => selectAndGo(a, 'cv-builder')} onGenerateMessage={a => selectAndGo(a, 'coach')} />
+      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} />
       case 'profile': return <ProfileOptimizerPage />
       case 'billing': return <BillingPage />
       case 'messages': return <MessagesPage setPage={setPage} />
@@ -137,5 +142,5 @@ export default function App() {
     }
   }
 
-  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}>{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div>
+  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div>
 }

@@ -72,7 +72,7 @@ async function enforceContactRateLimit({ supabase, req, user, email }) {
     .or(filters.join(','))
 
   if (!error && (count || 0) >= CONTACT_RATE_LIMIT) {
-    const limitError = new Error(`Too many contact requests. Please wait before sending another message.`)
+    const limitError = new Error(`Too many support requests. Please wait before sending another message.`)
     limitError.statusCode = 429
     limitError.code = 'CONTACT_RATE_LIMITED'
     throw limitError
@@ -102,7 +102,7 @@ function buildEmailHtml({ name, email, category, subject, message }) {
   const esc = value => clean(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]))
   return `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-      <h2>New Joblytics contact request</h2>
+      <h2>New Joblytics support request</h2>
       <p><strong>Name:</strong> ${esc(name) || 'Not provided'}</p>
       <p><strong>Email:</strong> ${esc(email) || 'Not provided'}</p>
       <p><strong>Category:</strong> ${esc(category) || 'General'}</p>
@@ -113,15 +113,29 @@ function buildEmailHtml({ name, email, category, subject, message }) {
     </div>`
 }
 
+function providerErrorCode(error) {
+  const message = String(error?.message || '')
+  if (/domain is not verified/i.test(message)) return 'EMAIL_DOMAIN_NOT_VERIFIED'
+  if (/api key|not configured/i.test(message)) return 'EMAIL_PROVIDER_NOT_CONFIGURED'
+  return error?.code || 'EMAIL_SEND_FAILED'
+}
+
+function publicEmailWarning(error) {
+  const code = providerErrorCode(error)
+  if (code === 'EMAIL_DOMAIN_NOT_VERIFIED') return 'Your support request was saved, but email notification is temporarily unavailable while the Joblytics email domain is being verified.'
+  if (code === 'EMAIL_PROVIDER_NOT_CONFIGURED') return 'Your support request was saved, but email notification is not configured yet.'
+  return 'Your support request was saved, but email notification could not be sent right now.'
+}
+
 async function sendEmail(payload) {
   if (!process.env.RESEND_API_KEY) {
-    const error = new Error('Email sending is not configured yet. Add RESEND_API_KEY in Vercel to send messages directly from Joblytics.')
+    const error = new Error('Email sending is not configured yet.')
     error.code = 'EMAIL_PROVIDER_NOT_CONFIGURED'
     error.statusCode = 503
     throw error
   }
 
-  const subject = clean(payload.subject) || `Joblytics contact request - ${clean(payload.category) || 'General'}`
+  const subject = clean(payload.subject) || `Joblytics support request - ${clean(payload.category) || 'General'}`
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -137,19 +151,19 @@ async function sendEmail(payload) {
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     const error = new Error(data?.message || data?.error || 'Email provider rejected the message.')
-    error.code = 'EMAIL_SEND_FAILED'
+    error.code = providerErrorCode(error)
     error.statusCode = 502
     throw error
   }
   return data
 }
 
-async function storeConversation({ supabase, user, payload, emailResult }) {
+async function storeConversation({ supabase, user, payload, emailResult, emailWarning }) {
   if (!supabase || !user) return { stored: false, reason: 'not_authenticated_or_supabase_missing' }
-  const subject = clean(payload.subject) || `Contact request - ${clean(payload.category) || 'General'}`
+  const subject = clean(payload.subject) || `Support request - ${clean(payload.category) || 'General'}`
   const { data: thread, error: threadError } = await supabase
     .from('support_threads')
-    .insert({ user_id: user.id, user_email: clean(payload.email) || user.email || null, category: clean(payload.category) || 'General', subject, status: 'open', last_message_at: new Date().toISOString(), metadata: { email_provider_id: emailResult?.id || null } })
+    .insert({ user_id: user.id, user_email: clean(payload.email) || user.email || null, category: clean(payload.category) || 'General', subject, status: 'open', last_message_at: new Date().toISOString(), metadata: { email_provider_id: emailResult?.id || null, email_warning: emailWarning || null } })
     .select('id')
     .single()
 
@@ -157,7 +171,7 @@ async function storeConversation({ supabase, user, payload, emailResult }) {
 
   const { error: messageError } = await supabase
     .from('support_messages')
-    .insert({ thread_id: thread.id, user_id: user.id, sender_role: 'user', sender_email: clean(payload.email) || user.email || null, body: clean(payload.message), metadata: { name: clean(payload.name), category: clean(payload.category) } })
+    .insert({ thread_id: thread.id, user_id: user.id, sender_role: 'user', sender_email: clean(payload.email) || user.email || null, body: clean(payload.message), metadata: { name: clean(payload.name), category: clean(payload.category), email_warning: emailWarning || null } })
 
   if (messageError) return { stored: false, thread_id: thread.id, reason: messageError.message }
   return { stored: true, thread_id: thread.id }
@@ -186,14 +200,26 @@ export default async function handler(req, res) {
     user = await getOptionalUser(req, supabase)
     await enforceContactRateLimit({ supabase, req, user, email })
 
-    const emailResult = await sendEmail(normalized)
-    const conversation = await storeConversation({ supabase, user, payload: normalized, emailResult })
-    await recordContactEvent({ supabase, req, user, email, category, success: true, providerId: emailResult?.id || null })
+    let emailResult = null
+    let emailWarning = null
+    try {
+      emailResult = await sendEmail(normalized)
+    } catch (emailError) {
+      console.error('Contact email warning:', emailError)
+      emailWarning = publicEmailWarning(emailError)
+    }
 
-    return res.status(200).json({ success: true, email: { sent: true, id: emailResult?.id || null }, conversation })
+    const conversation = await storeConversation({ supabase, user, payload: normalized, emailResult, emailWarning })
+    await recordContactEvent({ supabase, req, user, email, category, success: !emailWarning, providerId: emailResult?.id || null, errorCode: emailWarning ? 'EMAIL_NOTIFICATION_FAILED' : null })
+
+    if (!conversation?.stored && emailWarning) {
+      return res.status(503).json({ success: false, error: 'Support messaging is temporarily unavailable. Please contact admin@joblytics-ai.com directly.', code: 'SUPPORT_STORAGE_AND_EMAIL_FAILED' })
+    }
+
+    return res.status(200).json({ success: true, email: { sent: Boolean(emailResult?.id), id: emailResult?.id || null }, conversation, warning: emailWarning })
   } catch (e) {
     console.error('Contact API error:', e)
     if (normalized) await recordContactEvent({ supabase, req, user, email: normalized.email, category: normalized.category, success: false, errorCode: e.code || 'CONTACT_SEND_FAILED' })
-    return res.status(e.statusCode || 500).json({ error: e.message || 'Could not send message.', code: e.code || 'CONTACT_SEND_FAILED' })
+    return res.status(e.statusCode || 500).json({ error: e.message || 'Could not submit support request.', code: e.code || 'CONTACT_SEND_FAILED' })
   }
 }
