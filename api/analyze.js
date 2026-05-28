@@ -719,6 +719,12 @@ async function streamingHandler(req, res) {
       return res.end()
     }
 
+    const planLimit = await checkPlanLimit(supabase, userId)
+    if (!planLimit.allowed) {
+      send({ t: 'err', status: 429, error: planLimit.message, code: planLimit.code, reason: 'plan_limit', plan: planLimit.plan, used: planLimit.used, limit: planLimit.limit })
+      return res.end()
+    }
+
     const client = getAnthropicClient()
 
     send({ t: 'status', msg: 'extracting' })
@@ -739,7 +745,7 @@ async function streamingHandler(req, res) {
     const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
-      send({ t: 'done', analysis: cached, cached: true, rateLimit })
+      send({ t: 'done', analysis: cached, cached: true, rateLimit, planLimit })
       return res.end()
     }
 
@@ -770,7 +776,7 @@ async function streamingHandler(req, res) {
     }
 
     const savedRow = await saveAnalysis(supabase, userId, cacheKey, analysis, jobUrl, cvFileName)
-    send({ t: 'done', analysis, savedRow, rateLimit })
+    send({ t: 'done', analysis, savedRow, rateLimit, planLimit })
     res.end()
   } catch (e) {
     const statusCode = getHttpStatus(e)
@@ -871,7 +877,7 @@ export default async function handler(req, res) {
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       timer.mark('cache_hit')
-      return res.status(200).json({ success: true, analysis: cached, cached: true, rateLimit, debug: debug ? timer.steps() : undefined })
+      return res.status(200).json({ success: true, analysis: cached, cached: true, rateLimit, planLimit, debug: debug ? timer.steps() : undefined })
     }
 
     let analysis
@@ -895,7 +901,7 @@ export default async function handler(req, res) {
 
     const savedRow = await saveAnalysis(supabase, userId, cacheKey, analysis, jobUrl, cvFileName)
     timer.mark('success', { fallback: !!aiProviderError || !!skipAi, version: analysis.analysis_version })
-    return res.status(200).json({ success: true, analysis, savedRow, fallback: !!aiProviderError || !!skipAi, providerError: debug ? aiProviderError : undefined, rateLimit, debug: debug ? timer.steps() : undefined })
+    return res.status(200).json({ success: true, analysis, savedRow, fallback: !!aiProviderError || !!skipAi, providerError: debug ? aiProviderError : undefined, rateLimit, planLimit, debug: debug ? timer.steps() : undefined })
   } catch (e) {
     const statusCode = getHttpStatus(e)
     const error = publicErrorMessage(e, statusCode)

@@ -233,8 +233,11 @@ function Metric({ label, value, text }) {
   return <article className="messagesStableMetric"><p>{label}</p><strong>{value}</strong><span>{text}</span></article>
 }
 
-function SignalList({ items, selectedId, onSelect }) {
+function SignalList({ items, selectedId, onSelect, tab }) {
   if (!items.length) {
+    if (tab === 'calendar') {
+      return <div className="messagesStableEmpty"><strong>No interview events detected</strong><p>Interview meetings and recruitment events will appear here after Smart Sync scans your calendar.</p></div>
+    }
     return <div className="messagesStableEmpty"><strong>No detected signals yet</strong><p>Run Smart Sync to detect job-related emails and calendar events.</p></div>
   }
   return (
@@ -487,7 +490,7 @@ export default function MessagesPage({ setPage }) {
             <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => setTab('calendar')}>Calendar <span>{calendar.length}</span></button>
           </div>
           <div className="messagesStableSplit">
-            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} />
+            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} tab={tab} />
             <SignalDetail selected={selected} mode={tab} />
           </div>
         </section>

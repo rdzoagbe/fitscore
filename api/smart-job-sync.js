@@ -249,11 +249,13 @@ function isRealJobSignal({ subject = '', snippet = '', senderName = '', senderEm
   // Accept known company messages when they contain any application/interview/recruiting action.
   // Also accept direct recruiter-style messages when the text contains interview/recruiting language.
   const recruiterSignal = /\b(recruiter|talent acquisition|hiring manager|interview|entretien|screening|phone screen|disponibilités|availability|next steps|créneau|visio)\b/i.test(text)
+  const directRecruiter = /\b(i(?:'?m| am) a recruiter|je suis recruteur|recruteur indépendant|talent acquisition|hiring manager|chargé(?:e)? de recrutement|head of talent|talent partner|our talent team|notre équipe talent|from our recruiting team|de notre équipe recrutement)\b/i.test(text)
 
   return (
     (strongSender && applicationAction) ||
     (knownCompany && (applicationAction || recruiterSignal)) ||
-    (!strongSender && recruiterSignal && applicationAction)
+    (!strongSender && recruiterSignal && applicationAction) ||
+    (!strongSender && directRecruiter && recruiterSignal)
   )
 }
 
