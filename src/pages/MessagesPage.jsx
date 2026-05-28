@@ -243,7 +243,7 @@ function SignalList({ items, selectedId, onSelect }) {
         <button key={item.id} type="button" className={`messagesStableSignal ${selectedId === item.id ? 'is-selected' : ''}`} onClick={() => onSelect(item)}>
           <span className={`statusPill ${signalTone(item.type)}`}>{item.type}</span>
           <strong>{item.title}</strong>
-          <p>{item.subject}</p>
+          <span className="messagesStableSignalSub">{item.subject}</span>
           <em>{item.date || item.confidence}</em>
         </button>
       ))}
