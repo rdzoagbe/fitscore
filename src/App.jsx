@@ -27,6 +27,7 @@ const CvBuilderPage = lazy(() => import('./pages/CvBuilderPage'))
 const ProfileOptimizerPage = lazy(() => import('./pages/ProfileOptimizerPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
+const InboxCleanerPage = lazy(() => import('./pages/InboxCleanerPage'))
 
 const PAGE_TO_PATH = {
   dashboard: '/dashboard',
@@ -37,7 +38,8 @@ const PAGE_TO_PATH = {
   billing: '/billing',
   messages: '/messages',
   contact: '/contact',
-  'cv-builder': '/cv-builder'
+  'cv-builder': '/cv-builder',
+  'inbox-cleaner': '/inbox-cleaner',
 }
 
 const PATH_TO_PAGE = Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page]))
@@ -153,6 +155,7 @@ export default function App() {
       case 'messages': return <MessagesPage setPage={setPage} />
       case 'contact': return <ContactPage onBack={() => setPage('dashboard')} />
       case 'cv-builder': return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
+      case 'inbox-cleaner': return <InboxCleanerPage />
       default: return <CareerDashboardPage setPage={setPage} />
     }
   }
