@@ -10,9 +10,9 @@ const text = {
   en: {
     workspace: 'Career growth workspace',
     headline: 'Check your CV against a job before you apply.',
-    intro: 'Get an ATS check, improve your CV, draft a cover letter, track applications, and prepare for interviews from one calm workspace.',
+    intro: 'Sharpen how you present your real experience. ATS check, CV coaching, cover letter, job tracker, and interview prep — in one calm workspace.',
     start: 'Start free', sample: 'See sample analysis', helps: 'What it helps you do', flow: 'A better application workflow.',
-    trust: 'Trust first', trustTitle: 'Built for job seekers.', trustBody: 'Joblytics helps you improve your own applications. It is not a recruiter database, and the goal is not to sell your CV.',
+    trust: 'Trust first', trustTitle: 'Built for honest job seekers.', trustBody: "Joblytics helps you communicate your real experience more clearly — not create a version of yourself that can't survive a 10-minute conversation. Use AI to sharpen your voice, not replace it.",
     privacy: 'Privacy', terms: 'Terms', contact: 'Contact', sampleTitle: 'Sample analysis', match: 'Strong match', matchBody: 'Likely to pass ATS. Add 2 missing keywords and strengthen one achievement.',
     features: [
       ['ATS check', 'Compare your CV against a real job description and know whether the application is worth sending.'],
@@ -20,23 +20,23 @@ const text = {
       ['Cover letter', 'Generate a tailored draft that reflects the role, your strengths, and the company context.'],
       ['Job tracker', 'Keep applications, statuses, follow-ups, recruiters, and notes in one clear workspace.'],
       ['Interview prep', 'Prepare realistic questions based on your CV gaps, strengths, and the role requirements.'],
-      ['Trust & privacy', 'Built for job seekers. Your CV is used to help you apply better.']
+      ['Trust & privacy', "AI that helps you communicate what you've actually done — more clearly, more confidently. Your experience, your voice."]
     ]
   },
   fr: {
     workspace: 'Espace de progression carrière',
     headline: 'Vérifiez votre CV face à une offre avant de postuler.',
-    intro: 'Analyse ATS, amélioration du CV, lettre de motivation, suivi des candidatures et préparation aux entretiens dans un espace clair.',
+    intro: 'Présentez votre vraie expérience avec plus de clarté. Analyse ATS, coaching CV, lettre de motivation, suivi des candidatures et préparation aux entretiens — dans un espace organisé.',
     start: 'Commencer gratuitement', sample: 'Voir un exemple', helps: 'Ce que Joblytics vous aide à faire', flow: 'Un meilleur parcours de candidature.',
-    trust: 'Confiance avant tout', trustTitle: 'Conçu pour les chercheurs d’emploi.', trustBody: 'Joblytics vous aide à améliorer vos candidatures. Ce n’est pas une base recruteur et votre CV n’est pas destiné à être vendu.',
-    privacy: 'Confidentialité', terms: 'Conditions', contact: 'Contact', sampleTitle: 'Exemple d’analyse', match: 'Bon match', matchBody: 'Probabilité élevée de passer l’ATS. Ajoutez 2 mots-clés et renforcez une réussite.',
+    trust: 'Confiance avant tout', trustTitle: 'Conçu pour les candidats honnêtes.', trustBody: "Joblytics vous aide à mieux communiquer votre vraie expérience — pas à créer une version de vous-même qui ne résiste pas à une vraie conversation. Utilisez l'IA pour affûter votre voix, pas pour la remplacer.",
+    privacy: 'Confidentialité', terms: 'Conditions', contact: 'Contact', sampleTitle: "Exemple d'analyse", match: 'Bon match', matchBody: "Probabilité élevée de passer l'ATS. Ajoutez 2 mots-clés et renforcez une réussite.",
     features: [
       ['Analyse ATS', 'Comparez votre CV à une vraie offre et voyez si la candidature vaut le coup.'],
       ['Coach CV', 'Transformez des lignes génériques en réalisations claires et mesurables.'],
       ['Lettre de motivation', 'Générez un brouillon adapté au poste, à vos forces et au contexte.'],
       ['Suivi candidatures', 'Suivez statuts, relances, recruteurs et notes dans un même espace.'],
       ['Préparation entretien', 'Préparez des questions réalistes selon vos écarts et forces.'],
-      ['Confiance & confidentialité', 'Pensé pour les candidats. Votre CV sert à mieux postuler.']
+      ['Confiance & confidentialité', 'Une IA qui vous aide à mieux communiquer ce que vous avez réellement fait. Votre expérience, votre voix.']
     ]
   }
 }
