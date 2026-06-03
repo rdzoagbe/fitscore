@@ -331,7 +331,7 @@ function simpleSummary(signal, classification) {
 }
 
 async function aiSummaryForSignal(signal) {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim()
   if (!apiKey) return null
 
   const subject = clean(signal.subject || '', 180)
