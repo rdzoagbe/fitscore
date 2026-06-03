@@ -229,8 +229,8 @@ function signalTone(type = '') {
   return 'blue'
 }
 
-function Metric({ label, value, text }) {
-  return <article className="messagesStableMetric"><p>{label}</p><strong>{value}</strong><span>{text}</span></article>
+function Metric({ label, value, text, preview }) {
+  return <article className="messagesStableMetric"><p>{label}</p><strong>{preview ? '—' : value}</strong><span>{text}</span></article>
 }
 
 function SignalList({ items, selectedId, onSelect, tab }) {
@@ -288,6 +288,7 @@ export default function MessagesPage({ setPage }) {
 
   const accountEmail = getAccountEmail(user)
   const providerConnected = connections.has(provider)
+  const isPreviewMode = !providerConnected && emails.length === 0 && calendar.length === 0
 
   useEffect(() => {
     const next = getSignedInProvider(user)
@@ -477,11 +478,20 @@ export default function MessagesPage({ setPage }) {
         </section>
 
         <section className="messagesStableMetrics">
-          <Metric label="Tracked signals" value={stats.total} text="Email and calendar events" />
-          <Metric label="Applications" value={stats.applications} text="Confirmed applications" />
-          <Metric label="Interviews" value={stats.interviews} text="Detected interviews" />
-          <Metric label="Rejections" value={stats.rejections} text="Negative replies" />
-          <Metric label="Follow-ups" value={stats.followups} text="Potential actions" />
+          {isPreviewMode && (
+            <div style={{ gridColumn: '1 / -1', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 6, padding: '2px 8px' }}>Preview mode</span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Connect your account to see real job signals.</span>
+              </div>
+              <button type="button" onClick={() => setPage?.('sync-settings')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>Sync settings →</button>
+            </div>
+          )}
+          <Metric label="Tracked signals" value={stats.total} text="Email and calendar events" preview={isPreviewMode} />
+          <Metric label="Applications" value={stats.applications} text="Confirmed applications" preview={isPreviewMode} />
+          <Metric label="Interviews" value={stats.interviews} text="Detected interviews" preview={isPreviewMode} />
+          <Metric label="Rejections" value={stats.rejections} text="Negative replies" preview={isPreviewMode} />
+          <Metric label="Follow-ups" value={stats.followups} text="Potential actions" preview={isPreviewMode} />
         </section>
 
         <section className="messagesStableInbox">
