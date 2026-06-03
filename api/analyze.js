@@ -687,7 +687,7 @@ async function runClaudeAnalysis(jobText, cvText) {
   const client = getAnthropicClient()
   const message = await client.messages.create({
     model: DEFAULT_MODEL,
-    max_tokens: 1200,
+    max_tokens: 1800,
     temperature: 0,
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
@@ -754,7 +754,7 @@ async function streamingHandler(req, res) {
 
     const stream = client.messages.stream({
       model: DEFAULT_MODEL,
-      max_tokens: 1200,
+      max_tokens: 1800,
       temperature: 0,
       system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
