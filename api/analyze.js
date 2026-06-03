@@ -682,7 +682,7 @@ function getAnthropicClient() {
     err.code = 'ANTHROPIC_CONFIG_MISSING'
     throw err
   }
-  return new Anthropic({ apiKey })
+  return new Anthropic({ apiKey: apiKey.trim() })
 }
 
 async function runClaudeAnalysis(jobText, cvText) {
