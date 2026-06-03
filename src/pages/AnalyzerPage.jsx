@@ -174,7 +174,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               {!showTextPaste ? <>
                 <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
                 {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title={t('analyzer_link_invalid_title')} body={t('analyzer_link_invalid_body')} />}
-                {restrictedJobBoard && <><TipCard type="warning" title={`${restrictedJobBoard} blocks automated reading`} body={`${restrictedJobBoard} prevents automated job extraction. Copy the job description from the page and paste it using Paste mode below.`} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>Switch to Paste mode →</button></>}
+                {restrictedJobBoard && <><TipCard type="warning" title={`${restrictedJobBoard} may block URL extraction`} body={`${restrictedJobBoard} often blocks automated reading. The analyzer will try — if it fails, copy the job description from the page and use Paste mode.`} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>Switch to Paste mode</button></>}
                 {urlHistory.length > 0 && <div style={{ marginTop: 10 }}><button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>{t('analyzer_recent_links')}</button>{showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => { setJobUrl(normalizeJobUrl(url)); setJobText(''); setShowTextPaste(false); setShowHistory(false) }} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}</div>}
               </> : <>
                 <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
@@ -197,7 +197,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                   )}
                 </div>
               )}
-              <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !!restrictedJobBoard || !canAnalyze} style={{ width: '100%', marginTop: 14 }}>
+              <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !canAnalyze} style={{ width: '100%', marginTop: 14 }}>
                 {status === 'loading'
                   ? t('analyzer_analyzing')
                   : t('analyzer_analyze_match')}

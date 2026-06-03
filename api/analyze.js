@@ -361,17 +361,10 @@ function extractBestJobTextFromHtml(html = '') {
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
 
-  if (restrictedBoard) {
-    const err = new Error(`${restrictedBoard} blocks automated reading. Please paste the job description directly using text mode.`)
-    err.statusCode = 400
-    err.code = 'RESTRICTED_JOB_BOARD'
-    throw err
-  }
-
   let res
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+    const timeout = setTimeout(() => controller.abort(), 8000)
 
     res = await fetch(url, {
       signal: controller.signal,
@@ -384,20 +377,29 @@ async function fetchJobText(url) {
     })
     clearTimeout(timeout)
   } catch {
-    const err = new Error(`${restrictedBoard || 'This job page'} could not be reached quickly from URL mode. Please use Mode texte and paste the job description.`)
+    const hint = restrictedBoard
+      ? `${restrictedBoard} blocked the request. Copy the job description from the page and use Paste mode.`
+      : 'This job page could not be reached. Try Paste mode and paste the job description directly.'
+    const err = new Error(hint)
     err.statusCode = 400
     err.code = 'URL_FETCH_FAILED'
     throw err
   }
   if (!res.ok) {
-    const err = new Error(`${restrictedBoard || 'This job page'} returned ${res.status}. Paste mode is available as a fallback.`)
+    const hint = restrictedBoard
+      ? `${restrictedBoard} blocked the request (${res.status}). Copy the job description and use Paste mode.`
+      : `This job page returned ${res.status}. Try Paste mode as a fallback.`
+    const err = new Error(hint)
     err.statusCode = 400
-    err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_FETCH_FAILED'
+    err.code = 'URL_FETCH_FAILED'
     throw err
   }
   const text = extractBestJobTextFromHtml(await res.text())
   if (text.length < 200) {
-    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text. Please use Mode texte and paste the job description.`)
+    const hint = restrictedBoard
+      ? `${restrictedBoard} did not expose enough job text. Copy the job description and use Paste mode.`
+      : 'This job page did not expose enough readable text. Try Paste mode and paste the job description directly.'
+    const err = new Error(hint)
     err.statusCode = 400
     err.code = 'URL_TEXT_TOO_SHORT'
     throw err
