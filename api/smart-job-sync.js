@@ -342,7 +342,7 @@ async function aiSummaryForSignal(signal) {
 
   try {
     const controller = new AbortController()
-    const tid = setTimeout(() => controller.abort(), 2000)
+    const tid = setTimeout(() => controller.abort(), 6000)
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -367,18 +367,18 @@ async function aiSummaryForSignal(signal) {
 
 async function enrichWithAiSummaries(signals, functionStartedAt) {
   if (!process.env.ANTHROPIC_API_KEY) return signals
-  if (Date.now() - functionStartedAt > 5000) return signals
+  if (Date.now() - functionStartedAt > 20000) return signals
 
   const toEnrich = signals
     .filter(s => (s.confidence || 0) >= 0.65)
     .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
-    .slice(0, 3)
+    .slice(0, 8)
 
   if (!toEnrich.length) return signals
 
   const enrichedMap = new Map()
   for (const signal of toEnrich) {
-    if (Date.now() - functionStartedAt > 7500) break
+    if (Date.now() - functionStartedAt > 40000) break
     const ai = await aiSummaryForSignal(signal)
     if (ai?.summary) enrichedMap.set(signal.id, ai)
   }
@@ -467,7 +467,7 @@ function isWithinWindow(dateValue, isoStart, isoNow) {
   return t >= new Date(isoStart).getTime() && t <= new Date(isoNow).getTime()
 }
 
-function shouldStopScan(startMs, budgetMs = 7500) {
+function shouldStopScan(startMs, budgetMs = 45000) {
   return Date.now() - startMs > budgetMs
 }
 
