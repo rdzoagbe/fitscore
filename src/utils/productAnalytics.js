@@ -55,7 +55,7 @@ export function trackError(name, error, payload = {}) {
   }
   const existing = safeJsonRead(ERROR_KEY, [])
   safeJsonWrite(ERROR_KEY, [item, ...existing].slice(0, MAX_ERRORS))
-  console.error('[Joblytics error]', item)
+  console.error('[Joblytics error]', item.message, item)
 }
 
 export function getProductEvents() {
