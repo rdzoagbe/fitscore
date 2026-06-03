@@ -44,6 +44,10 @@ function friendlyAnalyzeError(error, responseStatus, serverMessage) {
     return 'Network connection failed. Check your internet connection and try again.'
   }
 
+  if (lower.includes('stream ended') || lower.includes('stream ended unexpectedly')) {
+    return 'The analysis took too long to complete. Try again with a shorter job description, or switch to Paste mode.'
+  }
+
   return raw || 'Analysis failed. Please try again.'
 }
 

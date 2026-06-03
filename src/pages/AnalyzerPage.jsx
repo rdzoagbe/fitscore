@@ -58,6 +58,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const [clipperInfo, setClipperInfo] = useState(null)
   const intervalRef = useRef(null)
   const resultRef = useRef(null)
+  const errorCardRef = useRef(null)
   const { status, data, error, savedRow, rateLimit, planLimit, streamProgress, analyze, reset } = useAnalyze()
   const { cvFile } = useCvPersist()
   const { history: urlHistory } = useJobUrlHistory()
@@ -150,6 +151,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
 
   useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
   useEffect(() => { if (status === 'done' && data?.display_score >= 70) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2600) } }, [status, data])
+  useEffect(() => { if (status === 'error') { setTimeout(() => errorCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150) } }, [status])
 
   const rawDisplayData = viewingAnalysis?.result || data
   const displayData = rawDisplayData ? sanitizeAnalysisForDisplay(rawDisplayData) : rawDisplayData
@@ -164,7 +166,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
             <div className="analyzePro-formHero"><p>{t('analyzer_kicker')}</p><h1>{t('analyzer_title')}</h1><p>{t('analyzer_subtitle')}</p></div>
             {clipperInfo && <TipCard type="success" title="Job clipped from browser" body={`${clipperInfo.title || 'Job'}${clipperInfo.company ? ` at ${clipperInfo.company}` : ''} was imported into the analyzer. Upload or confirm your CV, then run the match.`} />}
             <CvPanel uploadTrigger={uploadTrigger} />
-            <div className="card" style={{ marginTop: 14 }}>
+            <div ref={errorCardRef} className="card" style={{ marginTop: 14 }}>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <button type="button" className="btn-primary" onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }} style={{ opacity: !showTextPaste ? 1 : 0.72 }}>{t('analyzer_url_mode')}</button>
                 <button type="button" onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)', background: showTextPaste ? 'var(--accent-bg)' : 'var(--bg-input)', color: showTextPaste ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 800, cursor: 'pointer' }}>{t('analyzer_paste_mode')}</button>
@@ -195,7 +197,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                   )}
                 </div>
               )}
-              <button className="btn-primary" onClick={handleAnalyze} disabled={!canAnalyze && !restrictedJobBoard} style={{ width: '100%', marginTop: 14 }}>
+              <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || (!canAnalyze && !restrictedJobBoard)} style={{ width: '100%', marginTop: 14 }}>
                 {status === 'loading'
                   ? t('analyzer_analyzing')
                   : t('analyzer_analyze_match')}
