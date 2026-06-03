@@ -90,6 +90,8 @@ function EmailReader({ selected }) {
   const lines = body ? body.split(/\r?\n/) : []
   const sender = selected?.from || 'Unknown sender'
   const subject = selected?.subject || selected?.title || 'Email content'
+  const aiSummary = selected?.ai_summary || ''
+  const suggestedAction = selected?.suggested_action || ''
 
   return (
     <section className="gmailReader">
@@ -105,6 +107,14 @@ function EmailReader({ selected }) {
           <p><strong>{sender}</strong> <span>to me</span></p>
         </div>
       </div>
+
+      {(aiSummary || suggestedAction) && (
+        <div style={{ margin: '0 16px 12px', padding: '12px 14px', background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, color: 'var(--accent)', letterSpacing: '.1em', textTransform: 'uppercase' }}>AI Summary</p>
+          {aiSummary && <p style={{ margin: '0 0 5px', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{aiSummary}</p>}
+          {suggestedAction && <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>→ {suggestedAction}</p>}
+        </div>
+      )}
 
       <div className="gmailReaderBody">
         {lines.length ? lines.map((line, index) => {
@@ -200,7 +210,9 @@ function normalizeEmail(item = {}, index = 0) {
     company,
     role,
     platform: item.platform || item.source || 'Email',
-    body: item.body || item.emailBody || item.snippet || item.summary || item.ai_summary || '',
+    body: item.body || item.emailBody || item.snippet || item.summary || '',
+    ai_summary: item.ai_summary || '',
+    suggested_action: item.suggested_action || '',
     confidence: item.confidenceLabel || item.confidence_label || (item.confidence ? `${Math.round(Number(item.confidence) * 100)}% confidence` : 'Detected')
   }
 }
