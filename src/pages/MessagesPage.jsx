@@ -245,21 +245,40 @@ function Metric({ label, value, text, preview }) {
   return <article className="messagesStableMetric"><p>{label}</p><strong>{preview ? '—' : value}</strong><span>{text}</span></article>
 }
 
-function SignalList({ items, selectedId, onSelect, tab }) {
-  if (!items.length) {
+const PREVIEW_EMAILS = [
+  { id: 'preview-1', title: 'Acme Corp — Product Manager', subject: 'Your application has been received', type: 'Application', date: '', confidence: 'Preview example', body: '' },
+  { id: 'preview-2', title: 'TechCorp — Frontend Engineer', subject: 'Interview invitation — Thursday 2pm', type: 'Interview', date: '', confidence: 'Preview example', body: '' },
+  { id: 'preview-3', title: 'StartupXYZ — UX Designer', subject: 'Thank you for your interest…', type: 'Rejection', date: '', confidence: 'Preview example', body: '' }
+]
+const PREVIEW_CALENDAR = [
+  { id: 'preview-cal-1', title: 'TechCorp — Technical Interview', subject: 'Video call with engineering team', type: 'Interview', date: '', confidence: 'Preview example', body: '' }
+]
+
+function SignalList({ items, selectedId, onSelect, tab, isPreviewMode }) {
+  const displayItems = items.length ? items : (isPreviewMode ? (tab === 'calendar' ? PREVIEW_CALENDAR : PREVIEW_EMAILS) : [])
+
+  if (!displayItems.length) {
     if (tab === 'calendar') {
       return <div className="messagesStableEmpty"><strong>No interview events detected</strong><p>Interview meetings and recruitment events will appear here after Smart Sync scans your calendar.</p></div>
     }
     return <div className="messagesStableEmpty"><strong>No detected signals yet</strong><p>Run Smart Sync to detect job-related emails and calendar events.</p></div>
   }
+
+  const isExample = isPreviewMode && !items.length
+
   return (
     <div className="messagesStableSignals">
-      {items.map(item => (
-        <button key={item.id} type="button" className={`messagesStableSignal ${selectedId === item.id ? 'is-selected' : ''}`} onClick={() => onSelect(item)}>
+      {isExample && (
+        <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', background: 'var(--bg-input)', borderBottom: '1px solid var(--border)' }}>
+          Preview examples — connect to see real signals
+        </div>
+      )}
+      {displayItems.map(item => (
+        <button key={item.id} type="button" className={`messagesStableSignal ${selectedId === item.id ? 'is-selected' : ''} ${isExample ? 'is-preview' : ''}`} onClick={() => !isExample && onSelect(item)} style={isExample ? { opacity: 0.55, cursor: 'default', pointerEvents: 'none' } : {}}>
           <span className={`statusPill ${signalTone(item.type)}`}>{item.type}</span>
           <strong>{item.title}</strong>
           <span className="messagesStableSignalSub">{item.subject}</span>
-          <em>{item.date || item.confidence}</em>
+          <em>{isExample ? 'Preview example' : (item.date || item.confidence)}</em>
         </button>
       ))}
     </div>
@@ -494,7 +513,7 @@ export default function MessagesPage({ setPage }) {
             <div style={{ gridColumn: '1 / -1', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 6, padding: '2px 8px' }}>Preview mode</span>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Connect your account to see real job signals.</span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Smart Sync is in preview mode. Real synced data will appear here once secure sync is activated.</span>
               </div>
               <button type="button" onClick={() => setPage?.('sync-settings')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>Sync settings →</button>
             </div>
@@ -512,7 +531,7 @@ export default function MessagesPage({ setPage }) {
             <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => setTab('calendar')}>Calendar <span>{calendar.length}</span></button>
           </div>
           <div className="messagesStableSplit">
-            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} tab={tab} />
+            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} tab={tab} isPreviewMode={isPreviewMode} />
             <SignalDetail selected={selected} mode={tab} />
           </div>
         </section>
