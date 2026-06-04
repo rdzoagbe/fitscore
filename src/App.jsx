@@ -75,20 +75,37 @@ function OAuthCallback() {
         return
       }
 
+      let authFailed = false
+      let authErrorMsg = ''
+
       try {
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) console.warn('Code exchange error (may already be handled):', exchangeError.message)
+          if (exchangeError) {
+            console.error('OAuth code exchange failed:', exchangeError.message)
+            authFailed = true
+            authErrorMsg = exchangeError.message
+          }
         } else {
-          await supabase.auth.getSession()
+          const { data, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError || !data?.session) {
+            authFailed = true
+            authErrorMsg = sessionError?.message || 'Sign-in could not be completed. Please try again.'
+          }
         }
       } catch (err) {
         console.error('OAuth callback failed:', err)
+        authFailed = true
+        authErrorMsg = err?.message || 'Sign-in failed. Please try again.'
       }
 
       if (!cancelled) {
-        window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
-        window.location.reload()
+        if (authFailed) {
+          window.location.href = `/?auth_error=${encodeURIComponent(authErrorMsg)}`
+        } else {
+          window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
+          window.location.reload()
+        }
       }
     }
 
