@@ -113,6 +113,30 @@ export default function SmartSyncSettingsPage({ setPage }) {
     }
   }
 
+  const handleRunSync = async () => {
+    setWorking(true); setNotice('')
+    try {
+      const token = await getFreshToken()
+      if (!token) throw new Error('Please sign in again.')
+      const res = await fetch('/api/smart-job-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data?.code === 'MAIL_CALENDAR_SYNC_NOT_CONNECTED' || data?.code === 'GOOGLE_SYNC_NOT_CONNECTED') {
+        setNotice('No connected account found. Connect Google or Microsoft first.')
+        return
+      }
+      if (!res.ok) throw new Error(data?.error || `Smart Sync failed (${res.status}).`)
+      const total = (data.emails?.length || 0) + (data.calendar?.length || 0)
+      setNotice(`Sync complete — ${total} signal${total !== 1 ? 's' : ''} detected.`)
+    } catch (err) {
+      setNotice(err.message || 'Smart Sync could not complete.')
+    } finally {
+      setWorking(false)
+    }
+  }
+
   const handleDisconnect = async () => {
     setWorking(true); setNotice('')
     try {
@@ -181,7 +205,7 @@ export default function SmartSyncSettingsPage({ setPage }) {
               <ActionBtn label="Connect Google (Gmail + Calendar)" onClick={() => handleConnect('google')} disabled={working} primary />
               <ActionBtn label="Connect Microsoft (Outlook + Calendar)" onClick={() => handleConnect('microsoft')} disabled={working} />
             </> : <>
-              <ActionBtn label="Run Smart Sync now" onClick={() => setPage?.('messages')} disabled={working} primary />
+              <ActionBtn label="Run Smart Sync now" onClick={handleRunSync} disabled={working} primary />
               <ActionBtn label="Disconnect account" onClick={handleDisconnect} disabled={working} danger />
             </>}
           </div>
