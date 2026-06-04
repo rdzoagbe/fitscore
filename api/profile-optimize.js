@@ -221,6 +221,90 @@ async function handleProfileImport(req, res) {
   }
 }
 
+function formatProxycurlProfile(data) {
+  const lines = []
+  if (data.full_name) lines.push(`Name: ${data.full_name}`)
+  if (data.headline) lines.push(`Headline: ${data.headline}`)
+  if (data.city || data.country_full_name) lines.push(`Location: ${[data.city, data.country_full_name].filter(Boolean).join(', ')}`)
+  if (data.summary) lines.push(`\nAbout:\n${data.summary}`)
+
+  if (data.experiences?.length) {
+    lines.push('\nExperience:')
+    for (const exp of data.experiences) {
+      const start = exp.starts_at?.year || ''
+      const end = exp.ends_at?.year || 'Present'
+      lines.push(`- ${[exp.title, exp.company].filter(Boolean).join(' at ')} (${start}–${end})`)
+      if (exp.description) lines.push(`  ${exp.description}`)
+    }
+  }
+
+  if (data.education?.length) {
+    lines.push('\nEducation:')
+    for (const edu of data.education) {
+      const degree = [edu.degree_name, edu.field_of_study].filter(Boolean).join(', ')
+      lines.push(`- ${[degree, edu.school].filter(Boolean).join(' at ')} (${edu.starts_at?.year || ''}–${edu.ends_at?.year || ''})`)
+    }
+  }
+
+  if (data.skills?.length) {
+    lines.push(`\nSkills:\n${data.skills.slice(0, 30).join(', ')}`)
+  }
+
+  if (data.certifications?.length) {
+    lines.push('\nCertifications:')
+    for (const cert of data.certifications) {
+      lines.push(`- ${cert.name}${cert.authority ? ` (${cert.authority})` : ''}`)
+    }
+  }
+
+  return lines.join('\n').trim()
+}
+
+async function tryJinaFetch(url) {
+  const jinaKey = (process.env.JINA_API_KEY || '').trim()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 8000)
+  try {
+    const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/plain,text/markdown',
+        'X-Return-Format': 'text',
+        'X-No-Cache': 'true',
+        'X-Timeout': '7',
+        ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {})
+      }
+    })
+    if (!jinaRes.ok) return null
+    const raw = await jinaRes.text()
+    const markerIdx = raw.indexOf('Markdown Content:')
+    const content = (markerIdx >= 0 ? raw.slice(markerIdx + 17) : raw).trim()
+    return content.length >= 120 ? content.slice(0, 6000) : null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function tryProxycurlFetch(url) {
+  const proxycurlKey = (process.env.PROXYCURL_API_KEY || '').trim()
+  if (!proxycurlKey) return null
+  try {
+    const apiUrl = `https://nubela.co/proxycurl/api/v2/linkedin?url=${encodeURIComponent(url)}&skills=include&use_cache=if-present&fallback_to_cache=on-error`
+    const res = await fetch(apiUrl, {
+      headers: { Authorization: `Bearer ${proxycurlKey}` }
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!data?.full_name && !data?.headline && !data?.summary) return null
+    const text = formatProxycurlProfile(data)
+    return text.length >= 120 ? text : null
+  } catch {
+    return null
+  }
+}
+
 async function handleFetchUrl(req, res) {
   try {
     const { profileUrl } = req.body || {}
@@ -231,43 +315,21 @@ async function handleFetchUrl(req, res) {
       return res.status(400).json({ error: 'Please provide a valid LinkedIn profile URL (linkedin.com/in/your-name).', code: 'INVALID_URL' })
     }
 
-    const jinaKey = (process.env.JINA_API_KEY || '').trim()
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-
-    let jinaRes
-    try {
-      jinaRes = await fetch(`https://r.jina.ai/${url}`, {
-        signal: controller.signal,
-        headers: {
-          Accept: 'text/plain,text/markdown',
-          'X-Return-Format': 'text',
-          'X-No-Cache': 'true',
-          'X-Timeout': '7',
-          ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {})
-        }
-      })
-    } finally {
-      clearTimeout(timeout)
+    const jinaText = await tryJinaFetch(url)
+    if (jinaText) {
+      return res.status(200).json({ success: true, text: jinaText, characters: jinaText.length, source: 'jina' })
     }
 
-    if (!jinaRes.ok) {
-      return res.status(422).json({ error: 'Could not fetch this LinkedIn profile. The profile may be private — upload your LinkedIn PDF instead.', code: 'FETCH_FAILED' })
+    const proxycurlText = await tryProxycurlFetch(url)
+    if (proxycurlText) {
+      return res.status(200).json({ success: true, text: proxycurlText, characters: proxycurlText.length, source: 'proxycurl' })
     }
 
-    const raw = await jinaRes.text()
-    const markerIdx = raw.indexOf('Markdown Content:')
-    const content = (markerIdx >= 0 ? raw.slice(markerIdx + 17) : raw).trim()
-
-    if (content.length < 120) {
-      return res.status(422).json({ error: 'Not enough profile text was found at this URL. If the profile is private, upload your LinkedIn PDF instead.', code: 'TEXT_TOO_SHORT' })
-    }
-
-    return res.status(200).json({ success: true, text: content.slice(0, 6000), characters: content.length })
+    return res.status(422).json({
+      error: 'Could not fetch this LinkedIn profile — it may be private or restricted. Please upload your LinkedIn PDF instead (LinkedIn → Me → Settings → Data privacy → Get a copy of your data).',
+      code: 'FETCH_FAILED'
+    })
   } catch (e) {
-    if (e.name === 'AbortError') {
-      return res.status(408).json({ error: 'LinkedIn profile fetch timed out — LinkedIn blocks automated access. Please upload your LinkedIn PDF instead (LinkedIn → Me → Settings → Data privacy → Get a copy of your data).', code: 'FETCH_TIMEOUT' })
-    }
     console.error('Profile URL fetch error:', e)
     return res.status(500).json({ error: 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.', code: 'FETCH_ERROR' })
   }
