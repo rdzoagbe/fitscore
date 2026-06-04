@@ -20,6 +20,8 @@ export default function AuthPage() {
       if (mode === 'signin') {
         const { error } = await signIn(email, password)
         if (error) throw error
+        window.location.href = window.location.origin + '/dashboard'
+        return
       } else {
         const { error } = await signUp(email, password)
         if (error) throw error
