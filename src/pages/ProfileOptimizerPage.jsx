@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { supabase } from '../lib/supabase'
@@ -43,9 +43,38 @@ export default function ProfileOptimizerPage() {
   const [importing, setImporting] = useState(false)
   const [fetchingUrl, setFetchingUrl] = useState(false)
   const [importInfo, setImportInfo] = useState(null)
-  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [linkedinUrl, setLinkedinUrl] = useState(() => { try { return localStorage.getItem('joblytics_linkedin_url') || '' } catch { return '' } })
+  const [savedProfiles, setSavedProfiles] = useState(() => { try { return JSON.parse(localStorage.getItem('joblytics_saved_profiles') || '[]') } catch { return [] } })
+  const [showSaveForm, setShowSaveForm] = useState(false)
+  const [saveProfileName, setSaveProfileName] = useState('')
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
+
+  useEffect(() => { try { localStorage.setItem('joblytics_linkedin_url', linkedinUrl) } catch {} }, [linkedinUrl])
+
+  const saveCurrentProfile = () => {
+    const name = saveProfileName.trim() || importInfo?.filename || `Profile ${savedProfiles.length + 1}`
+    const profile = { id: Date.now().toString(), name, text, importInfo, savedAt: new Date().toISOString() }
+    const updated = [profile, ...savedProfiles.filter(p => p.name !== name)].slice(0, 5)
+    setSavedProfiles(updated)
+    try { localStorage.setItem('joblytics_saved_profiles', JSON.stringify(updated)) } catch {}
+    setShowSaveForm(false)
+    setSaveProfileName('')
+  }
+
+  const loadSavedProfile = profile => {
+    setText(profile.text)
+    setImportInfo(profile.importInfo)
+    setResult(null)
+    setChecklist(null)
+    setError('')
+  }
+
+  const deleteSavedProfile = id => {
+    const updated = savedProfiles.filter(p => p.id !== id)
+    setSavedProfiles(updated)
+    try { localStorage.setItem('joblytics_saved_profiles', JSON.stringify(updated)) } catch {}
+  }
 
   const hasEnoughProfileText = text.trim().length >= 120
   const canAnalyze = hasEnoughProfileText
@@ -183,6 +212,23 @@ export default function ProfileOptimizerPage() {
 
         <section className="profileOpt-grid">
           <article className="profileOpt-card">
+            {savedProfiles.length > 0 && (
+              <div className="profileOpt-savedSection">
+                <p className="profileOpt-kicker">Saved profiles</p>
+                <div className="profileOpt-savedList">
+                  {savedProfiles.map(p => (
+                    <div key={p.id} className="profileOpt-savedItem">
+                      <button type="button" className="profileOpt-savedLoad" onClick={() => loadSavedProfile(p)}>
+                        <strong>{p.name}</strong>
+                        <span>{new Date(p.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {p.text?.length || 0} chars</span>
+                      </button>
+                      <button type="button" className="profileOpt-savedDelete" onClick={() => deleteSavedProfile(p.id)} title="Remove">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="profileOpt-importBox">
               <div>
                 <p className="profileOpt-kicker">{t('profile_import_content_title', 'Import profile content')}</p>
@@ -229,6 +275,20 @@ export default function ProfileOptimizerPage() {
               )}
             </div>
 
+            {hasEnoughProfileText && (
+              <div className="profileOpt-saveRow">
+                {!showSaveForm ? (
+                  <button type="button" className="profileOpt-saveBtn" onClick={() => { setSaveProfileName(importInfo?.filename || ''); setShowSaveForm(true) }}>+ Save this profile</button>
+                ) : (
+                  <div className="profileOpt-saveForm">
+                    <input autoFocus value={saveProfileName} onChange={e => setSaveProfileName(e.target.value)} placeholder={importInfo?.filename || 'Profile name'} onKeyDown={e => { if (e.key === 'Enter') saveCurrentProfile(); if (e.key === 'Escape') setShowSaveForm(false) }} />
+                    <button type="button" className="profileOpt-saveDo" onClick={saveCurrentProfile}>Save</button>
+                    <button type="button" className="profileOpt-saveCancel" onClick={() => setShowSaveForm(false)}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
             <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder_pdf_clean', 'Upload your LinkedIn PDF to auto-fill this box, or paste your Headline, About, Experience and Skills here...')} /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
@@ -242,7 +302,7 @@ export default function ProfileOptimizerPage() {
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
             <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported, URL-fetched, or pasted text only. It does not invent experience. Private profiles require a PDF upload.')}</p>
-            <div className="profileOpt-futureNote"><strong>URL import tip</strong><p>Paste your public LinkedIn profile URL (linkedin.com/in/your-name) and click Fetch profile. If your profile is set to private, export it as a PDF from LinkedIn instead.</p></div>
+            <div className="profileOpt-futureNote"><strong>URL fetch tip</strong><p>LinkedIn URL fetch works for fully public profiles only. If you get a timeout or error, <strong>upload your LinkedIn PDF</strong> — it's faster and more reliable. Export it from LinkedIn → Me → Settings → Data privacy → Get a copy of your data.</p></div>
           </aside>
         </section>
 
