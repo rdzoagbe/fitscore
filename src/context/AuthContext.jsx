@@ -118,7 +118,18 @@ export function AuthProvider({ children }) {
   })
 
   const signIn = async (email, password) => {
-    const result = await supabase.auth.signInWithPassword({ email, password })
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Sign in timed out. Check your internet connection or try again in a moment.')), 12000)
+    )
+    let result
+    try {
+      result = await Promise.race([
+        supabase.auth.signInWithPassword({ email, password }),
+        timeoutPromise
+      ])
+    } catch (e) {
+      return { data: null, error: e }
+    }
     if (!result.error && result.data?.session) {
       setSession(result.data.session)
       setUser(result.data.user)
