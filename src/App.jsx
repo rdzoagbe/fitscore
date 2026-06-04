@@ -80,11 +80,15 @@ function OAuthCallback() {
 
       try {
         if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
           if (exchangeError) {
             console.error('OAuth code exchange failed:', exchangeError.message)
             authFailed = true
-            authErrorMsg = exchangeError.message
+            authErrorMsg = exchangeError.message || 'Sign-in failed. Please try again.'
+          } else if (!exchangeData?.session) {
+            console.error('OAuth code exchange returned no session')
+            authFailed = true
+            authErrorMsg = 'Sign-in could not be completed — no session was returned. Please try again.'
           }
         } else {
           const { data, error: sessionError } = await supabase.auth.getSession()
