@@ -96,6 +96,85 @@ function SummaryCard({ title, children }) {
   )
 }
 
+function JobDetailsCard({ data }) {
+  const sections = data.job_sections || {}
+  const context = data.job_context || {}
+  const hiringContact = context.hiring_contact && !['null', 'not mentioned', 'not stated', 'n/a'].includes(String(context.hiring_contact).toLowerCase().trim())
+    ? context.hiring_contact : null
+  const experienceRequired = context.experience_required && !['null', 'not stated', 'not specified'].includes(String(context.experience_required).toLowerCase().trim())
+    ? context.experience_required : null
+  const aboutCompany = sections.about_company && sections.about_company !== 'null' ? sections.about_company : null
+  const aboutRole = sections.about_role && sections.about_role !== 'null' ? sections.about_role : null
+  const responsibilities = safeArray(sections.key_responsibilities, 4)
+  const requirements = safeArray(sections.key_requirements, 4)
+  const benefits = sections.benefits && sections.benefits !== 'null' ? sections.benefits : null
+
+  const hasAny = hiringContact || experienceRequired || aboutCompany || aboutRole || responsibilities.length || requirements.length || benefits
+  if (!hasAny) return null
+
+  return (
+    <section style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: '18px 20px', background: premium.paper, marginBottom: 16 }}>
+      <p style={{ margin: '0 0 14px', fontSize: 10, fontWeight: 950, letterSpacing: '0.12em', textTransform: 'uppercase', color: premium.copper }}>About this role</p>
+
+      {(hiringContact || experienceRequired) && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: aboutCompany || aboutRole || responsibilities.length || requirements.length ? 14 : 0 }}>
+          {hiringContact && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16,24,43,0.05)', borderRadius: 10, padding: '8px 12px' }}>
+              <span style={{ fontSize: 14 }}>👤</span>
+              <div>
+                <p style={{ margin: 0, fontSize: 9, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Hiring contact</p>
+                <strong style={{ fontSize: 12, color: premium.navy }}>{hiringContact}</strong>
+              </div>
+            </div>
+          )}
+          {experienceRequired && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16,24,43,0.05)', borderRadius: 10, padding: '8px 12px' }}>
+              <span style={{ fontSize: 14 }}>🗓</span>
+              <div>
+                <p style={{ margin: 0, fontSize: 9, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Experience required</p>
+                <strong style={{ fontSize: 12, color: premium.navy }}>{experienceRequired}</strong>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+        {aboutCompany && (
+          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
+            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>About the company</p>
+            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutCompany}</p>
+          </div>
+        )}
+        {aboutRole && (
+          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
+            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>The role</p>
+            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutRole}</p>
+          </div>
+        )}
+        {responsibilities.length > 0 && (
+          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
+            <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Key responsibilities</p>
+            <BulletList items={responsibilities} tone="good" empty="" max={4} />
+          </div>
+        )}
+        {requirements.length > 0 && (
+          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
+            <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Key requirements</p>
+            <BulletList items={requirements} tone="good" empty="" max={4} />
+          </div>
+        )}
+        {benefits && (
+          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
+            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Benefits</p>
+            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{benefits}</p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function SelectedAnalysisSummary({ data, savedRow, t }) {
   const context = data.job_context || {}
   const recruiter = data.recruiter_shortlist || {}
@@ -199,6 +278,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
       <SelectedAnalysisSummary data={data} savedRow={analysisRow || serverSavedRow} t={t} />
+      <JobDetailsCard data={data} />
       <WaitlistBanner rateLimit={rateLimit} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '0 4px', gap: 8, flexWrap: 'wrap' }}>

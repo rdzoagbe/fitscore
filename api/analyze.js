@@ -23,6 +23,8 @@ Scores must be integers from 0 to 100.
 Step 1: Data Extraction
 - From the job description, extract must-have technical/hard skills as 1-3 word terms.
 - From the job description, extract the minimum required years of experience as an integer. Use 0 when not specified.
+- From the job description, extract the name and/or title of the hiring manager or recruiter if explicitly mentioned (e.g. "Contact John Smith", "Managed by Sarah Lee"). Set hiring_contact to null if not found.
+- From the job description, extract brief summaries: 1-2 sentences about the company, 1-2 sentences about the role, up to 4 key responsibilities (short phrases), up to 4 key requirements (short phrases), and any notable benefits (1 sentence or null).
 - From the candidate resume, extract all verifiable technical/hard skills as 1-3 word terms.
 - From the candidate resume, calculate total years of relevant experience as an integer using explicit years and date ranges when visible.
 
@@ -72,7 +74,14 @@ Return a single JSON object. It must include strict_ats_result exactly in this s
     "languages_required": ["string"],
     "apply_url": null,
     "easy_apply": false,
-    "hiring_contact": null
+    "hiring_contact": "Full name and/or title of recruiter or hiring manager if explicitly mentioned, otherwise null"
+  },
+  "job_sections": {
+    "about_company": "1-2 sentence description of the company from the job posting, or null",
+    "about_role": "1-2 sentence overview of what the role entails, or null",
+    "key_responsibilities": ["up to 4 short responsibility phrases"],
+    "key_requirements": ["up to 4 short requirement phrases"],
+    "benefits": "1 sentence summary of benefits/perks if mentioned, or null"
   },
   "job_summary": "string",
   "match_probability": 0,
@@ -717,7 +726,7 @@ async function runClaudeAnalysis(jobText, cvText) {
   const client = getAnthropicClient()
   const message = await client.messages.create({
     model: DEFAULT_MODEL,
-    max_tokens: 1800,
+    max_tokens: 2200,
     temperature: 0,
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
@@ -784,7 +793,7 @@ async function streamingHandler(req, res) {
 
     const stream = client.messages.stream({
       model: DEFAULT_MODEL,
-      max_tokens: 1800,
+      max_tokens: 2200,
       temperature: 0,
       system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
