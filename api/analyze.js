@@ -732,7 +732,7 @@ async function runClaudeAnalysis(jobText, cvText) {
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
   }, { timeout: Number.isFinite(ANTHROPIC_TIMEOUT_MS) ? ANTHROPIC_TIMEOUT_MS : 30000 })
-  const raw = message.content.map(block => block.text || '').join('').trim()
+  const raw = (message.content || []).map(block => block.text || '').join('').trim()
   return extractJsonObject(raw)
 }
 

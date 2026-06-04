@@ -206,19 +206,18 @@ export default function ProfileOptimizerPage() {
                 <h3>Paste your LinkedIn profile URL</h3>
                 <span>Joblytics will fetch your public profile and auto-fill the text area below. Works best with public profiles.</span>
               </div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <div className="profileOpt-urlRow">
                 <input
                   type="url"
                   value={linkedinUrl}
                   onChange={e => { setLinkedinUrl(e.target.value); setError('') }}
                   placeholder="https://linkedin.com/in/your-name"
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(16,24,43,0.18)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(16,24,43,0.18)', fontSize: 13, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
                   onKeyDown={e => e.key === 'Enter' && fetchProfileFromUrl()}
                 />
                 <button
                   type="button"
-                  className="profileOpt-importBtn"
-                  style={{ whiteSpace: 'nowrap', padding: '10px 18px' }}
+                  className="profileOpt-importBtn profileOpt-urlBtn"
                   onClick={fetchProfileFromUrl}
                   disabled={fetchingUrl || !linkedinUrl.trim()}
                 >

@@ -312,7 +312,7 @@ export default async function handler(req, res) {
       }]
     })
 
-    const raw = message.content.map(block => block.text || '').join('').trim().replace(/```json|```/g, '').trim()
+    const raw = (message.content || []).map(block => block.text || '').join('').trim().replace(/```json|```/g, '').trim()
     let result
     try {
       result = JSON.parse(raw)
