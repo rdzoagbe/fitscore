@@ -242,6 +242,8 @@ async function handleFetchUrl(req, res) {
         headers: {
           Accept: 'text/plain,text/markdown',
           'X-Return-Format': 'text',
+          'X-No-Cache': 'true',
+          'X-Timeout': '7',
           ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {})
         }
       })
