@@ -117,7 +117,15 @@ export function AuthProvider({ children }) {
     options: { data: legalAcceptancePayload(legalSource) }
   })
 
-  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
+  const signIn = async (email, password) => {
+    const result = await supabase.auth.signInWithPassword({ email, password })
+    if (!result.error && result.data?.session) {
+      setSession(result.data.session)
+      setUser(result.data.user)
+      if (result.data.user) normalizeSignedInUserInBackground(result.data.user)
+    }
+    return result
+  }
 
   const signInWithGoogle = (legalSource = 'signup_google') => supabase.auth.signInWithOAuth({
     provider: 'google',
