@@ -41,7 +41,9 @@ export default function ProfileOptimizerPage() {
   const [usage, setUsage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [fetchingUrl, setFetchingUrl] = useState(false)
   const [importInfo, setImportInfo] = useState(null)
+  const [linkedinUrl, setLinkedinUrl] = useState('')
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
 
@@ -53,11 +55,12 @@ export default function ProfileOptimizerPage() {
   const handleProfileTextChange = e => {
     const value = e.target.value
     if (looksLikeOnlyLinkedInUrl(value)) {
+      setLinkedinUrl(value.trim())
       setText('')
       setResult(null)
       setChecklist(null)
       setImportInfo(null)
-      setError(t('profile_url_removed_notice', 'A LinkedIn URL alone cannot be analyzed. Upload your LinkedIn PDF or paste your profile text.'))
+      setError('LinkedIn URL detected — paste it in the field above and click Fetch profile.')
       return
     }
     setText(value)
@@ -65,6 +68,31 @@ export default function ProfileOptimizerPage() {
     setChecklist(null)
     setError('')
     setImportInfo(null)
+  }
+
+  const fetchProfileFromUrl = async () => {
+    const url = linkedinUrl.trim()
+    if (!url) return
+    setError('')
+    setFetchingUrl(true)
+    setResult(null)
+    setChecklist(null)
+    setImportInfo(null)
+    try {
+      const res = await fetch('/api/profile-optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'fetch_url', profileUrl: url })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Could not fetch this LinkedIn profile.')
+      setText(data.text || '')
+      setImportInfo({ filename: url, characters: data.characters || (data.text || '').length, pages: null })
+    } catch (e) {
+      setError(e.message || 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.')
+    } finally {
+      setFetchingUrl(false)
+    }
   }
 
   const importLinkedInPdf = async (file) => {
@@ -172,6 +200,36 @@ export default function ProfileOptimizerPage() {
               {importInfo && <p className="profileOpt-importSuccess">✓ {t('profile_pdf_import_success', { name: importInfo.filename, count: importInfo.characters }, `Imported ${importInfo.filename} · ${importInfo.characters} characters`)}</p>}
             </div>
 
+            <div className="profileOpt-importBox" style={{ marginTop: 16 }}>
+              <div>
+                <p className="profileOpt-kicker">Import from LinkedIn URL</p>
+                <h3>Paste your LinkedIn profile URL</h3>
+                <span>Joblytics will fetch your public profile and auto-fill the text area below. Works best with public profiles.</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <input
+                  type="url"
+                  value={linkedinUrl}
+                  onChange={e => { setLinkedinUrl(e.target.value); setError('') }}
+                  placeholder="https://linkedin.com/in/your-name"
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(16,24,43,0.18)', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                  onKeyDown={e => e.key === 'Enter' && fetchProfileFromUrl()}
+                />
+                <button
+                  type="button"
+                  className="profileOpt-importBtn"
+                  style={{ whiteSpace: 'nowrap', padding: '10px 18px' }}
+                  onClick={fetchProfileFromUrl}
+                  disabled={fetchingUrl || !linkedinUrl.trim()}
+                >
+                  {fetchingUrl ? 'Fetching…' : 'Fetch profile'}
+                </button>
+              </div>
+              {importInfo && importInfo.filename?.includes('linkedin') && (
+                <p className="profileOpt-importSuccess">✓ Profile fetched · {importInfo.characters} characters extracted</p>
+              )}
+            </div>
+
             <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
             <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder_pdf_clean', 'Upload your LinkedIn PDF to auto-fill this box, or paste your Headline, About, Experience and Skills here...')} /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
@@ -184,8 +242,8 @@ export default function ProfileOptimizerPage() {
             <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
-            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported or pasted text only, so it does not invent experience or scrape inaccessible LinkedIn pages.')}</p>
-            <div className="profileOpt-futureNote"><strong>{t('profile_future_import_title', 'Future option')}</strong><p>{t('profile_future_import_body', 'A one-click LinkedIn import could be added later through a browser extension, where the user imports their own visible profile content from their own browser session.')}</p></div>
+            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported, URL-fetched, or pasted text only. It does not invent experience. Private profiles require a PDF upload.')}</p>
+            <div className="profileOpt-futureNote"><strong>URL import tip</strong><p>Paste your public LinkedIn profile URL (linkedin.com/in/your-name) and click Fetch profile. If your profile is set to private, export it as a PDF from LinkedIn instead.</p></div>
           </aside>
         </section>
 

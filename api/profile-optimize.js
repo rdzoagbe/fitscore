@@ -221,9 +221,60 @@ async function handleProfileImport(req, res) {
   }
 }
 
+async function handleFetchUrl(req, res) {
+  try {
+    const { profileUrl } = req.body || {}
+    if (!profileUrl) return res.status(400).json({ error: 'Provide your LinkedIn profile URL.', code: 'URL_REQUIRED' })
+
+    const url = normalizeProfileUrl(profileUrl)
+    if (!url || !url.toLowerCase().includes('linkedin.com/in/')) {
+      return res.status(400).json({ error: 'Please provide a valid LinkedIn profile URL (linkedin.com/in/your-name).', code: 'INVALID_URL' })
+    }
+
+    const jinaKey = (process.env.JINA_API_KEY || '').trim()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+
+    let jinaRes
+    try {
+      jinaRes = await fetch(`https://r.jina.ai/${url}`, {
+        signal: controller.signal,
+        headers: {
+          Accept: 'text/plain,text/markdown',
+          'X-Return-Format': 'text',
+          ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {})
+        }
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (!jinaRes.ok) {
+      return res.status(422).json({ error: 'Could not fetch this LinkedIn profile. The profile may be private — upload your LinkedIn PDF instead.', code: 'FETCH_FAILED' })
+    }
+
+    const raw = await jinaRes.text()
+    const markerIdx = raw.indexOf('Markdown Content:')
+    const content = (markerIdx >= 0 ? raw.slice(markerIdx + 17) : raw).trim()
+
+    if (content.length < 120) {
+      return res.status(422).json({ error: 'Not enough profile text was found at this URL. If the profile is private, upload your LinkedIn PDF instead.', code: 'TEXT_TOO_SHORT' })
+    }
+
+    return res.status(200).json({ success: true, text: content.slice(0, 6000), characters: content.length })
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      return res.status(408).json({ error: 'Profile fetch timed out. Try uploading your LinkedIn PDF instead.', code: 'FETCH_TIMEOUT' })
+    }
+    console.error('Profile URL fetch error:', e)
+    return res.status(500).json({ error: 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.', code: 'FETCH_ERROR' })
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   if (req.body?.action === 'import') return handleProfileImport(req, res)
+  if (req.body?.action === 'fetch_url') return handleFetchUrl(req, res)
 
   const supabase = createServerSupabaseClient()
 
