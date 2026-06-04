@@ -161,7 +161,7 @@
 
 .newSyncSsoCard em {
   display: block;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-style: normal;
   line-height: 1.45;
 }
@@ -204,7 +204,7 @@
 
 .newSyncSsoIdentity em {
   display: block;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-style: normal;
   line-height: 1.45;
 }
