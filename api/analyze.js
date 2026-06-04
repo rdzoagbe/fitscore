@@ -358,50 +358,78 @@ function extractBestJobTextFromHtml(html = '') {
   return cleanText(html, JOB_TEXT_LIMIT)
 }
 
-async function fetchJobText(url) {
-  const restrictedBoard = getRestrictedBoardName(url)
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Upgrade-Insecure-Requests': '1'
+}
 
-  let res
+async function tryDirectFetch(url) {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 8000)
+    const res = await fetch(url, { signal: controller.signal, headers: BROWSER_HEADERS, redirect: 'follow' })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const html = await res.text()
+    const text = extractBestJobTextFromHtml(html)
+    return text.length >= 150 ? text : null
+  } catch {
+    return null
+  }
+}
 
-    res = await fetch(url, {
+async function tryJinaFetch(url) {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    const jinaKey = (process.env.JINA_API_KEY || '').trim()
+    const jinaUrl = `https://r.jina.ai/${url}`
+    const res = await fetch(jinaUrl, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
-      },
-      redirect: 'follow'
+        'Accept': 'text/plain,text/markdown',
+        'X-Return-Format': 'text',
+        ...(jinaKey ? { 'Authorization': `Bearer ${jinaKey}` } : {})
+      }
     })
     clearTimeout(timeout)
+    if (!res.ok) return null
+    const raw = await res.text()
+    const markerIdx = raw.indexOf('Markdown Content:')
+    const content = markerIdx >= 0 ? raw.slice(markerIdx + 17).trim() : raw.trim()
+    return content.length >= 150 ? content.slice(0, JOB_TEXT_LIMIT) : null
   } catch {
+    return null
+  }
+}
+
+async function fetchJobText(url) {
+  const restrictedBoard = getRestrictedBoardName(url)
+
+  // Attempt 1: Direct fetch with full browser headers
+  let text = await tryDirectFetch(url)
+
+  // Attempt 2: Jina Reader — renders JS-heavy pages and bypasses common bot blocks
+  if (!text) text = await tryJinaFetch(url)
+
+  if (!text) {
     const hint = restrictedBoard
-      ? `${restrictedBoard} blocked the request. Copy the job description from the page and use Paste mode.`
+      ? `${restrictedBoard} blocked automated access. Copy the job description from the page and use Paste mode.`
       : 'This job page could not be reached. Try Paste mode and paste the job description directly.'
     const err = new Error(hint)
     err.statusCode = 400
     err.code = 'URL_FETCH_FAILED'
-    throw err
-  }
-  if (!res.ok) {
-    const hint = restrictedBoard
-      ? `${restrictedBoard} blocked the request (${res.status}). Copy the job description and use Paste mode.`
-      : `This job page returned ${res.status}. Try Paste mode as a fallback.`
-    const err = new Error(hint)
-    err.statusCode = 400
-    err.code = 'URL_FETCH_FAILED'
-    throw err
-  }
-  const text = extractBestJobTextFromHtml(await res.text())
-  if (text.length < 200) {
-    const hint = restrictedBoard
-      ? `${restrictedBoard} did not expose enough job text. Copy the job description and use Paste mode.`
-      : 'This job page did not expose enough readable text. Try Paste mode and paste the job description directly.'
-    const err = new Error(hint)
-    err.statusCode = 400
-    err.code = 'URL_TEXT_TOO_SHORT'
     throw err
   }
   return text.slice(0, JOB_TEXT_LIMIT)
