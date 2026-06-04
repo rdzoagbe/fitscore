@@ -145,6 +145,8 @@ function OptimizeCvPanel({ selected }) {
   )
 }
 
+export { OptimizeCvPanel }
+
 export default function OptimizeCvCard({ selected }) {
   return (
     <>
