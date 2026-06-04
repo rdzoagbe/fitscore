@@ -326,7 +326,7 @@ export default function CvCoachPage() {
   const [activeTab, setActiveTab] = useState('letter')
   const { fullName, saveFullName } = useUserProfile()
 
-  useEffect(() => { fetchAnalyses() }, [])
+  useEffect(() => { if (user?.id) fetchAnalyses() }, [user?.id])
 
   const fetchAnalyses = async () => {
     const { data } = await supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
