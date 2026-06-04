@@ -233,7 +233,7 @@ async function handleFetchUrl(req, res) {
 
     const jinaKey = (process.env.JINA_API_KEY || '').trim()
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
+    const timeout = setTimeout(() => controller.abort(), 8000)
 
     let jinaRes
     try {
@@ -264,7 +264,7 @@ async function handleFetchUrl(req, res) {
     return res.status(200).json({ success: true, text: content.slice(0, 6000), characters: content.length })
   } catch (e) {
     if (e.name === 'AbortError') {
-      return res.status(408).json({ error: 'Profile fetch timed out. Try uploading your LinkedIn PDF instead.', code: 'FETCH_TIMEOUT' })
+      return res.status(408).json({ error: 'LinkedIn profile fetch timed out — LinkedIn blocks automated access. Please upload your LinkedIn PDF instead (LinkedIn → Me → Settings → Data privacy → Get a copy of your data).', code: 'FETCH_TIMEOUT' })
     }
     console.error('Profile URL fetch error:', e)
     return res.status(500).json({ error: 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.', code: 'FETCH_ERROR' })

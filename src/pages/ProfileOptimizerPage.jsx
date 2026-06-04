@@ -242,7 +242,7 @@ export default function ProfileOptimizerPage() {
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
             <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported, URL-fetched, or pasted text only. It does not invent experience. Private profiles require a PDF upload.')}</p>
-            <div className="profileOpt-futureNote"><strong>URL import tip</strong><p>Paste your public LinkedIn profile URL (linkedin.com/in/your-name) and click Fetch profile. If your profile is set to private, export it as a PDF from LinkedIn instead.</p></div>
+            <div className="profileOpt-futureNote"><strong>URL fetch tip</strong><p>LinkedIn URL fetch works for fully public profiles only. If you get a timeout or error, <strong>upload your LinkedIn PDF</strong> — it's faster and more reliable. Export it from LinkedIn → Me → Settings → Data privacy → Get a copy of your data.</p></div>
           </aside>
         </section>
 
