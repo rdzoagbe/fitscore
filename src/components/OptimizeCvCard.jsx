@@ -1,12 +1,15 @@
 import React, { useState } from 'react'
 import { useLang } from '../context/LangContext'
 import { useCvPersist } from '../hooks/useCvPersist'
+import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { generateOptimizedCvDocx } from '../utils/cvDocx'
 import CommunicationAssetsCard from './CommunicationAssetsCard'
 
 function OptimizeCvPanel({ selected }) {
   const { t, lang } = useLang()
   const { cvFile } = useCvPersist()
+  const { session } = useAuth()
   const [optimized, setOptimized] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -29,9 +32,10 @@ function OptimizeCvPanel({ selected }) {
         reader.readAsDataURL(cvFile)
       })
 
+      const token = session?.access_token || (await supabase.auth.getSession()).data?.session?.access_token
       const res = await fetch('/api/cover-letter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
           type: 'cv-optimize',
           cvBase64,

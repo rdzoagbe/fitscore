@@ -200,9 +200,10 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
       }
       if (!nameToUse) { setEditingName(true); setGenError(t('name_required_first')); setGenLoading(false); return }
 
+      const token = session?.access_token || (await supabase.auth.getSession()).data?.session?.access_token
       const res = await fetch('/api/cover-letter', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ analysis: selected.result, lang, tone, length, recipient: recipient.trim() || null, fullName: nameToUse })
       })
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Error ${res.status}`) }
@@ -367,7 +368,7 @@ const TABS = [
 ]
 
 export default function CvCoachPage() {
-  const { user } = useAuth()
+  const { user, session } = useAuth()
   const { t, lang } = useLang()
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
