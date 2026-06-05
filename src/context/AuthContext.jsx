@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { legalAcceptancePayload } from '../lib/legal'
 import { clearPreviousUserBrowserData, getNormalizedUserMetadata, getUserEmail, getUserDisplayName } from '../lib/userProfile'
+import { setUser as setSentryUser } from '../lib/sentry.js'
 
 const AuthContext = createContext({})
 
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
       const nextUser = nextSession?.user ?? null
       setSession(nextSession ?? null)
       setUser(nextUser)
+      setSentryUser(nextUser)
       if (nextUser) normalizeSignedInUserInBackground(nextUser)
     })
 
