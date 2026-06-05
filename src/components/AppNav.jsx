@@ -11,8 +11,7 @@ const navItems = [
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
+  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' }
 ]
 
 const workspaceItems = [
@@ -20,7 +19,6 @@ const workspaceItems = [
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' },
   { id: 'billing', icon: '€', labelKey: 'nav_billing', fallback: 'Billing' },
   { id: 'sync-settings', icon: '⚙', labelKey: 'nav_sync_settings', fallback: 'Smart Sync settings' }
 ]
@@ -30,7 +28,7 @@ const mobileNavItems = [
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
   { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' }
+  { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' }
 ]
 
 export default function AppNav({ page, setPage, onLogoClick }) {
