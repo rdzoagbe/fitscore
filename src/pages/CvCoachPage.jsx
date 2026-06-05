@@ -155,12 +155,37 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
   const [tempName, setTempName] = useState('')
   const [genLoading, setGenLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [savedLetters, setSavedLetters] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('joblytics_cover_letters') || '[]') } catch { return [] }
+  })
 
   useEffect(() => {
     setRecipient(selected?.result?.job_context?.hiring_contact || '')
     setCoverLetter('')
     setGenError('')
   }, [selected?.id])
+
+  const autoSaveLetter = (letter) => {
+    const jobTitle = selected?.result?.job_context?.title || selected?.job_title || 'Job'
+    const entry = {
+      id: `${selected?.id || 'x'}_${Date.now()}`,
+      jobId: selected?.id || null,
+      jobTitle,
+      letter,
+      tone,
+      length,
+      savedAt: new Date().toISOString()
+    }
+    const updated = [entry, ...savedLetters.filter(l => l.jobId !== selected?.id)].slice(0, 10)
+    setSavedLetters(updated)
+    try { localStorage.setItem('joblytics_cover_letters', JSON.stringify(updated)) } catch {}
+  }
+
+  const deleteSavedLetter = (id) => {
+    const updated = savedLetters.filter(l => l.id !== id)
+    setSavedLetters(updated)
+    try { localStorage.setItem('joblytics_cover_letters', JSON.stringify(updated)) } catch {}
+  }
 
   const generate = async () => {
     if (!selected?.result) return
@@ -183,6 +208,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
       if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `Error ${res.status}`) }
       const data = await res.json()
       setCoverLetter(data.letter || '')
+      if (data.letter) autoSaveLetter(data.letter)
     } catch (e) {
       setCoverLetter('')
       setGenError(e.message || 'Could not generate cover letter.')
@@ -209,6 +235,29 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
       <div style={{ padding: '18px 20px' }}>
         {!coverLetter && !genLoading && (
           <div style={{ display: 'grid', gap: 14 }}>
+            {savedLetters.length > 0 && (
+              <div style={{ borderRadius: 16, border: `1px solid ${theme.line}`, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(250,247,241,0.7)', borderBottom: `1px solid ${theme.line}` }}>
+                  <Kicker>Previous letters</Kicker>
+                </div>
+                <div style={{ display: 'grid', gap: 0 }}>
+                  {savedLetters.slice(0, 4).map((l, i) => (
+                    <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < Math.min(savedLetters.length, 4) - 1 ? `1px solid ${theme.line}` : 'none' }}>
+                      <button onClick={() => setCoverLetter(l.letter)}
+                        style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: theme.navy, display: 'block' }}>{l.jobTitle}</span>
+                        <span style={{ fontSize: 10, color: theme.muted }}>
+                          {l.tone} · {l.length} · {new Date(l.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                      </button>
+                      <button onClick={() => deleteSavedLetter(l.id)}
+                        style={{ background: 'none', border: 'none', color: theme.muted, cursor: 'pointer', fontSize: 14, padding: '2px 4px', lineHeight: 1 }}
+                        title="Remove">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <p style={{ fontSize: 13, color: theme.muted, lineHeight: 1.6, textAlign: 'center', margin: 0 }}>✉️ {t('cover_letter_prompt')}</p>
 
             {/* Name */}

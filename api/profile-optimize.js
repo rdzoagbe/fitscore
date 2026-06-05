@@ -33,14 +33,6 @@ function clean(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
 }
 
-function normalizeProfileUrl(value) {
-  const raw = clean(value)
-  if (!raw) return ''
-  if (/^https?:\/\//i.test(raw)) return raw
-  if (/^www\./i.test(raw)) return `https://${raw}`
-  if (raw.includes('linkedin.com/')) return `https://${raw}`
-  return raw
-}
 
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -221,139 +213,23 @@ async function handleProfileImport(req, res) {
   }
 }
 
-function formatProxycurlProfile(data) {
-  const lines = []
-  if (data.full_name) lines.push(`Name: ${data.full_name}`)
-  if (data.headline) lines.push(`Headline: ${data.headline}`)
-  if (data.city || data.country_full_name) lines.push(`Location: ${[data.city, data.country_full_name].filter(Boolean).join(', ')}`)
-  if (data.summary) lines.push(`\nAbout:\n${data.summary}`)
-
-  if (data.experiences?.length) {
-    lines.push('\nExperience:')
-    for (const exp of data.experiences) {
-      const start = exp.starts_at?.year || ''
-      const end = exp.ends_at?.year || 'Present'
-      lines.push(`- ${[exp.title, exp.company].filter(Boolean).join(' at ')} (${start}–${end})`)
-      if (exp.description) lines.push(`  ${exp.description}`)
-    }
-  }
-
-  if (data.education?.length) {
-    lines.push('\nEducation:')
-    for (const edu of data.education) {
-      const degree = [edu.degree_name, edu.field_of_study].filter(Boolean).join(', ')
-      lines.push(`- ${[degree, edu.school].filter(Boolean).join(' at ')} (${edu.starts_at?.year || ''}–${edu.ends_at?.year || ''})`)
-    }
-  }
-
-  if (data.skills?.length) {
-    lines.push(`\nSkills:\n${data.skills.slice(0, 30).join(', ')}`)
-  }
-
-  if (data.certifications?.length) {
-    lines.push('\nCertifications:')
-    for (const cert of data.certifications) {
-      lines.push(`- ${cert.name}${cert.authority ? ` (${cert.authority})` : ''}`)
-    }
-  }
-
-  return lines.join('\n').trim()
-}
-
-async function tryJinaFetch(url) {
-  const jinaKey = (process.env.JINA_API_KEY || '').trim()
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 8000)
-  try {
-    const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'text/plain,text/markdown',
-        'X-Return-Format': 'text',
-        'X-No-Cache': 'true',
-        'X-Timeout': '7',
-        ...(jinaKey ? { Authorization: `Bearer ${jinaKey}` } : {})
-      }
-    })
-    if (!jinaRes.ok) return null
-    const raw = await jinaRes.text()
-    const markerIdx = raw.indexOf('Markdown Content:')
-    const content = (markerIdx >= 0 ? raw.slice(markerIdx + 17) : raw).trim()
-    return content.length >= 120 ? content.slice(0, 6000) : null
-  } catch {
-    return null
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-async function tryProxycurlFetch(url) {
-  const proxycurlKey = (process.env.PROXYCURL_API_KEY || '').trim()
-  if (!proxycurlKey) return null
-  try {
-    const apiUrl = `https://nubela.co/proxycurl/api/v2/linkedin?url=${encodeURIComponent(url)}&skills=include&use_cache=if-present&fallback_to_cache=on-error`
-    const res = await fetch(apiUrl, {
-      headers: { Authorization: `Bearer ${proxycurlKey}` }
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    if (!data?.full_name && !data?.headline && !data?.summary) return null
-    const text = formatProxycurlProfile(data)
-    return text.length >= 120 ? text : null
-  } catch {
-    return null
-  }
-}
-
-async function handleFetchUrl(req, res) {
-  try {
-    const { profileUrl } = req.body || {}
-    if (!profileUrl) return res.status(400).json({ error: 'Provide your LinkedIn profile URL.', code: 'URL_REQUIRED' })
-
-    const url = normalizeProfileUrl(profileUrl)
-    if (!url || !url.toLowerCase().includes('linkedin.com/in/')) {
-      return res.status(400).json({ error: 'Please provide a valid LinkedIn profile URL (linkedin.com/in/your-name).', code: 'INVALID_URL' })
-    }
-
-    const jinaText = await tryJinaFetch(url)
-    if (jinaText) {
-      return res.status(200).json({ success: true, text: jinaText, characters: jinaText.length, source: 'jina' })
-    }
-
-    const proxycurlText = await tryProxycurlFetch(url)
-    if (proxycurlText) {
-      return res.status(200).json({ success: true, text: proxycurlText, characters: proxycurlText.length, source: 'proxycurl' })
-    }
-
-    return res.status(422).json({
-      error: 'Could not fetch this LinkedIn profile — it may be private or restricted. Please upload your LinkedIn PDF instead (LinkedIn → Me → Settings → Data privacy → Get a copy of your data).',
-      code: 'FETCH_FAILED'
-    })
-  } catch (e) {
-    console.error('Profile URL fetch error:', e)
-    return res.status(500).json({ error: 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.', code: 'FETCH_ERROR' })
-  }
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   if (req.body?.action === 'import') return handleProfileImport(req, res)
-  if (req.body?.action === 'fetch_url') return handleFetchUrl(req, res)
 
   const supabase = createServerSupabaseClient()
 
   try {
     const user = await requireUser(req, supabase)
-    const { profileText, targetRole, profileUrl } = req.body || {}
+    const { profileText, targetRole } = req.body || {}
     const text = clean(profileText)
     const role = clean(targetRole) || 'the user target role'
-    const url = normalizeProfileUrl(profileUrl)
 
     if (text.length < 120) {
       return res.status(400).json({
         error: 'Import your LinkedIn PDF or paste your profile text to run AI profile optimization.',
         code: 'PROFILE_TEXT_REQUIRED',
-        profileUrl: url || null,
         checklist: [
           'Upload your LinkedIn profile PDF.',
           'Or paste your current headline.',
@@ -372,7 +248,7 @@ export default async function handler(req, res) {
       system: SYSTEM,
       messages: [{
         role: 'user',
-        content: `TARGET ROLE:\n${role}\n\nLINKEDIN PROFILE URL REFERENCE:\n${url || 'Not provided'}\n\nPROFILE TEXT PROVIDED BY USER:\n${text.slice(0, 9000)}`
+        content: `TARGET ROLE:\n${role}\n\nPROFILE TEXT PROVIDED BY USER:\n${text.slice(0, 9000)}`
       }]
     })
 
@@ -388,7 +264,7 @@ export default async function handler(req, res) {
     const safeArray = value => Array.isArray(value) ? value.map(clean).filter(Boolean) : []
     const score = Number.isFinite(Number(result.score)) ? Math.max(0, Math.min(100, Math.round(Number(result.score)))) : 0
 
-    await recordUsageEvent({ supabase, user, eventType: 'profile_optimize', usage, meta: { targetRole: role, profileUrl: url || null } })
+    await recordUsageEvent({ supabase, user, eventType: 'profile_optimize', usage, meta: { targetRole: role } })
 
     return res.status(200).json({
       success: true,
@@ -405,7 +281,6 @@ export default async function handler(req, res) {
         search_keywords: safeArray(result.search_keywords).slice(0, 12),
         proof_needed: safeArray(result.proof_needed).slice(0, 5),
         warnings: safeArray(result.warnings).slice(0, 4),
-        profile_url: url || null,
         target_role: role
       }
     })
