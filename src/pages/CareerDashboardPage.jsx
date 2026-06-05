@@ -87,7 +87,7 @@ function UsageBanner({ used, limit, onAnalyze }) {
       </div>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px', lineHeight: 1.5 }}>
         {remaining === 0
-          ? 'You've used all your free analyses this month. Upgrade to continue.'
+          ? "You've used all your free analyses this month. Upgrade to continue."
           : `${remaining} analysis${remaining === 1 ? '' : 'es'} remaining this month on the free plan.`}
       </p>
       {remaining > 0
