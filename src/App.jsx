@@ -167,7 +167,7 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard': return <CareerDashboardPage setPage={setPage} />
+      case 'dashboard': return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => selectAndGo(a, 'analyzer')} onBuildCv={a => selectAndGo(a, 'cv-builder')} onGenerateMessage={a => selectAndGo(a, 'coach')} />
       case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} />
@@ -177,7 +177,7 @@ export default function App() {
       case 'sync-settings': return <SmartSyncSettingsPage setPage={setPage} />
       case 'contact': return <ContactPage onBack={() => setPage('dashboard')} />
       case 'cv-builder': return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
-      default: return <CareerDashboardPage setPage={setPage} />
+      default: return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
     }
   }
 
