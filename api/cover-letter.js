@@ -1,8 +1,39 @@
 import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
+import { createClient } from '@supabase/supabase-js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+
+async function requireUser(req) {
+  const header = req.headers.authorization || req.headers.Authorization || ''
+  const token = typeof header === 'string' ? (header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null) : null
+  if (!token) {
+    const err = new Error('Authentication required. Please sign in and try again.')
+    err.statusCode = 401
+    throw err
+  }
+  const supabase = getSupabaseClient()
+  if (!supabase) {
+    const err = new Error('Server authentication is not configured.')
+    err.statusCode = 500
+    throw err
+  }
+  const { data, error } = await supabase.auth.getUser(token)
+  if (error || !data?.user) {
+    const err = new Error('Your session could not be verified. Please refresh the page or sign in again.')
+    err.statusCode = 401
+    throw err
+  }
+  return data.user
+}
 
 async function extractCvText(base64Data, mimeType) {
   const buffer = Buffer.from(base64Data, 'base64')
@@ -12,7 +43,7 @@ async function extractCvText(base64Data, mimeType) {
 }
 
 async function handleCvOptimize(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  try { await requireUser(req) } catch (e) { return res.status(e.statusCode || 401).json({ error: e.message }) }
   const { cvBase64, cvMimeType, analysis, lang = 'en' } = req.body
   if (!cvBase64 || !cvMimeType) return res.status(400).json({ error: 'Missing CV file. Please upload your CV first.' })
   if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context. Please run an analysis first.' })
@@ -73,9 +104,9 @@ function pickSalutation(recipient, lang) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   if (req.body?.type === 'cv-optimize') return handleCvOptimize(req, res)
-  res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
+    await requireUser(req)
     const { analysis, lang = 'en', tone = 'professional', length = 'standard', recipient = null, fullName = null } = req.body
     if (!analysis?.job_context) return res.status(400).json({ error: 'Missing analysis context' })
 
