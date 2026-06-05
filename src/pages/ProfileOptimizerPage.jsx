@@ -14,11 +14,6 @@ function readFileAsBase64(file) {
   })
 }
 
-function looksLikeOnlyLinkedInUrl(value) {
-  const text = String(value || '').trim()
-  if (!text || text.split(/\s+/).length > 2) return false
-  return /linkedin\.com\//i.test(text)
-}
 
 async function getFreshAccessToken(session) {
   if (session?.access_token) return session.access_token
@@ -41,16 +36,12 @@ export default function ProfileOptimizerPage() {
   const [usage, setUsage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [fetchingUrl, setFetchingUrl] = useState(false)
   const [importInfo, setImportInfo] = useState(null)
-  const [linkedinUrl, setLinkedinUrl] = useState(() => { try { return localStorage.getItem('joblytics_linkedin_url') || '' } catch { return '' } })
   const [savedProfiles, setSavedProfiles] = useState(() => { try { return JSON.parse(localStorage.getItem('joblytics_saved_profiles') || '[]') } catch { return [] } })
   const [showSaveForm, setShowSaveForm] = useState(false)
   const [saveProfileName, setSaveProfileName] = useState('')
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
-
-  useEffect(() => { try { localStorage.setItem('joblytics_linkedin_url', linkedinUrl) } catch {} }, [linkedinUrl])
 
   const saveCurrentProfile = () => {
     const name = saveProfileName.trim() || importInfo?.filename || `Profile ${savedProfiles.length + 1}`
@@ -82,46 +73,11 @@ export default function ProfileOptimizerPage() {
   const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : importInfo ? t('profile_ready_to_analyze', 'ready to analyze') : hasEnoughProfileText ? t('profile_ready_to_analyze', 'ready to analyze') : t('profile_ai_optimizer')
 
   const handleProfileTextChange = e => {
-    const value = e.target.value
-    if (looksLikeOnlyLinkedInUrl(value)) {
-      setLinkedinUrl(value.trim())
-      setText('')
-      setResult(null)
-      setChecklist(null)
-      setImportInfo(null)
-      setError('LinkedIn URL detected — paste it in the field above and click Fetch profile.')
-      return
-    }
-    setText(value)
+    setText(e.target.value)
     setResult(null)
     setChecklist(null)
     setError('')
     setImportInfo(null)
-  }
-
-  const fetchProfileFromUrl = async () => {
-    const url = linkedinUrl.trim()
-    if (!url) return
-    setError('')
-    setFetchingUrl(true)
-    setResult(null)
-    setChecklist(null)
-    setImportInfo(null)
-    try {
-      const res = await fetch('/api/profile-optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'fetch_url', profileUrl: url })
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || 'Could not fetch this LinkedIn profile.')
-      setText(data.text || '')
-      setImportInfo({ filename: url, characters: data.characters || (data.text || '').length, pages: null })
-    } catch (e) {
-      setError(e.message || 'Could not fetch this LinkedIn profile. Try uploading your LinkedIn PDF instead.')
-    } finally {
-      setFetchingUrl(false)
-    }
   }
 
   const importLinkedInPdf = async (file) => {
@@ -174,7 +130,7 @@ export default function ProfileOptimizerPage() {
           Authorization: `Bearer ${accessToken}`,
           'X-Joblytics-Device-Id': getDeviceId()
         },
-        body: JSON.stringify({ profileText: text, targetRole, profileUrl: null })
+        body: JSON.stringify({ profileText: text, targetRole })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -246,34 +202,6 @@ export default function ProfileOptimizerPage() {
               {importInfo && <p className="profileOpt-importSuccess">✓ {t('profile_pdf_import_success', { name: importInfo.filename, count: importInfo.characters }, `Imported ${importInfo.filename} · ${importInfo.characters} characters`)}</p>}
             </div>
 
-            <div className="profileOpt-importBox" style={{ marginTop: 16 }}>
-              <div>
-                <p className="profileOpt-kicker">Import from LinkedIn URL</p>
-                <h3>Paste your LinkedIn profile URL</h3>
-                <span>Joblytics will fetch your public profile and auto-fill the text area below. Works best with public profiles.</span>
-              </div>
-              <div className="profileOpt-urlRow">
-                <input
-                  type="url"
-                  value={linkedinUrl}
-                  onChange={e => { setLinkedinUrl(e.target.value); setError('') }}
-                  placeholder="https://linkedin.com/in/your-name"
-                  style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid rgba(16,24,43,0.18)', fontSize: 13, fontFamily: 'inherit', outline: 'none', minWidth: 0 }}
-                  onKeyDown={e => e.key === 'Enter' && fetchProfileFromUrl()}
-                />
-                <button
-                  type="button"
-                  className="profileOpt-importBtn profileOpt-urlBtn"
-                  onClick={fetchProfileFromUrl}
-                  disabled={fetchingUrl || !linkedinUrl.trim()}
-                >
-                  {fetchingUrl ? 'Fetching…' : 'Fetch profile'}
-                </button>
-              </div>
-              {importInfo && importInfo.filename?.includes('linkedin') && (
-                <p className="profileOpt-importSuccess">✓ Profile fetched · {importInfo.characters} characters extracted</p>
-              )}
-            </div>
 
             {hasEnoughProfileText && (
               <div className="profileOpt-saveRow">
@@ -301,8 +229,8 @@ export default function ProfileOptimizerPage() {
             <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
-            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported, URL-fetched, or pasted text only. It does not invent experience. Private profiles require a PDF upload.')}</p>
-            <div className="profileOpt-futureNote"><strong>URL fetch tip</strong><p>LinkedIn URL fetch works for fully public profiles only. If you get a timeout or error, <strong>upload your LinkedIn PDF</strong> — it's faster and more reliable. Export it from LinkedIn → Me → Settings → Data privacy → Get a copy of your data.</p></div>
+            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes your PDF-imported or pasted text only. It does not invent experience or add skills you have not listed.')}</p>
+            <div className="profileOpt-futureNote"><strong>Export tip</strong><p>Get your LinkedIn PDF from LinkedIn → Me → View Profile → More → Save to PDF. It captures your full profile in one click.</p></div>
           </aside>
         </section>
 
