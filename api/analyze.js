@@ -513,6 +513,19 @@ function hashContent(...parts) {
   return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
 }
 
+function normalizeUrlForCache(url) {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    const strip = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref','referer','source','trk']
+    strip.forEach(p => u.searchParams.delete(p))
+    const path = u.pathname.replace(/\/+$/, '') || '/'
+    return `${u.hostname}${path}${u.search}`
+  } catch {
+    return url.toLowerCase().trim()
+  }
+}
+
 async function getSupabaseClient() {
   try {
     const url = process.env.SUPABASE_URL
@@ -783,7 +796,15 @@ async function streamingHandler(req, res) {
       return res.end()
     }
 
-    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const urlCacheKey = jobUrl ? hashContent('url-v1', cvText.slice(0, CV_TEXT_LIMIT), normalizeUrlForCache(jobUrl)) : null
+    if (urlCacheKey) {
+      const urlCached = await readCachedAnalysis(supabase, userId, urlCacheKey)
+      if (urlCached) {
+        send({ t: 'done', analysis: urlCached, cached: true, rateLimit, planLimit })
+        return res.end()
+      }
+    }
+    const cacheKey = urlCacheKey || hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       send({ t: 'done', analysis: cached, cached: true, rateLimit, planLimit })
@@ -914,7 +935,15 @@ export default async function handler(req, res) {
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ success: false, error: 'Could not extract enough text from your CV. Make sure it is not a scanned image.', code: 'CV_TEXT_TOO_SHORT', debug: timer.steps() })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ success: false, error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.', code: 'JOB_TEXT_TOO_SHORT', debug: timer.steps() })
 
-    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const urlCacheKey = jobUrl ? hashContent('url-v1', cvText.slice(0, CV_TEXT_LIMIT), normalizeUrlForCache(jobUrl)) : null
+    if (urlCacheKey) {
+      const urlCached = await readCachedAnalysis(supabase, userId, urlCacheKey)
+      if (urlCached) {
+        timer.mark('url_cache_hit')
+        return res.status(200).json({ success: true, analysis: urlCached, cached: true, rateLimit, planLimit, debug: debug ? timer.steps() : undefined })
+      }
+    }
+    const cacheKey = urlCacheKey || hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       timer.mark('cache_hit')
