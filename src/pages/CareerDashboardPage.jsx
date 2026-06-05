@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { useCvPersist } from '../hooks/useCvPersist'
@@ -7,11 +7,22 @@ import { extractScore, getUserDisplayName } from '../utils/progressUtils'
 import './CareerDashboardPage.css'
 import './dashboard-simplified.css'
 
+const FREE_MONTHLY_LIMIT = 3
+
 function getTimeGreeting(t) {
   const hour = new Date().getHours()
   if (hour < 12) return t('greet_morning', 'Good morning')
   if (hour < 18) return t('greet_afternoon', 'Good afternoon')
   return t('greet_evening', 'Good evening')
+}
+
+function getUserPlan(user) {
+  const meta = { ...(user?.user_metadata || {}), ...(user?.app_metadata || {}) }
+  const status = String(meta.subscription_status || meta.stripe_subscription_status || '').toLowerCase()
+  const raw = String(meta.subscription_plan || meta.plan || meta.price_plan || meta.tier || '').toLowerCase()
+  const isPaid = ['pro', 'premium', 'professional', 'starter', 'plus', 'basic', 'paid'].includes(raw) &&
+    (!status || ['active', 'trialing', 'paid'].includes(status))
+  return isPaid ? raw : 'free'
 }
 
 function ScoreCard({ label, value, helper, tone = 'default' }) {
@@ -37,20 +48,77 @@ function QuickAction({ icon, title, text, action, primary, onClick }) {
 
 function RecentAnalysis({ item, index, t, onClick }) {
   const score = extractScore(item)
-  const title = item?.jobTitle || item?.title || item?.role || item?.result?.job_context?.title || `${t('dash_analysis', 'Analysis')} ${index + 1}`
-  const company = item?.company || item?.result?.job_context?.company || t('dash_recent_check', 'Recent check')
+  const title = item?.job_title || item?.jobTitle || item?.title || item?.role || item?.result?.job_context?.title || `${t('dash_analysis', 'Analysis')} ${index + 1}`
+  const company = item?.result?.job_context?.company || item?.company || ''
+  const scoreColor = score >= 70 ? '#557C64' : score >= 50 ? '#B9863B' : '#B85C55'
   return (
-    <button type="button" className="dashLite-recentRow" onClick={onClick}>
-      <div>
-        <strong>{title}</strong>
-        <span>{company}</span>
+    <button type="button" className="dashLite-recentRow" onClick={onClick} title="Open this analysis">
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</strong>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company || t('dash_recent_check', 'Recent check')}</span>
       </div>
-      <em>{score ? `${score}%` : '—'}</em>
+      <em style={{ color: score ? scoreColor : undefined, flexShrink: 0 }}>{score ? `${score}%` : '—'}</em>
     </button>
   )
 }
 
-export default function CareerDashboardPage({ setPage }) {
+function UsageBanner({ used, limit, onAnalyze }) {
+  const remaining = Math.max(0, limit - used)
+  const pct = Math.min(100, Math.round((used / limit) * 100))
+  const urgent = remaining <= 1
+  return (
+    <div style={{
+      padding: '14px 18px',
+      borderRadius: 16,
+      border: `1.5px solid ${urgent ? 'rgba(184,92,85,0.35)' : 'rgba(181,102,60,0.25)'}`,
+      background: urgent ? 'rgba(184,92,85,0.06)' : 'rgba(181,102,60,0.06)',
+      marginTop: 14
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 900, color: urgent ? '#B85C55' : '#B5663C', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {urgent ? '⚠ Almost out' : 'Free plan usage'}
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: urgent ? '#B85C55' : '#B5663C' }}>
+          {used} / {limit} used
+        </span>
+      </div>
+      <div style={{ height: 5, background: 'rgba(0,0,0,0.08)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: urgent ? '#B85C55' : '#B5663C', borderRadius: 99, transition: 'width 0.4s' }} />
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px', lineHeight: 1.5 }}>
+        {remaining === 0
+          ? "You've used all your free analyses this month. Upgrade to continue."
+          : `${remaining} analysis${remaining === 1 ? '' : 'es'} remaining this month on the free plan.`}
+      </p>
+      {remaining > 0
+        ? <button type="button" onClick={onAnalyze} style={{ fontSize: 12, fontWeight: 800, color: '#B5663C', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>Use one now →</button>
+        : <button type="button" onClick={() => {}} style={{ fontSize: 12, fontWeight: 800, color: '#B85C55', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>Upgrade plan →</button>}
+    </div>
+  )
+}
+
+function MissingKeywordsWidget({ keywords, onCoach }) {
+  if (!keywords.length) return null
+  return (
+    <div style={{ padding: '14px 18px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-input)', marginTop: 14 }}>
+      <p style={{ fontSize: 10, fontWeight: 900, color: '#B5663C', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+        Missing from your latest CV
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {keywords.map(k => (
+          <span key={k} style={{ padding: '4px 10px', borderRadius: 99, background: 'rgba(184,92,85,0.09)', border: '1px solid rgba(184,92,85,0.22)', color: '#B85C55', fontSize: 12, fontWeight: 800 }}>
+            + {k}
+          </span>
+        ))}
+      </div>
+      <button type="button" onClick={onCoach} style={{ fontSize: 12, fontWeight: 800, color: '#B5663C', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>
+        Fix in CV Coach →
+      </button>
+    </div>
+  )
+}
+
+export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
   const { user } = useAuth()
   const { t } = useLang()
   const { cvFile } = useCvPersist()
@@ -58,9 +126,30 @@ export default function CareerDashboardPage({ setPage }) {
   const name = getUserDisplayName(user)
   const greeting = getTimeGreeting(t)
   const recent = metrics.analyses.slice(0, 3)
+  const plan = getUserPlan(user)
   const nextAction = cvFile
     ? t('dash_lite_next_analyze', 'Analyze your next target job')
     : t('dash_lite_next_upload', 'Upload your master CV first')
+
+  const thisMonthUsed = useMemo(() => {
+    const start = new Date()
+    start.setDate(1)
+    start.setHours(0, 0, 0, 0)
+    return metrics.analyses.filter(a => new Date(a.created_at) >= start).length
+  }, [metrics.analyses])
+
+  const topMissingKeywords = useMemo(() => {
+    const latest = metrics.analyses[0]
+    if (!latest?.result) return []
+    const r = latest.result
+    return [
+      ...(r.keyword_match?.missing_required || []),
+      ...(r.keywords_analysis?.missing_keywords || []),
+      ...(r.strict_ats_result?.analysis?.missing_skills || [])
+    ].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 4)
+  }, [metrics.analyses])
+
+  const showUsageBanner = plan === 'free' && thisMonthUsed > 0
 
   return (
     <div className="careerDash-page dashLite-page">
@@ -124,7 +213,15 @@ export default function CareerDashboardPage({ setPage }) {
 
             {recent.length ? (
               <div className="dashLite-recentList">
-                {recent.map((item, index) => <RecentAnalysis key={`${item?.id || index}`} item={item} index={index} t={t} onClick={() => setPage?.('history')} />)}
+                {recent.map((item, index) => (
+                  <RecentAnalysis
+                    key={item?.id || index}
+                    item={item}
+                    index={index}
+                    t={t}
+                    onClick={() => onOpenAnalysis ? onOpenAnalysis(item) : setPage?.('history')}
+                  />
+                ))}
               </div>
             ) : (
               <div className="careerDash-empty dashLite-empty">
@@ -132,6 +229,14 @@ export default function CareerDashboardPage({ setPage }) {
                 <p>{t('dash_no_analyses_desc2', 'Run your first analysis and it will appear here.')}</p>
                 <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>{t('dash_run_first', 'Run first analysis')}</button>
               </div>
+            )}
+
+            {showUsageBanner && (
+              <UsageBanner used={thisMonthUsed} limit={FREE_MONTHLY_LIMIT} onAnalyze={() => setPage?.('analyzer')} />
+            )}
+
+            {recent.length > 0 && (
+              <MissingKeywordsWidget keywords={topMissingKeywords} onCoach={() => setPage?.('coach')} />
             )}
           </aside>
         </section>
