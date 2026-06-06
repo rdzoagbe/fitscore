@@ -367,7 +367,7 @@ const TABS = [
   { id: 'cv', icon: '📝', label: 'CV Optimize' }
 ]
 
-export default function CvCoachPage() {
+export default function CvCoachPage({ setPage }) {
   const { user, session } = useAuth()
   const { t, lang } = useLang()
   const [analyses, setAnalyses] = useState([])
@@ -395,8 +395,15 @@ export default function CvCoachPage() {
     <div style={{ ...pageVars, minHeight: '100dvh', background: theme.ivory, padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px)', maxWidth: 900, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
       <div style={{ ...card({ padding: 34 }) }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
-        <h2 style={{ fontFamily: 'Georgia, Newsreader, serif', fontSize: 34, color: theme.navy, marginBottom: 8, fontWeight: 500, letterSpacing: '-0.06em' }}>{t('no_analyses')}</h2>
-        <p style={{ fontSize: 14, color: theme.muted }}>{t('coach_empty')}</p>
+        <h2 style={{ fontFamily: 'Georgia, Newsreader, serif', fontSize: 34, color: theme.navy, marginBottom: 8, fontWeight: 500, letterSpacing: '-0.06em' }}>{t('no_analyses', 'No analyses yet')}</h2>
+        <p style={{ fontSize: 14, color: theme.muted, marginBottom: 24, lineHeight: 1.6 }}>CV Coach generates cover letters and messages based on a job analysis. Run a job analysis first, then come back here to generate your assets.</p>
+        <button
+          type="button"
+          onClick={() => setPage?.('analyzer')}
+          style={{ minHeight: 44, padding: '0 24px', borderRadius: 999, border: 0, background: theme.navy, color: theme.ivory, fontWeight: 900, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}
+        >
+          Analyze a job first →
+        </button>
       </div>
     </div>
   )
