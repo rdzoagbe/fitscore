@@ -161,15 +161,22 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     <div className="analyzePro-page">
       {showConfetti && <Confetti />}
       <main className="analyzePro-shell">
-        {displayStatus !== 'done' && <div className="analyzePro-layout">
+        {displayStatus !== 'done' && <>
+          <div className="analyzePro-pageHero">
+            <p className="analyzePro-kicker">{t('analyzer_kicker')}</p>
+            <h1>{t('analyzer_title')}</h1>
+            <p>{t('analyzer_subtitle')}</p>
+          </div>
+          <div className="analyzePro-layout">
           <section className="analyzePro-card">
-            <div className="analyzePro-formHero"><p>{t('analyzer_kicker')}</p><h1>{t('analyzer_title')}</h1><p>{t('analyzer_subtitle')}</p></div>
             {clipperInfo && <TipCard type="success" title="Job clipped from browser" body={`${clipperInfo.title || 'Job'}${clipperInfo.company ? ` at ${clipperInfo.company}` : ''} was imported into the analyzer. Upload or confirm your CV, then run the match.`} />}
+            <p className="analyzePro-sectionLabel">Your CV</p>
             <CvPanel uploadTrigger={uploadTrigger} />
-            <div ref={errorCardRef} className="card" style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                <button type="button" className="btn-primary" onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }} style={{ opacity: !showTextPaste ? 1 : 0.72 }}>{t('analyzer_url_mode')}</button>
-                <button type="button" onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }} style={{ padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border)', background: showTextPaste ? 'var(--accent-bg)' : 'var(--bg-input)', color: showTextPaste ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 800, cursor: 'pointer' }}>{t('analyzer_paste_mode')}</button>
+            <div ref={errorCardRef} className="analyzePro-jobSection">
+              <p className="analyzePro-sectionLabel">Job listing</p>
+              <div className="analyzePro-modeTabs">
+                <button type="button" className={`analyzePro-modeTab${!showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }}>{t('analyzer_url_mode')}</button>
+                <button type="button" className={`analyzePro-modeTab${showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }}>{t('analyzer_paste_mode')}</button>
               </div>
               {!showTextPaste ? <>
                 <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
@@ -218,7 +225,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_workflow')}</p><h3>{t('analyzer_workflow_title')}</h3><div className="analyzePro-steps"><div className="analyzePro-step"><span>1</span><div><strong>{t('analyzer_step1_title')}</strong><small>{t('analyzer_step1_body')}</small></div></div><div className="analyzePro-step"><span>2</span><div><strong>{t('analyzer_step2_title')}</strong><small>{t('analyzer_step2_body')}</small></div></div><div className="analyzePro-step"><span>3</span><div><strong>{t('analyzer_step3_title')}</strong><small>{t('analyzer_step3_body')}</small></div></div></div></div>
             <div className="analyzePro-sideCard"><p className="analyzePro-kicker">{t('analyzer_tip')}</p><h3>{t('analyzer_tip_title')}</h3><p>{t('analyzer_tip_body')}</p></div>
           </aside>
-        </div>}
+        </div>
+        </>}
         {displayStatus === 'done' && displayData && <div ref={resultRef} className="page-enter"><ResultsView data={displayData} savedRow={viewingAnalysis ? viewingAnalysis : savedRow} rateLimit={rateLimit} onReset={handleReset} onGoCoach={() => setPage('coach')} /></div>}
       </main>
       <PWAInstallPrompt />
