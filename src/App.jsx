@@ -182,5 +182,5 @@ export default function App() {
     }
   }
 
-  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div></ErrorBoundary>
+  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar setPage={setPage} /></div></ErrorBoundary>
 }
