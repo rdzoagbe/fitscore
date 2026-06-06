@@ -62,7 +62,34 @@ function RecentAnalysis({ item, index, t, onClick }) {
   )
 }
 
-function UsageBanner({ used, limit, onAnalyze }) {
+function ScoreSparkline({ analyses }) {
+  const scores = [...analyses].reverse().map(extractScore).filter(s => s > 0)
+  if (scores.length < 2) return null
+  const min = Math.min(...scores)
+  const max = Math.max(...scores)
+  const range = max - min || 1
+  const W = 80
+  const H = 28
+  const pts = scores.map((s, i) => {
+    const x = (i / (scores.length - 1)) * W
+    const y = H - ((s - min) / range) * (H - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+  const trend = scores[scores.length - 1] - scores[0]
+  const color = trend >= 0 ? '#557C64' : '#B85C55'
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {scores.map((s, i) => {
+        const x = (i / (scores.length - 1)) * W
+        const y = H - ((s - min) / range) * (H - 4) - 2
+        return i === scores.length - 1 ? <circle key={i} cx={x} cy={y} r="3" fill={color} /> : null
+      })}
+    </svg>
+  )
+}
+
+function UsageBanner({ used, limit, onAnalyze, onUpgrade }) {
   const remaining = Math.max(0, limit - used)
   const pct = Math.min(100, Math.round((used / limit) * 100))
   const urgent = remaining <= 1
@@ -92,7 +119,7 @@ function UsageBanner({ used, limit, onAnalyze }) {
       </p>
       {remaining > 0
         ? <button type="button" onClick={onAnalyze} style={{ fontSize: 12, fontWeight: 800, color: '#B5663C', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>Use one now →</button>
-        : <button type="button" onClick={() => {}} style={{ fontSize: 12, fontWeight: 800, color: '#B85C55', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>Upgrade plan →</button>}
+        : <button type="button" onClick={onUpgrade} style={{ fontSize: 12, fontWeight: 800, color: '#B85C55', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>Upgrade plan →</button>}
     </div>
   )
 }
@@ -125,7 +152,7 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
   const metrics = useProgressMetrics({})
   const name = getUserDisplayName(user)
   const greeting = getTimeGreeting(t)
-  const recent = metrics.analyses.slice(0, 3)
+  const recent = metrics.analyses.slice(0, 5)
   const plan = getUserPlan(user)
   const nextAction = cvFile
     ? t('dash_lite_next_analyze', 'Analyze your next target job')
@@ -208,7 +235,10 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
                 <p className="careerDash-kicker">{t('dash_recent_activity', 'Recent activity')}</p>
                 <h2>{t('dash_latest_analyses', 'Latest analyses')}</h2>
               </div>
-              <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('history')}>{t('dash_view_history', 'View history')}</button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                {recent.length >= 2 && <ScoreSparkline analyses={recent} />}
+                <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('history')}>{t('dash_view_history', 'View history')}</button>
+              </div>
             </div>
 
             {recent.length ? (
@@ -232,7 +262,7 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
             )}
 
             {showUsageBanner && (
-              <UsageBanner used={thisMonthUsed} limit={FREE_MONTHLY_LIMIT} onAnalyze={() => setPage?.('analyzer')} />
+              <UsageBanner used={thisMonthUsed} limit={FREE_MONTHLY_LIMIT} onAnalyze={() => setPage?.('analyzer')} onUpgrade={() => setPage?.('billing')} />
             )}
 
             {recent.length > 0 && (

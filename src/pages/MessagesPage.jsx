@@ -510,12 +510,30 @@ export default function MessagesPage({ setPage }) {
 
         <section className="messagesStableMetrics">
           {isPreviewMode && (
-            <div style={{ gridColumn: '1 / -1', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 6, padding: '2px 8px' }}>Preview mode</span>
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Smart Sync is in preview mode. Real synced data will appear here once secure sync is activated.</span>
+            <div style={{ gridColumn: '1 / -1', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 6, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>Not connected yet</span>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Smart Sync reads your inbox for job signals</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>Once connected, Joblytics scans job-related emails and calendar events — detecting application confirmations, recruiter replies, interview invites, and rejections automatically.</p>
+                </div>
+                <button type="button" onClick={handlePrimarySync} disabled={syncLoading} style={{ fontSize: 12, fontWeight: 800, color: 'var(--bg)', background: 'var(--text-primary)', border: 'none', borderRadius: 999, padding: '9px 18px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {syncLoading ? 'Connecting…' : 'Connect & sync now'}
+                </button>
               </div>
-              <button type="button" onClick={() => setPage?.('sync-settings')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>Sync settings →</button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[
+                  { step: '1', label: 'Connect Gmail or Outlook', desc: 'Read-only access, revoke any time' },
+                  { step: '2', label: 'Run Smart Sync', desc: 'Scans last 90 days of job emails' },
+                  { step: '3', label: 'See your pipeline', desc: 'Interviews, rejections and follow-ups' }
+                ].map(({ step, label, desc }) => (
+                  <div key={step} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 12px' }}>
+                    <span style={{ display: 'inline-grid', placeItems: 'center', width: 22, height: 22, borderRadius: 99, background: 'var(--text-primary)', color: 'var(--bg)', fontSize: 10, fontWeight: 950, marginBottom: 6 }}>{step}</span>
+                    <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px' }}>{label}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{desc}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           <Metric label="Tracked signals" value={stats.total} text="Email and calendar events" preview={isPreviewMode} />
