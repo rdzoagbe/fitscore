@@ -123,6 +123,7 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
   const { t, lang } = useLang()
   const [analyses, setAnalyses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
   const [filter, setFilter] = useState('all')
@@ -135,18 +136,25 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
 
   const fetchAnalyses = async () => {
     setLoading(true)
-    const { data } = await supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(120)
-    setAnalyses(data || [])
-    setSelectedId(data?.[0]?.id || null)
+    setFetchError(false)
+    const { data, error } = await supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(120)
+    if (error) {
+      setFetchError(true)
+    } else {
+      setAnalyses(data || [])
+      setSelectedId(data?.[0]?.id || null)
+    }
     setLoading(false)
   }
 
   const deleteAnalysis = async (id, event) => {
     event?.stopPropagation?.()
     setDeleting(id)
-    await supabase.from('analyses').delete().eq('id', id)
-    setAnalyses(prev => prev.filter(item => item.id !== id))
-    setSelectedId(current => current === id ? null : current)
+    const { error } = await supabase.from('analyses').delete().eq('id', id)
+    if (!error) {
+      setAnalyses(prev => prev.filter(item => item.id !== id))
+      setSelectedId(current => current === id ? null : current)
+    }
     setDeleting(null)
   }
 
@@ -282,7 +290,8 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis, onBuildCv, 
           <div className="historyMD-masterHead"><div><p className="historyMD-kicker">Saved analyses</p><h2>{filtered.length} result{filtered.length === 1 ? '' : 's'}</h2></div><div className="historyMD-toolbar"><label className="historyMD-search"><span>⌕</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by job, company, location or status..." /></label><select value={sortBy} onChange={event => setSortBy(event.target.value)}><option value="recent">Newest</option><option value="score">Highest score</option><option value="company">Company A-Z</option></select></div></div>
           {!loading && analyses.length > 0 && <div className="historyMD-filters">{filters.map(item => <button key={item.value} type="button" className={filter === item.value ? 'is-active' : ''} onClick={() => setFilter(item.value)}>{item.label}</button>)}</div>}
           {loading && <div className="historyMD-skeletonList">{[1,2,3,4].map(item => <span key={item} />)}</div>}
-          {!loading && analyses.length === 0 && <EmptyState title={t('history_no_analyses', 'No analyses yet')} text={t('history_no_analyses_desc', 'Run your first job analysis and it will appear here.')} action={t('history_start_analyzing', 'Start analyzing')} onAction={onNewAnalysis} />}
+          {!loading && fetchError && <EmptyState title={t('history_load_error', 'Could not load analyses')} text={t('history_load_error_desc', 'There was a problem fetching your data. Check your connection and try again.')} action={t('history_retry', 'Try again')} onAction={fetchAnalyses} />}
+          {!loading && !fetchError && analyses.length === 0 && <EmptyState title={t('history_no_analyses', 'No analyses yet')} text={t('history_no_analyses_desc', 'Run your first job analysis and it will appear here.')} action={t('history_start_analyzing', 'Start analyzing')} onAction={onNewAnalysis} />}
           {!loading && analyses.length > 0 && filtered.length === 0 && <EmptyState title={t('history_no_filter_match', 'No matching analyses')} text={t('history_try_filter', 'Try another search or filter.')} />}
           {!loading && filtered.length > 0 && <><div className="historyMD-tableWrap"><table className="historyMD-table"><thead><tr><th>Job title</th><th>Company</th><th>Fit score</th><th>Verdict</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody>{visibleRows.map(item => { const tone = scoreTone(item.score); const active = selected?.id === item.id; return <tr key={item.id} className={active ? 'is-selected' : ''} onClick={() => setSelectedId(item.id)}><td><strong>{item.display.title}</strong><span>{item.display.location || item.display.workMode || item.display.contract || 'Saved analysis'}</span></td><td>{item.display.company || '—'}</td><td><b className={`historyMD-score historyMD-score--${tone}`}>{item.score}%</b>{item.scoreDelta !== null && item.scoreDelta !== 0 && <small style={{color:item.scoreDelta>0?'#10b981':'#ef4444',marginLeft:4,fontWeight:700}}>{item.scoreDelta>0?'+':''}{item.scoreDelta}</small>}</td><td><em className={`historyMD-verdict historyMD-verdict--${tone}`}>{verdictLabel(item.result?.overall_verdict || item.result?.recruiter_shortlist?.verdict, t)}</em></td><td><StatusPill analysis={item} onUpdate={updated => setAnalyses(prev => prev.map(row => row.id === updated.id ? updated : row))} compact /></td><td><span>{formatDate(item.created_at, lang)}</span><small>{formatTime(item.created_at, lang)}</small></td><td><button type="button" onClick={event => { event.stopPropagation(); onSelectAnalysis?.(item) }}>Open</button><button type="button" className="historyMD-deleteBtn" disabled={deleting === item.id} onClick={event => deleteAnalysis(item.id, event)}>×</button></td></tr> })}</tbody></table></div><div className="historyMD-pagination"><span>Showing {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}</span><div><button type="button" disabled={safePage <= 1} onClick={() => setPage(value => Math.max(1, value - 1))}>‹</button><strong>{safePage}</strong><button type="button" disabled={safePage >= pageCount} onClick={() => setPage(value => Math.min(pageCount, value + 1))}>›</button></div></div></>}
         </section>
