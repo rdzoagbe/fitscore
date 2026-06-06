@@ -1,7 +1,7 @@
 .commAssets-card {
   margin-bottom: 16px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255,253,248,.98), var(--bg-card));
+  background: linear-gradient(180deg, rgba(238,226,220,.98), var(--bg-card));
   border-radius: 24px;
   box-shadow: 0 20px 55px rgba(16,24,43,.07);
   overflow: hidden;
@@ -202,7 +202,7 @@
   gap: 10px;
   padding: 18px;
   border-top: 1px solid var(--border);
-  background: rgba(250,247,241,.60);
+  background: rgba(238,226,220,.60);
 }
 
 .commAssets-draftHead {
@@ -238,7 +238,7 @@
 
 .commAssets-draftHead button:last-child {
   background: var(--accent);
-  color: #fffdf8;
+  color: #EEE2DC;
   border-color: var(--accent);
 }
 

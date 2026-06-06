@@ -1,25 +1,25 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #FAF7F1;
-  --bg-card: #FFFDF8;
-  --bg-input: rgba(255,255,255,0.72);
-  --border: rgba(16,24,43,0.16);
-  --border-focus: rgba(164,81,43,0.48);
-  --text-primary: #10182B;
-  --text-secondary: #4F5666;
-  --text-muted: #666D7C;
-  --text-hint: #6D7380;
-  --shadow: rgba(16,24,43,0.08);
-  --accent: #A4512B;
-  --accent-bg: rgba(164,81,43,0.11);
-  --accent-text: #A4512B;
-  --slate: #43556F;
-  --slate-bg: rgba(67,85,111,0.10);
+  --bg: #EEE2DC;
+  --bg-card: #F8F0EC;
+  --bg-input: rgba(255,255,255,0.68);
+  --border: rgba(18,60,105,0.14);
+  --border-focus: rgba(172,59,97,0.48);
+  --text-primary: #123C69;
+  --text-secondary: #5C556A;
+  --text-muted: #8A8492;
+  --text-hint: #A09AA8;
+  --shadow: rgba(18,60,105,0.08);
+  --accent: #AC3B61;
+  --accent-bg: rgba(172,59,97,0.10);
+  --accent-text: #AC3B61;
+  --slate: #123C69;
+  --slate-bg: rgba(18,60,105,0.10);
   --red: #A94740;
   --amber: #8F641F;
   --green: #3F6F50;
-  --blue: #43556F;
+  --blue: #123C69;
   --font-display: Newsreader, Georgia, 'Times New Roman', serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 }
@@ -70,7 +70,7 @@ textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--bor
 textarea:focus { border-color: var(--border-focus); }
 textarea::placeholder { color: var(--text-secondary); opacity: 1; }
 
-.btn-primary { background: var(--accent); color: #FFFDF8; border: none; border-radius: 12px; padding: 14px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset; }
+.btn-primary { background: var(--accent); color: #EEE2DC; border: none; border-radius: 12px; padding: 14px 24px; font-family: var(--font-body); font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset; }
 .btn-primary:hover:not(:disabled) { filter: brightness(0.95); }
 .btn-primary:active:not(:disabled) { transform: translateY(1px); }
 .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
