@@ -260,16 +260,19 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
                 <button type="button" className="careerDash-btn careerDash-btnPrimary" onClick={() => setPage?.('analyzer')}>{t('dash_run_first', 'Run first analysis')}</button>
               </div>
             )}
+          </aside>
+        </section>
 
+        {(showUsageBanner || (recent.length > 0 && topMissingKeywords.length > 0)) && (
+          <div className="dashLite-banners">
             {showUsageBanner && (
               <UsageBanner used={thisMonthUsed} limit={FREE_MONTHLY_LIMIT} onAnalyze={() => setPage?.('analyzer')} onUpgrade={() => setPage?.('billing')} />
             )}
-
-            {recent.length > 0 && (
+            {recent.length > 0 && topMissingKeywords.length > 0 && (
               <MissingKeywordsWidget keywords={topMissingKeywords} onCoach={() => setPage?.('coach')} />
             )}
-          </aside>
-        </section>
+          </div>
+        )}
       </main>
     </div>
   )
