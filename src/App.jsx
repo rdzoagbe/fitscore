@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './context/AuthContext'
 import { hasAcceptedCurrentTerms } from './lib/legal'
 import { supabase } from './lib/supabase'
@@ -182,5 +183,5 @@ export default function App() {
     }
   }
 
-  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar setPage={setPage} /></div></ErrorBoundary>
+  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar setPage={setPage} /></div><Analytics /></ErrorBoundary>
 }
