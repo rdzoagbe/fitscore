@@ -57,7 +57,11 @@ export const translations = {
     onb_step3_desc: 'Keep interviews, replies, rejections, and offers in one place.',
     onb_step4_title: 'Improve every week',
     onb_step4_desc: 'Use Smart Sync and CV Coach to build a stronger job-search rhythm.',
+    onb_step5_title: 'You\'re ready to go',
+    onb_step5_desc: 'Start by uploading your CV and running your first job analysis. Your results, history, and assets will all be here when you need them.',
     onb_next: 'Next',
+    onb_back: 'Back',
+    onb_get_started: 'Go to analyzer',
     onb_skip: 'Skip',
     onb_done: 'Done'
   },
@@ -114,7 +118,11 @@ export const translations = {
     onb_step3_desc: 'Centralisez les entretiens, réponses, refus et offres.',
     onb_step4_title: 'Progressez chaque semaine',
     onb_step4_desc: 'Utilisez Smart Sync et CV Coach pour améliorer votre rythme de recherche.',
+    onb_step5_title: 'Vous êtes prêt',
+    onb_step5_desc: 'Commencez par importer votre CV et lancer votre première analyse. Vos résultats, historique et documents seront ici à tout moment.',
     onb_next: 'Suivant',
+    onb_back: 'Retour',
+    onb_get_started: 'Aller à l\'analyseur',
     onb_skip: 'Ignorer',
     onb_done: 'Terminer'
   }
