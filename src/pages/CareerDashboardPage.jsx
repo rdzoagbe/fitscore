@@ -235,7 +235,7 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
                 <p className="careerDash-kicker">{t('dash_recent_activity', 'Recent activity')}</p>
                 <h2>{t('dash_latest_analyses', 'Latest analyses')}</h2>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div className="dashLite-recentHeaderMeta">
                 {recent.length >= 2 && <ScoreSparkline analyses={recent} />}
                 <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('history')}>{t('dash_view_history', 'View history')}</button>
               </div>
