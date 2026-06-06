@@ -17,19 +17,33 @@ import './phase6-communication-assets.css'
 import './cv-coach-layout-fix.css'
 import './smart-sync-inbox-polish.css'
 
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
-const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
-const TermsPage = lazy(() => import('./pages/TermsPage'))
-const LegalNoticePage = lazy(() => import('./pages/LegalNoticePage'))
-const ContactPage = lazy(() => import('./pages/ContactPage'))
-const MessagesPage = lazy(() => import('./pages/MessagesPage'))
-const CvCoachPage = lazy(() => import('./pages/CvCoachPage'))
-const CvBuilderPage = lazy(() => import('./pages/CvBuilderPage'))
-const ProfileOptimizerPage = lazy(() => import('./pages/ProfileOptimizerPage'))
-const BillingPage = lazy(() => import('./pages/BillingPage'))
-const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
-const SmartSyncSettingsPage = lazy(() => import('./pages/SmartSyncSettingsPage'))
+function lazyWithReload(factory) {
+  return lazy(() =>
+    factory().catch(err => {
+      const key = 'joblytics_chunk_reload'
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      throw err
+    })
+  )
+}
+
+const Dashboard = lazyWithReload(() => import('./pages/Dashboard'))
+const CareerDashboardPage = lazyWithReload(() => import('./pages/CareerDashboardPage'))
+const PrivacyPage = lazyWithReload(() => import('./pages/PrivacyPage'))
+const TermsPage = lazyWithReload(() => import('./pages/TermsPage'))
+const LegalNoticePage = lazyWithReload(() => import('./pages/LegalNoticePage'))
+const ContactPage = lazyWithReload(() => import('./pages/ContactPage'))
+const MessagesPage = lazyWithReload(() => import('./pages/MessagesPage'))
+const CvCoachPage = lazyWithReload(() => import('./pages/CvCoachPage'))
+const CvBuilderPage = lazyWithReload(() => import('./pages/CvBuilderPage'))
+const ProfileOptimizerPage = lazyWithReload(() => import('./pages/ProfileOptimizerPage'))
+const BillingPage = lazyWithReload(() => import('./pages/BillingPage'))
+const AnalyzerPage = lazyWithReload(() => import('./pages/AnalyzerPage'))
+const SmartSyncSettingsPage = lazyWithReload(() => import('./pages/SmartSyncSettingsPage'))
 
 const PAGE_TO_PATH = {
   dashboard: '/dashboard',
