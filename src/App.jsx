@@ -9,6 +9,7 @@ import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
 import SmartSyncUxBridge from './components/SmartSyncUxBridge'
+import ErrorBoundary from './components/ErrorBoundary'
 import './ui-polish.css'
 import './smart-sync-phase5.css'
 import './phase6-communication-assets.css'
@@ -170,7 +171,7 @@ export default function App() {
       case 'dashboard': return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => selectAndGo(a, 'analyzer')} onBuildCv={a => selectAndGo(a, 'cv-builder')} onGenerateMessage={a => selectAndGo(a, 'coach')} />
-      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} />
+      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} setPage={setPage} />
       case 'profile': return <ProfileOptimizerPage />
       case 'billing': return <BillingPage />
       case 'messages': return <MessagesPage setPage={setPage} />
@@ -181,5 +182,5 @@ export default function App() {
     }
   }
 
-  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div>
+  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div></ErrorBoundary>
 }

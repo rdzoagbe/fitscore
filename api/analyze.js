@@ -537,6 +537,22 @@ async function getSupabaseClient() {
   }
 }
 
+async function getUserFromToken(req) {
+  const header = req.headers.authorization || req.headers.Authorization || ''
+  const token = typeof header === 'string' ? (header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null) : null
+  if (!token) return null
+  try {
+    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    if (!url || !key) return null
+    const sb = createClient(url, key, { auth: { persistSession: false } })
+    const { data, error } = await sb.auth.getUser(token)
+    return error ? null : (data?.user || null)
+  } catch {
+    return null
+  }
+}
+
 async function checkRateLimit(supabase, userId) {
   if (!supabase || !userId) return { allowed: true, dayCount: 0, dayLimit: DAILY_LIMIT }
   try {
@@ -760,7 +776,14 @@ async function streamingHandler(req, res) {
   const send = data => res.write(`data: ${JSON.stringify(data)}\n\n`)
 
   try {
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body || {}
+    const authUser = await getUserFromToken(req)
+    if (!authUser) {
+      send({ t: 'err', status: 401, error: 'Authentication required. Please sign in and try again.', code: 'UNAUTHORIZED' })
+      return res.end()
+    }
+
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName } = req.body || {}
+    const userId = authUser.id
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) {
       send({ t: 'err', status: 400, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
       return res.end()
@@ -913,7 +936,11 @@ export default async function handler(req, res) {
 
   try {
     timer.mark('start')
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName, debug = false, skipAi = false } = req.body || {}
+    const authUser = await getUserFromToken(req)
+    if (!authUser) return res.status(401).json({ success: false, error: 'Authentication required. Please sign in and try again.', code: 'UNAUTHORIZED' })
+
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName, debug = false, skipAi = false } = req.body || {}
+    const userId = authUser.id
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ success: false, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
 
     const supabase = await getSupabaseClient()
