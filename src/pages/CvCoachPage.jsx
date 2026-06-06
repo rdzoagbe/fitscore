@@ -7,33 +7,20 @@ import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 
 const theme = {
-  ivory: '#FAF7F1',
-  paper: '#FFFDF8',
-  navy: '#10182B',
-  muted: '#5F6472',
-  line: 'rgba(16,24,43,0.12)',
-  copper: '#B5663C',
-  copperSoft: 'rgba(181,102,60,0.10)',
+  ivory: 'var(--bg)',
+  paper: 'var(--bg-card)',
+  navy: 'var(--text-primary)',
+  muted: 'var(--text-secondary)',
+  line: 'var(--border)',
+  copper: 'var(--accent)',
+  copperSoft: 'var(--accent-bg)',
   green: '#557C64',
   red: '#B85C55',
   gold: '#B9863B'
 }
 
-const pageVars = {
-  '--bg': theme.ivory,
-  '--bg-card': theme.paper,
-  '--bg-input': 'rgba(255,255,255,0.62)',
-  '--text-primary': theme.navy,
-  '--text-secondary': theme.muted,
-  '--text-muted': theme.muted,
-  '--text-hint': 'rgba(95,100,114,0.72)',
-  '--border': theme.line,
-  '--accent': theme.copper,
-  '--accent-bg': theme.copperSoft
-}
-
 function card(extra = {}) {
-  return { background: theme.paper, border: `1px solid ${theme.line}`, borderRadius: 24, boxShadow: '0 20px 55px rgba(16,24,43,0.07)', ...extra }
+  return { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 24, boxShadow: '0 20px 55px rgba(16,24,43,0.09)', ...extra }
 }
 
 function Kicker({ children }) {
@@ -61,7 +48,7 @@ function QuickWinCard({ win, index, t }) {
         )}
       </div>
       {example && (
-        <div style={{ background: 'rgba(250,247,241,0.75)', borderLeft: `3px solid ${theme.copper}`, borderRadius: 10, padding: '9px 11px', marginLeft: 38 }}>
+        <div style={{ background: 'var(--bg-input)', borderLeft: `3px solid ${theme.copper}`, borderRadius: 10, padding: '9px 11px', marginLeft: 38 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
             <span style={{ fontSize: 9, fontWeight: 900, color: theme.muted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Example</span>
             <button onClick={() => { navigator.clipboard.writeText(example); setCopiedExample(true); setTimeout(() => setCopiedExample(false), 1500) }}
@@ -227,7 +214,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
           <p style={{ margin: 0, fontSize: 17, fontWeight: 500, color: theme.navy, fontFamily: 'Georgia, Newsreader, serif', letterSpacing: '-0.04em' }}>✉️ {t('cover_letter')}</p>
         </div>
         {coverLetter && (
-          <button onClick={copyLetter} style={{ padding: '8px 14px', borderRadius: 999, background: copied ? 'rgba(85,124,100,0.15)' : 'rgba(255,255,255,0.62)', border: `1px solid ${copied ? 'rgba(85,124,100,0.3)' : theme.line}`, color: copied ? theme.green : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+          <button onClick={copyLetter} style={{ padding: '8px 14px', borderRadius: 999, background: copied ? 'rgba(85,124,100,0.15)' : 'var(--bg-input)', border: `1px solid ${copied ? 'rgba(85,124,100,0.3)' : theme.line}`, color: copied ? theme.green : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
             {copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
           </button>
         )}
@@ -238,7 +225,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
           <div style={{ display: 'grid', gap: 14 }}>
             {savedLetters.length > 0 && (
               <div style={{ borderRadius: 16, border: `1px solid ${theme.line}`, overflow: 'hidden' }}>
-                <div style={{ padding: '10px 14px', background: 'rgba(250,247,241,0.7)', borderBottom: `1px solid ${theme.line}` }}>
+                <div style={{ padding: '10px 14px', background: 'var(--bg-input)', borderBottom: `1px solid ${theme.line}` }}>
                   <Kicker>Previous letters</Kicker>
                 </div>
                 <div style={{ display: 'grid', gap: 0 }}>
@@ -270,7 +257,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
               {editingName ? (
                 <div style={{ display: 'flex', gap: 6 }}>
                   <input type="text" value={tempName} onChange={e => setTempName(e.target.value)} placeholder={t('your_name_placeholder')}
-                    style={{ flex: 1, padding: '10px 13px', fontSize: 13, background: 'rgba(255,255,255,0.62)', border: `1px solid ${theme.line}`, borderRadius: 13, color: theme.navy, outline: 'none' }}
+                    style={{ flex: 1, padding: '10px 13px', fontSize: 13, background: 'var(--bg-input)', border: `1px solid ${theme.line}`, borderRadius: 13, color: theme.navy, outline: 'none' }}
                     autoFocus
                     onKeyDown={async e => {
                       if (e.key === 'Enter' && tempName.trim()) { const r = await saveFullName(tempName); if (r?.success) { setEditingName(false); setGenError('') } }
@@ -278,13 +265,13 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
                     }} />
                   <button onClick={async () => { if (!tempName.trim()) return; const r = await saveFullName(tempName); if (r?.success) { setEditingName(false); setGenError('') } }}
                     disabled={!tempName.trim()}
-                    style={{ padding: '10px 14px', borderRadius: 13, background: tempName.trim() ? theme.navy : 'rgba(255,255,255,0.62)', border: tempName.trim() ? 'none' : `1px solid ${theme.line}`, color: tempName.trim() ? theme.ivory : theme.muted, fontSize: 12, fontWeight: 800, cursor: tempName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+                    style={{ padding: '10px 14px', borderRadius: 13, background: tempName.trim() ? theme.navy : 'var(--bg-input)', border: tempName.trim() ? 'none' : `1px solid ${theme.line}`, color: tempName.trim() ? theme.ivory : theme.muted, fontSize: 12, fontWeight: 800, cursor: tempName.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
                     {t('save')}
                   </button>
                 </div>
               ) : (
                 <div onClick={() => { setEditingName(true); setTempName(fullName || '') }}
-                  style={{ padding: '10px 13px', background: 'rgba(255,255,255,0.62)', border: `1px solid ${theme.line}`, borderRadius: 13, fontSize: 13, color: fullName ? theme.navy : theme.muted, cursor: 'pointer' }}>
+                  style={{ padding: '10px 13px', background: 'var(--bg-input)', border: `1px solid ${theme.line}`, borderRadius: 13, fontSize: 13, color: fullName ? theme.navy : theme.muted, cursor: 'pointer' }}>
                   {fullName || t('your_name_hint')}
                 </div>
               )}
@@ -297,7 +284,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
                 <span style={{ fontSize: 9, color: theme.muted, fontWeight: 500 }}>· {t('optional')}</span>
               </div>
               <input type="text" value={recipient} onChange={e => setRecipient(e.target.value)} placeholder={t('recipient_placeholder')}
-                style={{ width: '100%', padding: '10px 13px', fontSize: 13, background: 'rgba(255,255,255,0.62)', border: `1px solid ${theme.line}`, borderRadius: 13, color: theme.navy, outline: 'none', boxSizing: 'border-box' }} />
+                style={{ width: '100%', padding: '10px 13px', fontSize: 13, background: 'var(--bg-input)', border: `1px solid ${theme.line}`, borderRadius: 13, color: theme.navy, outline: 'none', boxSizing: 'border-box' }} />
             </div>
 
             {/* Tone */}
@@ -306,7 +293,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 7, marginTop: 7 }}>
                 {[{ v: 'professional', label: t('tone_professional') }, { v: 'warm', label: t('tone_warm') }, { v: 'formal', label: t('tone_formal') }, { v: 'enthusiastic', label: t('tone_enthusiastic') }].map(o => (
                   <button key={o.v} onClick={() => setTone(o.v)}
-                    style={{ padding: '10px', borderRadius: 13, border: `1.5px solid ${tone === o.v ? theme.navy : theme.line}`, background: tone === o.v ? theme.navy : 'rgba(255,255,255,0.62)', color: tone === o.v ? theme.ivory : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, transition: 'all 0.12s' }}>
+                    style={{ padding: '10px', borderRadius: 13, border: `1.5px solid ${tone === o.v ? theme.navy : theme.line}`, background: tone === o.v ? theme.navy : 'var(--bg-input)', color: tone === o.v ? theme.ivory : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, transition: 'all 0.12s' }}>
                     {o.label}
                   </button>
                 ))}
@@ -319,7 +306,7 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 7, marginTop: 7 }}>
                 {[{ v: 'short', label: t('length_short'), sub: t('length_short_sub') }, { v: 'standard', label: t('length_standard'), sub: t('length_standard_sub') }, { v: 'detailed', label: t('length_detailed'), sub: t('length_detailed_sub') }].map(o => (
                   <button key={o.v} onClick={() => setLength(o.v)}
-                    style={{ padding: '10px 6px', borderRadius: 13, border: `1.5px solid ${length === o.v ? theme.navy : theme.line}`, background: length === o.v ? theme.navy : 'rgba(255,255,255,0.62)', color: length === o.v ? theme.ivory : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', transition: 'all 0.12s' }}>
+                    style={{ padding: '10px 6px', borderRadius: 13, border: `1.5px solid ${length === o.v ? theme.navy : theme.line}`, background: length === o.v ? theme.navy : 'var(--bg-input)', color: length === o.v ? theme.ivory : theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center', transition: 'all 0.12s' }}>
                     <span>{o.label}</span>
                     <span style={{ fontSize: 9, color: length === o.v ? 'rgba(250,247,241,0.76)' : 'rgba(95,100,114,0.72)', fontWeight: 500 }}>{o.sub}</span>
                   </button>
@@ -345,12 +332,12 @@ function CoverLetterPanel({ selected, t, lang, fullName, saveFullName }) {
 
         {coverLetter && (
           <div>
-            <pre style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: theme.navy, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, background: 'rgba(250,247,241,0.75)', borderRadius: 14, padding: '16px 17px', maxHeight: 440, overflowY: 'auto', border: `1px solid ${theme.line}` }}>{coverLetter}</pre>
+            <pre style={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, color: theme.navy, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0, background: 'var(--bg-input)', borderRadius: 14, padding: '16px 17px', maxHeight: 440, overflowY: 'auto', border: `1px solid ${theme.line}` }}>{coverLetter}</pre>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
               <button onClick={copyLetter} style={{ padding: '12px', borderRadius: 13, background: copied ? 'rgba(85,124,100,0.15)' : theme.navy, border: copied ? '1px solid rgba(85,124,100,0.3)' : 'none', color: copied ? theme.green : theme.ivory, fontSize: 12, cursor: 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
                 {copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
               </button>
-              <button onClick={() => { setGenError(''); generate() }} style={{ padding: '12px', borderRadius: 13, background: 'rgba(255,255,255,0.62)', border: `1px solid ${theme.line}`, color: theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+              <button onClick={() => { setGenError(''); generate() }} style={{ padding: '12px', borderRadius: 13, background: 'var(--bg-input)', border: `1px solid ${theme.line}`, color: theme.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
                 ↺ {t('regenerate')}
               </button>
             </div>
@@ -386,13 +373,13 @@ export default function CvCoachPage({ setPage }) {
   }
 
   if (loading) return (
-    <div style={{ ...pageVars, minHeight: '100dvh', background: theme.ivory, padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px)', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px)', maxWidth: 900, margin: '0 auto' }}>
       {[1, 2].map(i => <div key={i} className="skeleton" style={{ height: 200, marginBottom: 12, borderRadius: 20 }} />)}
     </div>
   )
 
   if (analyses.length === 0) return (
-    <div style={{ ...pageVars, minHeight: '100dvh', background: theme.ivory, padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px)', maxWidth: 900, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: 'clamp(20px,4vw,36px) clamp(16px,5vw,48px)', maxWidth: 900, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
       <div style={{ ...card({ padding: 34 }) }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
         <h2 style={{ fontFamily: 'Georgia, Newsreader, serif', fontSize: 34, color: theme.navy, marginBottom: 8, fontWeight: 500, letterSpacing: '-0.06em' }}>{t('no_analyses', 'No analyses yet')}</h2>
@@ -409,7 +396,7 @@ export default function CvCoachPage({ setPage }) {
   )
 
   return (
-    <div style={{ ...pageVars, minHeight: '100dvh', background: `radial-gradient(circle at 16% 8%, rgba(181,102,60,0.12), transparent 34%), linear-gradient(180deg, ${theme.ivory} 0%, #F8F1E8 48%, ${theme.ivory} 100%)`, padding: 'clamp(20px,4vw,38px) clamp(16px,5vw,48px) 90px' }}>
+    <div style={{ minHeight: '100dvh', background: 'radial-gradient(circle at 16% 8%, rgba(181,102,60,0.12), transparent 34%), var(--bg)', padding: 'clamp(20px,4vw,38px) clamp(16px,5vw,48px) 90px' }}>
       <main style={{ maxWidth: 1200, margin: '0 auto' }}>
 
         {/* Hero */}
@@ -456,7 +443,7 @@ export default function CvCoachPage({ setPage }) {
           <div style={{ ...card({ overflow: 'hidden' }) }}>
 
             {/* Tab switcher */}
-            <div style={{ display: 'flex', gap: 4, padding: '12px 14px', borderBottom: `1px solid ${theme.line}`, background: 'rgba(250,247,241,0.55)' }}>
+            <div style={{ display: 'flex', gap: 4, padding: '12px 14px', borderBottom: `1px solid ${theme.line}`, background: 'var(--bg-input)' }}>
               {TABS.map(tab => (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                   style={{ flex: 1, padding: '9px 6px', borderRadius: 12, border: `1.5px solid ${activeTab === tab.id ? theme.navy : 'transparent'}`, background: activeTab === tab.id ? theme.navy : 'transparent', color: activeTab === tab.id ? theme.ivory : theme.muted, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.13s', letterSpacing: '0.01em' }}>

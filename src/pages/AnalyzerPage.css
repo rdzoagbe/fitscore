@@ -5,7 +5,7 @@
   background:
     radial-gradient(circle at 18% 8%, rgba(181,102,60,0.12), transparent 34%),
     radial-gradient(circle at 86% 14%, rgba(16,24,43,0.08), transparent 32%),
-    linear-gradient(180deg, #FAF7F1 0%, #F8F1E8 48%, #FAF7F1 100%);
+    var(--bg);
 }
 
 .analyzePro-page::before,
@@ -51,10 +51,9 @@
 
 .analyzePro-card,
 .analyzePro-sideCard {
-  border: 1px solid rgba(16,24,43,0.12);
-  background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(255,253,248,0.82));
+  border: 1px solid var(--border);
+  background: var(--bg-card);
   box-shadow: 0 24px 70px rgba(16,24,43,0.09);
-  backdrop-filter: blur(18px);
 }
 
 .analyzePro-card {
@@ -67,19 +66,20 @@
 .analyzePro-card input,
 .analyzePro-card textarea,
 .analyzePro-card select {
-  background: rgba(255,255,255,0.72) !important;
-  border-color: rgba(16,24,43,0.14) !important;
-  color: #10182B !important;
+  background: var(--bg-input) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
   box-shadow: none !important;
 }
 
 .analyzePro-card input::placeholder,
 .analyzePro-card textarea::placeholder {
-  color: rgba(95,100,114,0.72) !important;
+  color: var(--text-secondary) !important;
+  opacity: 0.72;
 }
 
 .analyzePro-card label {
-  color: #5F6472 !important;
+  color: var(--text-secondary) !important;
 }
 
 .analyzePro-card button:not(.btn-primary) {
@@ -100,7 +100,7 @@
 
 .analyzePro-kicker {
   margin: 0;
-  color: #B5663C;
+  color: var(--accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.13em;
@@ -109,7 +109,7 @@
 
 .analyzePro-sideCard h3 {
   margin: 8px 0 0;
-  color: #10182B;
+  color: var(--text-primary);
   font-family: Georgia, Newsreader, serif;
   font-weight: 500;
   font-size: 22px;
@@ -118,7 +118,7 @@
 
 .analyzePro-sideCard p {
   margin: 10px 0 0;
-  color: #5F6472;
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.65;
 }
@@ -142,22 +142,22 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: #FAF7F1;
-  background: #10182B;
+  color: var(--bg);
+  background: var(--text-primary);
   font-size: 11px;
   font-weight: 900;
 }
 
 .analyzePro-step strong {
   display: block;
-  color: #10182B;
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .analyzePro-step small {
   display: block;
   margin-top: 3px;
-  color: #5F6472;
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -168,13 +168,13 @@
   border-radius: 24px;
   background:
     radial-gradient(circle at 18% 0%, rgba(181,102,60,0.15), transparent 42%),
-    linear-gradient(135deg, rgba(255,253,248,0.92), rgba(250,247,241,0.72));
-  border: 1px solid rgba(16,24,43,0.12);
+    var(--bg-input);
+  border: 1px solid var(--border);
 }
 
 .analyzePro-formHero p:first-child {
   margin: 0;
-  color: #B5663C;
+  color: var(--accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.13em;
@@ -183,7 +183,7 @@
 
 .analyzePro-formHero h1 {
   margin: 10px 0 0;
-  color: #10182B;
+  color: var(--text-primary);
   font-family: Georgia, Newsreader, serif;
   font-size: clamp(38px, 5vw, 60px);
   font-weight: 500;
@@ -194,14 +194,14 @@
 .analyzePro-formHero p:last-child {
   max-width: 680px;
   margin: 14px 0 0;
-  color: #5F6472;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.7;
 }
 
 .analyzePro-card .btn-primary {
-  background: #10182B !important;
-  color: #FAF7F1 !important;
+  background: var(--text-primary) !important;
+  color: var(--bg) !important;
   border: 0 !important;
   box-shadow: 0 18px 38px rgba(16,24,43,0.16) !important;
 }
