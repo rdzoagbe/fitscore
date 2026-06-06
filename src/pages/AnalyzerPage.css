@@ -37,14 +37,42 @@
 .analyzePro-shell {
   position: relative;
   z-index: 1;
-  width: min(1040px, calc(100% - 34px));
+  width: min(1080px, calc(100% - 34px));
   margin: 0 auto;
   padding: 36px 0 96px;
 }
 
+/* Page-level hero — above the grid */
+.analyzePro-pageHero {
+  margin-bottom: 28px;
+}
+
+.analyzePro-pageHero .analyzePro-kicker {
+  display: block;
+  margin: 0;
+}
+
+.analyzePro-pageHero h1 {
+  margin: 10px 0 0;
+  color: var(--text-primary);
+  font-family: Georgia, Newsreader, serif;
+  font-size: clamp(42px, 5.5vw, 70px);
+  font-weight: 500;
+  line-height: 0.96;
+  letter-spacing: -0.07em;
+}
+
+.analyzePro-pageHero > p:last-child {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .analyzePro-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 350px;
   gap: 18px;
   align-items: start;
 }
@@ -58,9 +86,57 @@
 
 .analyzePro-card {
   max-width: none !important;
-  border-radius: 30px;
-  padding: clamp(20px, 3vw, 30px);
+  border-radius: 28px;
+  padding: clamp(20px, 3vw, 28px);
   animation: fadeUp 0.4s ease;
+}
+
+/* Section label inside the card */
+.analyzePro-sectionLabel {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Job input section — separated from CV panel */
+.analyzePro-jobSection {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+
+/* Tab-style mode toggle */
+.analyzePro-modeTabs {
+  display: flex;
+  gap: 3px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 14px;
+}
+
+.analyzePro-modeTab {
+  flex: 1;
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: -apple-system, BlinkMacSystemFont, "DM Sans", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.analyzePro-modeTab.is-active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 1px 6px rgba(16,24,43,0.12);
 }
 
 .analyzePro-card input,
@@ -82,7 +158,7 @@
   color: var(--text-secondary) !important;
 }
 
-.analyzePro-card button:not(.btn-primary) {
+.analyzePro-card button:not(.btn-primary):not(.analyzePro-modeTab) {
   font-family: -apple-system, BlinkMacSystemFont, "DM Sans", Inter, system-ui, sans-serif;
 }
 
@@ -162,43 +238,6 @@
   line-height: 1.4;
 }
 
-.analyzePro-formHero {
-  margin-bottom: 24px;
-  padding: 24px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(181,102,60,0.15), transparent 42%),
-    var(--bg-input);
-  border: 1px solid var(--border);
-}
-
-.analyzePro-formHero p:first-child {
-  margin: 0;
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
-.analyzePro-formHero h1 {
-  margin: 10px 0 0;
-  color: var(--text-primary);
-  font-family: Georgia, Newsreader, serif;
-  font-size: clamp(38px, 5vw, 60px);
-  font-weight: 500;
-  line-height: 0.98;
-  letter-spacing: -0.07em;
-}
-
-.analyzePro-formHero p:last-child {
-  max-width: 680px;
-  margin: 14px 0 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.7;
-}
-
 .analyzePro-card .btn-primary {
   background: var(--text-primary) !important;
   color: var(--bg) !important;
@@ -218,17 +257,17 @@
 
 @media (max-width: 620px) {
   .analyzePro-shell {
-    width: min(100% - 22px, 1040px);
+    width: min(100% - 22px, 1080px);
     padding-top: 18px;
+  }
+
+  .analyzePro-pageHero h1 {
+    font-size: 38px;
   }
 
   .analyzePro-card,
   .analyzePro-sideCard {
     border-radius: 22px;
-    padding: 18px;
-  }
-
-  .analyzePro-formHero {
     padding: 18px;
   }
 }

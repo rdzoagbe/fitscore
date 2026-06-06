@@ -14,8 +14,7 @@
   padding: clamp(22px, 4vw, 42px) !important;
   border-radius: 34px !important;
   border: 1px solid rgba(16,24,43,.12) !important;
-  background:
-    linear-gradient(135deg, rgba(255,253,248,.98), rgba(250,247,241,.92) 48%, rgba(246,248,251,.94)) !important;
+  background: var(--bg-card) !important;
   box-shadow: 0 28px 80px rgba(16,24,43,.10) !important;
   color: var(--text-primary) !important;
   gap: clamp(18px, 3vw, 30px) !important;
@@ -86,8 +85,8 @@
 .calendarSignalCard,
 .emailSignalCard,
 .smartCommandCenter > div {
-  border-color: rgba(16,24,43,.10) !important;
-  background: rgba(255,255,255,.72) !important;
+  border-color: var(--border) !important;
+  background: var(--bg-input) !important;
   box-shadow: 0 14px 34px rgba(16,24,43,.055) !important;
 }
 
@@ -161,7 +160,7 @@
   margin-left: auto;
   border-radius: 999px;
   padding: 5px 9px;
-  background: rgba(255,255,255,.74);
+  background: var(--bg-input);
   border: 1px solid rgba(85,124,100,.16);
   color: var(--green);
   font-size: 11px;
@@ -248,7 +247,7 @@
 }
 
 .syncTabs {
-  background: rgba(255,253,248,.88) !important;
+  background: var(--bg-card) !important;
   border-bottom-color: rgba(16,24,43,.10) !important;
 }
 
@@ -279,7 +278,7 @@
   min-height: 34px;
   border: 1px solid rgba(16,24,43,.10);
   border-radius: 999px;
-  background: rgba(255,255,255,.76);
+  background: var(--bg-input);
   color: var(--text-secondary);
   font: inherit;
   font-size: 12px;
@@ -334,7 +333,7 @@
 .emailPreviewPanel {
   margin: 16px !important;
   border-radius: 24px !important;
-  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,255,255,.86)) !important;
+  background: var(--bg-card) !important;
 }
 
 .emailSourceIcon {
@@ -361,8 +360,8 @@
 
 .emailDetailsBox div {
   border-radius: 14px;
-  background: rgba(250,247,241,.72);
-  border: 1px solid rgba(16,24,43,.07);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   padding: 10px;
 }
 
@@ -426,8 +425,8 @@
 }
 
 .emailSignalsEmpty {
-  border: 1px dashed rgba(16,24,43,.14);
-  background: rgba(250,247,241,.55);
+  border: 1px dashed var(--border);
+  background: var(--bg-input);
   border-radius: 18px;
   padding: 18px;
   color: var(--text-secondary);
