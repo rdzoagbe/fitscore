@@ -316,6 +316,7 @@ export default function MessagesPage({ setPage }) {
   const [tab, setTab] = useState('emails')
   const [selected, setSelected] = useState(null)
   const [lastSyncAt, setLastSyncAt] = useState('')
+  const [mobileView, setMobileView] = useState('list')
 
   const accountEmail = getAccountEmail(user)
   const providerConnected = connections.has(provider)
@@ -400,6 +401,7 @@ export default function MessagesPage({ setPage }) {
   useEffect(() => {
     const first = allSignals[0] || null
     setSelected(current => current && allSignals.some(item => item.id === current.id) ? current : first)
+    setMobileView('list')
   }, [tab, emails, calendar])
 
   const connectProvider = async () => {
@@ -545,12 +547,21 @@ export default function MessagesPage({ setPage }) {
 
         <section className="messagesStableInbox">
           <div className="messagesStableTabs">
-            <button type="button" className={tab === 'emails' ? 'is-active' : ''} onClick={() => setTab('emails')}>Emails <span>{emails.length}</span></button>
-            <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => setTab('calendar')}>Calendar <span>{calendar.length}</span></button>
+            <button type="button" className={tab === 'emails' ? 'is-active' : ''} onClick={() => { setTab('emails'); setMobileView('list') }}>Emails <span>{emails.length}</span></button>
+            <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => { setTab('calendar'); setMobileView('list') }}>Calendar <span>{calendar.length}</span></button>
           </div>
-          <div className="messagesStableSplit">
-            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} tab={tab} isPreviewMode={isPreviewMode} />
-            <SignalDetail selected={selected} mode={tab} />
+          <div className={`messagesStableSplit ${mobileView === 'detail' ? 'show-detail' : 'show-list'}`}>
+            <SignalList
+              items={allSignals}
+              selectedId={selected?.id}
+              onSelect={item => { setSelected(item); setMobileView('detail') }}
+              tab={tab}
+              isPreviewMode={isPreviewMode}
+            />
+            <div>
+              <button type="button" className="msgMobileBack" onClick={() => setMobileView('list')}>← Back to {tab === 'calendar' ? 'Calendar' : 'Emails'}</button>
+              <SignalDetail selected={selected} mode={tab} />
+            </div>
           </div>
         </section>
 
