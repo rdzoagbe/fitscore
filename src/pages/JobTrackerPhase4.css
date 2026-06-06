@@ -23,8 +23,8 @@
 
 .jobTracker-column {
   min-height: 228px;
-  border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.62);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   border-radius: 22px;
   padding: 14px;
   box-shadow: 0 12px 32px rgba(16,24,43,.055);
@@ -85,8 +85,8 @@
 .jobTracker-miniList button {
   width: 100%;
   text-align: left;
-  border: 1px solid rgba(16,24,43,.08);
-  background: rgba(255,253,248,.76);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
   border-radius: 14px;
   padding: 10px;
   font: inherit;
@@ -97,7 +97,7 @@
 .jobTracker-miniList button:hover {
   transform: translateY(-1px);
   border-color: rgba(181,102,60,.28);
-  background: rgba(255,253,248,.96);
+  background: var(--bg-card);
 }
 
 .jobTracker-miniList button strong {
@@ -121,7 +121,7 @@
   padding: 12px;
   border: 1px dashed rgba(16,24,43,.12);
   border-radius: 14px;
-  background: rgba(255,253,248,.45);
+  background: var(--bg-input);
 }
 
 .jobTracker-cardGrid {
@@ -143,8 +143,8 @@
 
 .jobTracker-detailGrid span {
   min-width: 0;
-  border: 1px solid rgba(16,24,43,.08);
-  background: rgba(255,255,255,.55);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   border-radius: 13px;
   padding: 9px 10px;
   color: #5F6472;
@@ -214,8 +214,8 @@
 .jobTracker-metaEditor textarea {
   width: 100%;
   min-height: 38px;
-  border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.68);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   border-radius: 12px;
   color: #10182B;
   font: inherit;

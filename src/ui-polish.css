@@ -654,8 +654,8 @@ select:focus-visible {
 
 .cvBuilder-diffGrid > div {
   border-radius: 14px;
-  background: rgba(250,247,241,.7);
-  border: 1px solid rgba(16,24,43,.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   padding: 13px;
 }
 
@@ -850,8 +850,8 @@ select:focus-visible {
 .cvWorkspace-field input,
 .cvWorkspace-field textarea {
   width: 100%;
-  border: 1px solid rgba(16,24,43,.12);
-  background: rgba(250,247,241,.80);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   border-radius: 14px;
   color: var(--text-primary);
   font: inherit;
