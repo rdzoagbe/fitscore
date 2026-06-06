@@ -48,7 +48,7 @@ select:focus-visible {
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.90));
+  background: var(--bg-card);
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: clamp(16px, 2vw, 22px);
@@ -158,7 +158,7 @@ select:focus-visible {
   min-width: 0;
   border: 1px solid rgba(16,24,43,.10);
   border-radius: 20px;
-  background: rgba(255,255,255,.66);
+  background: var(--bg-card);
   padding: 15px;
   display: grid;
   gap: 12px;
@@ -270,7 +270,7 @@ select:focus-visible {
 .resultTrust-evidence {
   border: 1px solid rgba(16,24,43,.10);
   border-radius: 20px;
-  background: rgba(255,255,255,.66);
+  background: var(--bg-card);
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -421,7 +421,7 @@ select:focus-visible {
 }
 
 .cvBuilder-card {
-  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.88));
+  background: var(--bg-card);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
@@ -485,7 +485,7 @@ select:focus-visible {
   align-items: start;
   min-width: 0;
   border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.64);
+  background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 15px;
   box-shadow: var(--shadow-card);
@@ -595,7 +595,7 @@ select:focus-visible {
   gap: 14px;
   border: 1px solid rgba(16,24,43,.10);
   border-radius: var(--radius-lg);
-  background: rgba(255,255,255,.72);
+  background: var(--bg-input);
   padding: clamp(16px, 2.4vw, 24px);
 }
 
@@ -763,7 +763,7 @@ select:focus-visible {
 .cvWorkspace-livePreview,
 .cvWorkspace-versions {
   border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.68);
+  background: var(--bg-card);
   border-radius: 22px;
   box-shadow: var(--shadow-card);
 }
@@ -876,7 +876,7 @@ select:focus-visible {
 
 .cvWorkspace-previewPaper {
   min-height: 620px;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: 18px;
   padding: clamp(18px, 2.4vw, 28px);
@@ -1043,7 +1043,7 @@ select:focus-visible {
 .smartTrackingPanel,
 .syncResultsPanel {
   background:
-    linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.90)) !important;
+    var(--bg-card) !important;
   color: var(--text-primary) !important;
   border: 1px solid rgba(16,24,43,.12) !important;
 }
@@ -1085,7 +1085,7 @@ select:focus-visible {
 .messagesConversation,
 .messagesThread,
 .messagesBubble {
-  background: rgba(255,255,255,.64) !important;
+  background: var(--bg-card) !important;
   border-color: rgba(16,24,43,.10) !important;
 }
 
