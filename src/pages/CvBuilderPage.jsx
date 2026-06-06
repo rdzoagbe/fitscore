@@ -9,7 +9,7 @@ export default function CvBuilderPage({ selectedAnalysis }) {
           <p>CV Builder</p>
           <h1>Rewrite your CV for a specific job.</h1>
           <span>
-            Build a full job-aligned CV rewrite from your current CV and a target role. This is the foundation for preview diff, Word/PDF export, and Supabase save.
+            Select a saved job analysis, then generate a tailored CV rewrite that addresses the job's requirements, fills keyword gaps, and passes ATS filters. Download the result as a PDF or copy it directly.
           </span>
         </section>
 

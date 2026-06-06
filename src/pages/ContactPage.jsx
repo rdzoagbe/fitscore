@@ -77,7 +77,7 @@ export default function ContactPage({ onBack }) {
       }
       setSent(true)
       if (data?.warning) setWarning(data.warning)
-      setForm(current => ({ ...current, subject: '', message: '' }))
+      setForm(current => ({ ...current, subject: '', message: '', category: 'general' }))
     } catch (e) {
       setError(getSupportErrorMessage(e, t))
     } finally {

@@ -138,6 +138,7 @@ export default function SmartSyncSettingsPage({ setPage }) {
   }
 
   const handleDisconnect = async () => {
+    if (!window.confirm('Disconnect your account? Joblytics will stop scanning your emails and calendar immediately.')) return
     setWorking(true); setNotice('')
     try {
       const { error } = await supabase
