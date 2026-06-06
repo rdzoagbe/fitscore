@@ -152,7 +152,7 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
   const metrics = useProgressMetrics({})
   const name = getUserDisplayName(user)
   const greeting = getTimeGreeting(t)
-  const recent = metrics.analyses.slice(0, 5)
+  const recent = metrics.analyses.slice(0, 3)
   const plan = getUserPlan(user)
   const nextAction = cvFile
     ? t('dash_lite_next_analyze', 'Analyze your next target job')
