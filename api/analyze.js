@@ -9,7 +9,7 @@ const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const ANTHROPIC_TIMEOUT_MS = Number.parseInt(process.env.ANTHROPIC_TIMEOUT_MS || '30000', 10)
 const JOB_TEXT_LIMIT = 4500
 const CV_TEXT_LIMIT = 4500
-const CACHE_VERSION = 'ats-v5-strict-master-prompt'
+const CACHE_VERSION = 'ats-v6-blended-score'
 
 const SYSTEM = `You are Joblytics-AI, a dual-engine system: a strict Enterprise Applicant Tracking System (ATS) and an expert Career Coach.
 Your objective is to extract data from a job description and a candidate resume, strictly map the hard-skill matches, and provide actionable feedback to help the candidate beat ATS filters.
