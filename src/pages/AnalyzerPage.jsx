@@ -14,7 +14,7 @@ import './AnalyzerPage.css'
 import './analyzer-action-hub.css'
 
 const LOADING_MSGS_KEY = ['loading_fetch','loading_cv','loading_ats','loading_score']
-const MIN_JOB_TEXT_LENGTH = 60
+const MIN_JOB_TEXT_LENGTH = 450
 
 function readClipperPayload() {
   try {
@@ -98,6 +98,10 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     if (lower.includes('glassdoor.')) return 'Glassdoor'
     if (lower.includes('welcometothejungle.com')) return 'Welcome to the Jungle'
     if (lower.includes('builtin.com') || lower.includes('built-in.com')) return 'Built In'
+    if (lower.includes('workday')) return 'Workday'
+    if (lower.includes('greenhouse.io')) return 'Greenhouse'
+    if (lower.includes('lever.co')) return 'Lever'
+    if (lower.includes('smartrecruiters.com')) return 'SmartRecruiters'
     return null
   }
 
@@ -176,16 +180,18 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
               <p className="analyzePro-sectionLabel">Job listing</p>
               <div className="analyzePro-modeTabs">
                 <button type="button" className={`analyzePro-modeTab${!showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }}>{t('analyzer_url_mode')}</button>
-                <button type="button" className={`analyzePro-modeTab${showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }}>{t('analyzer_paste_mode')}</button>
+                <button type="button" className={`analyzePro-modeTab${showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }}>Accurate paste mode</button>
               </div>
               {!showTextPaste ? <>
+                <TipCard type="info" title="URL mode is quick, Paste mode is more accurate" body="Some job boards hide the real description behind JavaScript, login walls, cookies or anti-bot protection. We will try to read the URL, but if the extracted text is weak, Joblytics will ask you to paste the full job description instead of giving you a fake score." />
                 <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
                 {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title={t('analyzer_link_invalid_title')} body={t('analyzer_link_invalid_body')} />}
-                {restrictedJobBoard && <><TipCard type="warning" title={`${restrictedJobBoard} may block URL extraction`} body={`${restrictedJobBoard} often blocks automated reading. The analyzer will try — if it fails, copy the job description from the page and use Paste mode.`} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>Switch to Paste mode</button></>}
+                {restrictedJobBoard && <><TipCard type="warning" title={`${restrictedJobBoard} may block accurate URL extraction`} body={`${restrictedJobBoard} often blocks automated reading or only exposes partial content. For the most reliable ATS score, copy the full responsibilities, requirements and skills sections, then use Accurate paste mode.`} /><button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>Use Accurate paste mode</button></>}
                 {urlHistory.length > 0 && <div style={{ marginTop: 10 }}><button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>{t('analyzer_recent_links')}</button>{showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => { setJobUrl(normalizeJobUrl(url)); setJobText(''); setShowTextPaste(false); setShowHistory(false) }} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}</div>}
               </> : <>
-                <textarea value={jobText} onChange={handlePasteTextChange} placeholder={t('analyzer_paste_placeholder')} rows={10} />
-                {jobText.trim().length > 0 && !canAnalyzePaste && <TipCard type="warning" title={t('analyzer_add_more_title')} body={t('analyzer_add_more_body', { min: MIN_JOB_TEXT_LENGTH, progress: pasteProgress })} />}
+                <TipCard type="success" title="Recommended for accurate scoring" body="Paste the full job description, especially the mission, responsibilities, requirements, skills, experience level and language requirements. This gives the deterministic ATS engine enough evidence to calculate a trustworthy score." />
+                <textarea value={jobText} onChange={handlePasteTextChange} placeholder="Paste the complete job description here: company context, role mission, responsibilities, required skills, experience level, languages and location." rows={10} />
+                {jobText.trim().length > 0 && !canAnalyzePaste && <TipCard type="warning" title="Add more of the job description" body={`For a reliable ATS score, paste at least ${MIN_JOB_TEXT_LENGTH} characters. Current progress: ${pasteProgress}%. Include responsibilities, requirements and skills.`} />}
               </>}
               {planLimit?.plan === 'free' && planLimit?.limit > 0 && (
                 <p style={{ fontSize: 12, color: planLimit.used >= planLimit.limit - 1 ? 'var(--accent)' : 'var(--text-secondary)', textAlign: 'center', margin: '8px 0 0' }}>
