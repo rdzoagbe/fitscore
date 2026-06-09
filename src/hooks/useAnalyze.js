@@ -123,7 +123,6 @@ async function saveAnalysisClientSide({ user, analysis, jobUrl, jobText, cvFile 
   } catch (error) {
     console.warn('Client-side analysis save failed:', error?.message || error)
 
-    // Last-resort fallback for older databases where cache_key may not be available or writable.
     try {
       const { cache_key, ...payloadWithoutCacheKey } = basePayload
       const { data, error: insertError } = await supabase
@@ -174,7 +173,7 @@ export function useAnalyze() {
         'X-Joblytics-Device-Id': getDeviceId()
       }
 
-      const res = await fetch('/api/analyze?stream=1', {
+      const res = await fetch('/api/analyze-accurate', {
         method: 'POST', headers, body, signal: controller.signal
       })
       clearTimeout(timeoutId)
@@ -220,7 +219,6 @@ export function useAnalyze() {
         }
         throw new Error('Analysis stream ended unexpectedly. Please try again.')
       } else {
-        // Fallback: regular JSON (e.g. Vercel edge returning non-SSE error)
         let data = null
         if (contentType.includes('application/json')) {
           try { data = await res.json() } catch {}
