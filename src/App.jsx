@@ -43,7 +43,6 @@ const CvBuilderPage = lazyWithReload(() => import('./pages/CvBuilderPage'))
 const ProfileOptimizerPage = lazyWithReload(() => import('./pages/ProfileOptimizerPage'))
 const BillingPage = lazyWithReload(() => import('./pages/BillingPage'))
 const AnalyzerPage = lazyWithReload(() => import('./pages/AnalyzerPage'))
-const InboxCleanerPage = lazyWithReload(() => import('./pages/InboxCleanerPage'))
 const SmartSyncSettingsPage = lazyWithReload(() => import('./pages/SmartSyncSettingsPage'))
 const CareerIntelligencePage = lazyWithReload(() => import('./pages/CareerIntelligencePage'))
 
@@ -57,7 +56,6 @@ const PAGE_TO_PATH = {
   messages: '/messages',
   contact: '/contact',
   'cv-builder': '/cv-builder',
-  'inbox-cleaner': '/inbox-cleaner',
   'sync-settings': '/sync-settings',
   'career-intelligence': '/career-intelligence'
 }
@@ -198,7 +196,6 @@ export default function App() {
       case 'career-intelligence': return <CareerIntelligencePage />
       case 'contact': return <ContactPage onBack={() => setPage('dashboard')} />
       case 'cv-builder': return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
-      case 'inbox-cleaner': return <InboxCleanerPage />
       default: return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
     }
   }
