@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/analyze.js": {
+    "api/analyze-accurate.js": {
       "maxDuration": 60
     },
     "api/smart-job-sync.js": {
