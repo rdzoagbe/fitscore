@@ -35,6 +35,18 @@ function normalizeLocalEntry(report, targetRole = '') {
   }
 }
 
+function toScore(value) {
+  const score = Math.round(Number(value) || 0)
+  return Math.max(0, Math.min(100, score))
+}
+
+function scoreDelta(current, previous) {
+  if (!previous && previous !== 0) return '—'
+  const delta = toScore(current) - toScore(previous)
+  if (delta > 0) return `+${delta}`
+  return `${delta}`
+}
+
 function list(items) {
   const safe = Array.isArray(items) ? items.filter(Boolean) : []
   if (!safe.length) return <p className="careerIntel-muted">No specific item returned yet.</p>
@@ -70,6 +82,70 @@ function TextAreaField({ label, value, onChange, placeholder, rows = 8 }) {
   )
 }
 
+function TrendSparkline({ reports, type = 'career_score' }) {
+  const points = [...reports].reverse().map(item => toScore(type === 'shortlist_probability' ? item.shortlist_probability : item.career_score)).filter(score => score > 0).slice(-10)
+  if (points.length < 2) return <p className="careerIntel-muted">Generate at least two reports to see trend movement.</p>
+  const width = 240
+  const height = 72
+  const min = Math.min(...points)
+  const max = Math.max(...points)
+  const range = max - min || 1
+  const polyline = points.map((score, index) => {
+    const x = (index / (points.length - 1)) * width
+    const y = height - ((score - min) / range) * (height - 16) - 8
+    return `${x},${y}`
+  }).join(' ')
+  return (
+    <svg className="careerIntel-trendSvg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Score trend">
+      <polyline points={polyline} fill="none" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+      {points.map((score, index) => {
+        const x = (index / (points.length - 1)) * width
+        const y = height - ((score - min) / range) * (height - 16) - 8
+        return <circle key={`${score}-${index}`} cx={x} cy={y} r="5" fill="currentColor" />
+      })}
+    </svg>
+  )
+}
+
+function AnalyticsPanel({ analytics, reports }) {
+  return (
+    <section className="careerIntel-analytics">
+      <article className="careerIntel-card careerIntel-analyticsIntro">
+        <p className="careerIntel-kicker">Phase 2 Analytics</p>
+        <h2>Career progress dashboard</h2>
+        <p className="careerIntel-muted">Track how your positioning evolves across reports. The analytics improve automatically as more Career Intelligence reports are generated and saved.</p>
+      </article>
+
+      <div className="careerIntel-analyticsGrid">
+        <MetricCard label="Latest career score" value={analytics.latestCareer ? `${analytics.latestCareer}%` : '—'} helper={`Previous: ${analytics.previousCareer ? `${analytics.previousCareer}%` : '—'} · Δ ${analytics.careerDelta}`} tone="accent" />
+        <MetricCard label="Latest recruiter score" value={analytics.latestShortlist ? `${analytics.latestShortlist}%` : '—'} helper={`Previous: ${analytics.previousShortlist ? `${analytics.previousShortlist}%` : '—'} · Δ ${analytics.shortlistDelta}`} tone="warm" />
+        <MetricCard label="Best report" value={analytics.bestCareer ? `${analytics.bestCareer}%` : '—'} helper={analytics.bestRole || 'No report yet'} />
+      </div>
+
+      <div className="careerIntel-reportGrid">
+        <ReportCard title="Career score trend" kicker="Progress">
+          <TrendSparkline reports={reports} type="career_score" />
+          <p className="careerIntel-muted">Average career score: {analytics.averageCareer ? `${analytics.averageCareer}%` : '—'}</p>
+        </ReportCard>
+        <ReportCard title="Recruiter score trend" kicker="Shortlist probability">
+          <TrendSparkline reports={reports} type="shortlist_probability" />
+          <p className="careerIntel-muted">Average recruiter score: {analytics.averageShortlist ? `${analytics.averageShortlist}%` : '—'}</p>
+        </ReportCard>
+        <ReportCard title="Most targeted roles" kicker="Focus">
+          {analytics.roles.length ? (
+            <div className="careerIntel-roleChips">
+              {analytics.roles.map(role => <span key={role.name}>{role.name}<strong>{role.count}</strong></span>)}
+            </div>
+          ) : <p className="careerIntel-muted">Generate reports for different target roles to see your focus areas.</p>}
+        </ReportCard>
+        <ReportCard title="Improvement signal" kicker="Comparison">
+          <p className="careerIntel-block">{analytics.insight}</p>
+        </ReportCard>
+      </div>
+    </section>
+  )
+}
+
 export default function CareerIntelligencePage() {
   const { session } = useAuth()
   const [cvText, setCvText] = useState('')
@@ -88,6 +164,49 @@ export default function CareerIntelligencePage() {
 
   const combinedLength = useMemo(() => [cvText, linkedinText].join(' ').trim().length, [cvText, linkedinText])
   const canRun = combinedLength >= 250 && !loading
+
+  const analytics = useMemo(() => {
+    const ordered = [...reports].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    const latest = ordered[0]
+    const previous = ordered[1]
+    const scores = ordered.map(item => toScore(item.career_score)).filter(Boolean)
+    const shortlistScores = ordered.map(item => toScore(item.shortlist_probability)).filter(Boolean)
+    const best = ordered.reduce((winner, item) => toScore(item.career_score) > toScore(winner?.career_score) ? item : winner, null)
+    const roleCounts = ordered.reduce((acc, item) => {
+      const key = item.target_role || item.report?.target_role || 'Career Intelligence'
+      acc[key] = (acc[key] || 0) + 1
+      return acc
+    }, {})
+    const roles = Object.entries(roleCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 6)
+    const latestCareer = toScore(latest?.career_score)
+    const previousCareer = previous ? toScore(previous.career_score) : 0
+    const latestShortlist = toScore(latest?.shortlist_probability)
+    const previousShortlist = previous ? toScore(previous.shortlist_probability) : 0
+    const careerChange = latest && previous ? latestCareer - previousCareer : 0
+    const shortlistChange = latest && previous ? latestShortlist - previousShortlist : 0
+    let insight = 'Generate at least two Career Intelligence reports to compare progress over time.'
+    if (latest && previous) {
+      if (careerChange > 0 && shortlistChange > 0) insight = `Strong improvement: your career score increased by ${careerChange} points and recruiter score increased by ${shortlistChange} points versus the previous report.`
+      else if (careerChange > 0) insight = `Career positioning improved by ${careerChange} points. Recruiter score is ${shortlistChange === 0 ? 'stable' : `${Math.abs(shortlistChange)} points lower`}, so keep strengthening evidence for the target role.`
+      else if (shortlistChange > 0) insight = `Recruiter score improved by ${shortlistChange} points. Career score is ${careerChange === 0 ? 'stable' : `${Math.abs(careerChange)} points lower`}, so validate whether the new target role is more demanding.`
+      else if (careerChange === 0 && shortlistChange === 0) insight = 'Scores are stable. The next improvement should come from adding measurable achievements, budget/vendor ownership, and stronger role-specific keywords.'
+      else insight = 'Latest scores are lower than the previous report. This may indicate a more ambitious target role or weaker evidence alignment. Review the gap analysis before applying.'
+    }
+    return {
+      latestCareer,
+      previousCareer,
+      latestShortlist,
+      previousShortlist,
+      careerDelta: previous ? scoreDelta(latestCareer, previousCareer) : '—',
+      shortlistDelta: previous ? scoreDelta(latestShortlist, previousShortlist) : '—',
+      averageCareer: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+      averageShortlist: shortlistScores.length ? Math.round(shortlistScores.reduce((a, b) => a + b, 0) / shortlistScores.length) : 0,
+      bestCareer: best ? toScore(best.career_score) : 0,
+      bestRole: best?.target_role || '',
+      roles,
+      insight
+    }
+  }, [reports])
 
   useEffect(() => saveReports(reports), [reports])
 
@@ -274,6 +393,8 @@ export default function CareerIntelligencePage() {
             )) : <p className="careerIntel-muted">Generated reports will appear here for quick review.</p>}
           </aside>
         </section>
+
+        <AnalyticsPanel analytics={analytics} reports={reports} />
 
         {report && (
           <section className="careerIntel-results">
