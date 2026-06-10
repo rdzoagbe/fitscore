@@ -1,6 +1,7 @@
 const COMMON_STOPWORDS = new Set([
   'avec','pour','dans','vous','nous','les','des','une','aux','sur','qui','que','par','plus','vos','nos','notre','votre','leur','leurs','afin','ainsi','poste','mission','profil','équipe','equipe','candidat','candidate','emploi','travail','entreprise','client','clients','projet','projets','expérience','experience',
-  'the','and','for','with','your','our','this','that','from','role','team','work','working','job','candidate','company','business','project','projects','experience','skills','required','requirements','responsibilities','profile','about','will','have','has','are','you','we','they','their','them','into','within'
+  'the','and','for','with','your','our','this','that','from','role','team','work','working','job','candidate','company','business','project','projects','experience','skills','required','requirements','responsibilities','profile','about','will','have','has','are','you','we','they','their','them','into','within',
+  'of','an','a','to','in','on','is','as','or','be','by','at','it','its','if','not','do','does','did','can','could','would','should','all','any','each','more','most','some','such','than','then','there','these','those','what','when','where','which','who','why','how','i','my','me','us'
 ])
 
 const SKILL_SYNONYMS = [
@@ -125,12 +126,16 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
 export function extractSkillTerms(text = '', limit = 18) {
   const normalized = normalizeText(text)
   const foundPatterns = TECH_PATTERNS.filter(term => containsTerm(normalized, term))
+  // A bigram/trigram only counts as a candidate skill if every word in it is meaningful —
+  // a single function word ("of", "we need an", "experience with active") makes the whole
+  // n-gram a sentence fragment, not a skill, even though not *all* of its words are stopwords.
   const phraseMatches = [...normalized.matchAll(/\b(?:[a-z0-9+#.-]+\s+){0,2}[a-z0-9+#.-]+\b/g)]
     .map(match => match[0].trim())
     .filter(term => term.length >= 3 && term.length <= 35)
     .filter(term => !isNoiseTerm(term))
     .filter(term => !COMMON_STOPWORDS.has(term))
-    .filter(term => !term.split(' ').every(part => COMMON_STOPWORDS.has(part)))
+    .filter(term => term.split(' ').every(word => /[a-z0-9]/.test(word)))
+    .filter(term => !term.split(' ').some(part => COMMON_STOPWORDS.has(part)))
 
   const scored = new Map()
   for (const term of [...foundPatterns, ...phraseMatches]) {
@@ -211,6 +216,16 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
 
   const verdict = displayScore >= 75 ? 'likely_passed' : displayScore >= 55 ? 'borderline' : 'likely_filtered'
 
+  // match_probability reflects interview chances rather than ATS keyword passthrough,
+  // so it leans more on experience/seniority fit and less on raw keyword density.
+  const matchProbability = Math.max(0, Math.min(100, Math.round(
+    keywordScore * 0.20 +
+    experienceScore * 0.30 +
+    semanticScore * 0.25 +
+    seniorityScore * 0.25 -
+    criticalGapPenalty * 0.5
+  )))
+
   return {
     deterministic: true,
     requiredSkills,
@@ -222,6 +237,7 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
     seniorityScore,
     semanticScore,
     displayScore,
+    matchProbability,
     verdict,
     candidateYears,
     requiredYears,
@@ -256,7 +272,7 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
   }
 
   merged.display_score = ats.displayScore
-  merged.match_probability = ats.displayScore
+  merged.match_probability = ats.matchProbability
   merged.overall_verdict = ats.verdict
   merged.keyword_match = {
     ...(merged.keyword_match || {}),

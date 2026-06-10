@@ -8,7 +8,7 @@ export const config = { maxDuration: 60 }
 const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
-const CACHE_VERSION = 'ats-v9-jina-https-quality-gate'
+const CACHE_VERSION = 'ats-v10-skill-extraction-fix'
 
 const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
