@@ -20,6 +20,21 @@ function saveReports(reports) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(reports.slice(0, 10))) } catch {}
 }
 
+function normalizeLocalEntry(report, targetRole = '') {
+  return {
+    id: `${Date.now()}`,
+    created_at: new Date().toISOString(),
+    target_role: report?.target_role || targetRole || 'Career Intelligence',
+    target_market: report?.target_market || '',
+    career_score: report?.career_score || 0,
+    shortlist_probability: report?.recruiter_view?.shortlist_probability || 0,
+    career_level: report?.career_level || '',
+    market_position: report?.market_position || '',
+    report,
+    source: 'local'
+  }
+}
+
 function list(items) {
   const safe = Array.isArray(items) ? items.filter(Boolean) : []
   if (!safe.length) return <p className="careerIntel-muted">No specific item returned yet.</p>
@@ -66,6 +81,8 @@ export default function CareerIntelligencePage() {
   const [usage, setUsage] = useState(null)
   const [reports, setReports] = useState(() => loadReports())
   const [loading, setLoading] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [storageMode, setStorageMode] = useState('local')
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
 
@@ -74,21 +91,75 @@ export default function CareerIntelligencePage() {
 
   useEffect(() => saveReports(reports), [reports])
 
-  const persistReport = nextReport => {
-    const entry = {
-      id: `${Date.now()}`,
-      created_at: new Date().toISOString(),
-      target_role: nextReport?.target_role || targetRole || 'Career Intelligence',
-      career_score: nextReport?.career_score || 0,
-      shortlist_probability: nextReport?.recruiter_view?.shortlist_probability || 0,
-      career_level: nextReport?.career_level || '',
-      market_position: nextReport?.market_position || '',
-      report: nextReport
+  useEffect(() => {
+    let cancelled = false
+    const loadCloudReports = async () => {
+      const accessToken = await getFreshAccessToken(session)
+      if (!accessToken) return
+      setHistoryLoading(true)
+      try {
+        const res = await fetch('/api/career-reports', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || 'Could not load cloud reports')
+        if (!cancelled && Array.isArray(data.reports)) {
+          setReports(data.reports)
+          setStorageMode('cloud')
+        }
+      } catch {
+        if (!cancelled) setStorageMode('local')
+      } finally {
+        if (!cancelled) setHistoryLoading(false)
+      }
     }
-    setReports(prev => [entry, ...prev].slice(0, 10))
+    loadCloudReports()
+    return () => { cancelled = true }
+  }, [session])
+
+  const saveCloudReport = async nextReport => {
+    const accessToken = await getFreshAccessToken(session)
+    if (!accessToken) return null
+    const res = await fetch('/api/career-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ report: nextReport, targetRole, targetMarket })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error || 'Could not save report to cloud')
+    return data.report
   }
 
-  const deleteReport = id => setReports(prev => prev.filter(item => item.id !== id))
+  const persistReport = async nextReport => {
+    const localEntry = normalizeLocalEntry(nextReport, targetRole)
+    try {
+      const cloudEntry = await saveCloudReport(nextReport)
+      if (cloudEntry) {
+        setReports(prev => [cloudEntry, ...prev.filter(item => item.id !== cloudEntry.id)].slice(0, 20))
+        setStorageMode('cloud')
+        return
+      }
+    } catch {
+      setStorageMode('local')
+    }
+    setReports(prev => [localEntry, ...prev].slice(0, 10))
+  }
+
+  const deleteReport = async entry => {
+    setReports(prev => prev.filter(item => item.id !== entry.id))
+    if (entry.source !== 'cloud') return
+    try {
+      const accessToken = await getFreshAccessToken(session)
+      if (!accessToken) return
+      await fetch(`/api/career-reports?id=${encodeURIComponent(entry.id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+    } catch {}
+  }
 
   const runReport = async () => {
     setError('')
@@ -126,7 +197,7 @@ export default function CareerIntelligencePage() {
       }
       setUsage(data.usage || null)
       setReport(data.report)
-      persistReport(data.report)
+      await persistReport(data.report)
     } catch (e) {
       setError(e.message || 'Career Intelligence report failed. Please try again.')
     } finally {
@@ -190,14 +261,15 @@ export default function CareerIntelligencePage() {
           <aside className="careerIntel-card careerIntel-history">
             <p className="careerIntel-kicker">Saved reports</p>
             <h2>Career history</h2>
+            <p className="careerIntel-muted">{historyLoading ? 'Loading cloud history...' : storageMode === 'cloud' ? 'Synced to your account.' : 'Saved locally on this device.'}</p>
             {reports.length ? reports.map(entry => (
               <div key={entry.id} className="careerIntel-historyItem">
                 <button type="button" onClick={() => loadSaved(entry)}>
                   <strong>{entry.target_role}</strong>
                   <span>{entry.career_score}% career · {entry.shortlist_probability}% shortlist</span>
-                  <small>{new Date(entry.created_at).toLocaleDateString()}</small>
+                  <small>{new Date(entry.created_at).toLocaleDateString()} · {entry.source || storageMode}</small>
                 </button>
-                <button type="button" className="careerIntel-delete" onClick={() => deleteReport(entry.id)} aria-label="Delete report">×</button>
+                <button type="button" className="careerIntel-delete" onClick={() => deleteReport(entry)} aria-label="Delete report">×</button>
               </div>
             )) : <p className="careerIntel-muted">Generated reports will appear here for quick review.</p>}
           </aside>
