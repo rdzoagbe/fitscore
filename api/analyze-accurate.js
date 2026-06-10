@@ -8,7 +8,7 @@ export const config = { maxDuration: 60 }
 const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
-const CACHE_VERSION = 'ats-v7-deterministic-quality-gate'
+const CACHE_VERSION = 'ats-v8-jina-first-quality-gate'
 
 const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
@@ -144,43 +144,95 @@ function extractJsonObject(raw = '') {
   throw new Error('AI returned malformed JSON.')
 }
 
-async function fetchJobText(url) {
+function getJinaApiKey() {
+  return process.env.JINA_API_KEY || process.env.JINA_AI_API_KEY || process.env.JINAAI_API_KEY || ''
+}
+
+function normalizeJinaContent(raw = '') {
+  const markerIdx = raw.indexOf('Markdown Content:')
+  const content = markerIdx >= 0 ? raw.slice(markerIdx + 'Markdown Content:'.length).trim() : raw.trim()
+  return cleanText(content, JOB_TEXT_LIMIT)
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function fetchViaJina(url) {
+  const jinaApiKey = getJinaApiKey()
+  const target = `https://r.jina.ai/http://${url.replace(/^https?:\/\//i, '')}`
+  const headers = {
+    Accept: 'text/plain,text/markdown,*/*',
+    'X-Return-Format': 'markdown',
+    'X-With-Generated-Alt': 'true'
+  }
+  if (jinaApiKey) headers.Authorization = `Bearer ${jinaApiKey}`
+
+  const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 22000)
+  if (!res.ok) {
+    const err = new Error(`Jina extraction failed with HTTP ${res.status}`)
+    err.code = 'JINA_FETCH_FAILED'
+    throw err
+  }
+  const raw = await res.text()
+  const text = normalizeJinaContent(raw)
+  if (text.length < 150) {
+    const err = new Error('Jina returned too little readable content.')
+    err.code = 'JINA_TEXT_TOO_SHORT'
+    throw err
+  }
+  return { text, provider: jinaApiKey ? 'jina-authenticated' : 'jina-public' }
+}
+
+async function fetchDirectHtml(url) {
   const headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8'
+  }
+  const res = await fetchWithTimeout(url, { headers, redirect: 'follow' }, 9000)
+  if (!res.ok) {
+    const err = new Error(`Direct extraction failed with HTTP ${res.status}`)
+    err.code = 'DIRECT_FETCH_FAILED'
+    throw err
+  }
+  const html = await res.text()
+  const text = cleanText(html, JOB_TEXT_LIMIT)
+  if (text.length < 150) {
+    const err = new Error('Direct extraction returned too little readable content.')
+    err.code = 'DIRECT_TEXT_TOO_SHORT'
+    throw err
+  }
+  return { text, provider: 'direct-html' }
+}
+
+async function fetchJobText(url) {
+  const attempts = []
+
+  try {
+    const result = await fetchViaJina(url)
+    return result
+  } catch (error) {
+    attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed' })
   }
 
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 9000)
-    const res = await fetch(url, { headers, signal: controller.signal, redirect: 'follow' })
-    clearTimeout(timeout)
-    if (res.ok) {
-      const html = await res.text()
-      const text = cleanText(html, JOB_TEXT_LIMIT)
-      if (text.length >= 150) return text
-    }
-  } catch {}
-
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
-    const jinaUrl = `https://r.jina.ai/${url}`
-    const res = await fetch(jinaUrl, { signal: controller.signal, headers: { Accept: 'text/plain,text/markdown' } })
-    clearTimeout(timeout)
-    if (res.ok) {
-      const raw = await res.text()
-      const markerIdx = raw.indexOf('Markdown Content:')
-      const content = markerIdx >= 0 ? raw.slice(markerIdx + 17).trim() : raw.trim()
-      const text = cleanText(content, JOB_TEXT_LIMIT)
-      if (text.length >= 150) return text
-    }
-  } catch {}
+    const result = await fetchDirectHtml(url)
+    return result
+  } catch (error) {
+    attempts.push({ provider: 'direct-html', code: error?.code || 'DIRECT_FAILED', message: error?.message || 'Direct extraction failed' })
+  }
 
   const err = new Error('This job page could not be reliably extracted. Paste the job description directly for accurate scoring.')
   err.statusCode = 400
   err.code = 'URL_FETCH_FAILED'
+  err.extractionAttempts = attempts
   throw err
 }
 
@@ -261,14 +313,16 @@ export default async function handler(req, res) {
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ success: false, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
 
     const supabase = getSupabaseAdmin()
-    const [jobText, cvText] = await Promise.all([
-      providedJobText ? Promise.resolve(cleanText(providedJobText, JOB_TEXT_LIMIT)) : fetchJobText(jobUrl),
+    const [jobExtraction, cvText] = await Promise.all([
+      providedJobText ? Promise.resolve({ text: cleanText(providedJobText, JOB_TEXT_LIMIT), provider: 'manual-paste' }) : fetchJobText(jobUrl),
       extractCvText(cvBase64, cvMimeType)
     ])
+    const jobText = jobExtraction.text
 
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ success: false, error: 'Could not extract enough text from your CV.', code: 'CV_TEXT_TOO_SHORT' })
 
     const quality = validateJobTextQuality(jobText, { source: providedJobText ? 'paste' : 'url', url: jobUrl })
+    quality.extractionProvider = jobExtraction.provider
     if (!quality.ok) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
 
     const normalizedUrl = jobUrl ? normalizeUrlForCache(jobUrl) : ''
@@ -290,6 +344,7 @@ export default async function handler(req, res) {
     let analysis = applyDeterministicAts(base, jobText, cvText)
     analysis.job_url = jobUrl || null
     analysis.job_source = jobUrl ? 'url' : 'pasted'
+    analysis.extraction_provider = jobExtraction.provider
     analysis.cv_preview = cleanText(cvText, 800)
     analysis.cv_preview_truncated = cvText.trim().length > 800
     analysis.job_text_quality = quality
@@ -299,6 +354,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, analysis, savedRow, cached: false, quality, providerError: debug ? providerError : undefined })
   } catch (error) {
     const status = error?.statusCode || error?.status || 500
-    return res.status(status >= 400 && status < 600 ? status : 500).json({ success: false, error: publicError(error), code: error?.code || 'ANALYZE_ACCURATE_FAILED' })
+    return res.status(status >= 400 && status < 600 ? status : 500).json({ success: false, error: publicError(error), code: error?.code || 'ANALYZE_ACCURATE_FAILED', extractionAttempts: error?.extractionAttempts })
   }
 }
