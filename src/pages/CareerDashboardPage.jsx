@@ -54,45 +54,44 @@ function RecentAnalysis({ item, index, t, onClick }) {
   return (
     <button
       type="button"
-      className="dashLite-recentRow"
+      className="dashLite-recentRow dashLite-recentRow--contained"
       onClick={onClick}
       title="Open this analysis"
       style={{
-        position: 'relative',
-        display: 'block',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        overflow: 'hidden',
-        paddingRight: 58
+        overflow: 'hidden'
       }}
     >
-      <div style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
+      <div style={{ flex: '1 1 auto', minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
         <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</strong>
         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company || t('dash_recent_check', 'Recent check')}</span>
       </div>
-      <span
+      <small
         aria-label={score ? `Score ${score}%` : 'No score'}
         style={{
-          position: 'absolute',
-          right: 12,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: 38,
-          height: 38,
+          flex: '0 0 auto',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: 44,
+          height: 28,
+          padding: '0 8px',
           borderRadius: 999,
-          display: 'grid',
-          placeItems: 'center',
           background: 'var(--accent-bg)',
           border: '1px solid rgba(172,59,97,.18)',
           color: score ? scoreColor : 'var(--accent)',
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 950,
           lineHeight: 1,
-          boxSizing: 'border-box',
-          pointerEvents: 'none'
+          boxSizing: 'border-box'
         }}
-      >{score ? `${score}%` : '—'}</span>
+      >{score ? `${score}%` : '—'}</small>
     </button>
   )
 }
