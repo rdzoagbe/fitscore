@@ -15,7 +15,7 @@ function render(job) {
     return
   }
   preview.innerHTML = `
-    <strong>${job.source || 'Current page'}</strong>
+    <strong>${job.source || 'Current page'}${job.extractor ? ' · ' + job.extractor : ''}</strong>
     <h2>${job.title || 'Untitled job'}</h2>
     <span>${job.company || 'Company not detected'}${job.location ? ' · ' + job.location : ''}</span>
     <textarea rows="8" id="jobTextPreview"></textarea>
@@ -61,14 +61,15 @@ function buildText(job) {
 
 async function getAppUrl() {
   const saved = await chrome.storage.local.get('joblyticsAppUrl')
-  return saved.joblyticsAppUrl || 'https://joblytics-ai.vercel.app/analyzer'
+  return saved.joblyticsAppUrl || 'https://joblytics-ai.com/analyzer'
 }
 
-async function openInJoblytics() {
+async function openInJoblytics({ autorun = false } = {}) {
   const appUrl = await getAppUrl()
   const text = buildText(currentJob)
   const url = new URL(appUrl)
   url.searchParams.set('source', 'clipper')
+  if (autorun) url.searchParams.set('autorun', '1')
   if (currentJob?.url) url.searchParams.set('jobUrl', currentJob.url)
   if (currentJob?.title) url.searchParams.set('jobTitle', currentJob.title)
   if (currentJob?.company) url.searchParams.set('company', currentJob.company)
@@ -95,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   qs('appUrl').value = await getAppUrl()
   qs('refresh').addEventListener('click', extract)
   qs('copyJob').addEventListener('click', copyJob)
-  qs('openJoblytics').addEventListener('click', openInJoblytics)
+  qs('openJoblytics').addEventListener('click', () => openInJoblytics({ autorun: true }))
   qs('saveUrl').addEventListener('click', saveUrl)
   extract()
 })
