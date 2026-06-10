@@ -52,12 +52,47 @@ function RecentAnalysis({ item, index, t, onClick }) {
   const company = item?.result?.job_context?.company || item?.company || ''
   const scoreColor = score >= 70 ? '#557C64' : score >= 50 ? '#B9863B' : '#B85C55'
   return (
-    <button type="button" className="dashLite-recentRow" onClick={onClick} title="Open this analysis">
-      <div style={{ flex: 1, minWidth: 0 }}>
+    <button
+      type="button"
+      className="dashLite-recentRow"
+      onClick={onClick}
+      title="Open this analysis"
+      style={{
+        position: 'relative',
+        display: 'block',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
+        paddingRight: 58
+      }}
+    >
+      <div style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}>
         <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</strong>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company || t('dash_recent_check', 'Recent check')}</span>
+        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{company || t('dash_recent_check', 'Recent check')}</span>
       </div>
-      <em style={{ color: score ? scoreColor : undefined, flexShrink: 0 }}>{score ? `${score}%` : '—'}</em>
+      <span
+        aria-label={score ? `Score ${score}%` : 'No score'}
+        style={{
+          position: 'absolute',
+          right: 12,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 38,
+          height: 38,
+          borderRadius: 999,
+          display: 'grid',
+          placeItems: 'center',
+          background: 'var(--accent-bg)',
+          border: '1px solid rgba(172,59,97,.18)',
+          color: score ? scoreColor : 'var(--accent)',
+          fontSize: 10,
+          fontWeight: 950,
+          lineHeight: 1,
+          boxSizing: 'border-box',
+          pointerEvents: 'none'
+        }}
+      >{score ? `${score}%` : '—'}</span>
     </button>
   )
 }
@@ -223,7 +258,7 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
             </div>
             <div className="dashLite-actionsGrid">
               <QuickAction icon="AI" title={t('dash_lite_analyze_title', 'Analyze a job')} text={t('dash_lite_analyze_text', 'Check fit, gaps, recruiter risks and next action.')} action={t('dash_lite_start', 'Start analysis')} primary onClick={() => setPage?.('analyzer')} />
-              <QuickAction icon="H" title={t('dash_lite_history_title', 'Review history')} text={t('dash_lite_history_text', 'Open saved analyses in the compact review table.')} action={t('dash_lite_open_history', 'Open history')} onClick={() => setPage?.('history')} />
+              <QuickAction icon="CI" title={t('dash_lite_career_intel_title', 'Career Intelligence')} text={t('dash_lite_career_intel_text', 'See market value, recruiter risks, roadmap and best-fit roles.')} action={t('dash_lite_open_career_intel', 'Open Career AI')} onClick={() => setPage?.('career-intelligence')} />
               <QuickAction icon="CV" title={t('dash_lite_coach_title', 'Improve CV & messages')} text={t('dash_lite_coach_text', 'Generate cover letters, outreach and follow-ups.')} action={t('dash_lite_open_coach', 'Open CV Coach')} onClick={() => setPage?.('coach')} />
               <QuickAction icon="M" title={t('dash_lite_sync_title', 'Run Smart Sync')} text={t('dash_lite_sync_text', 'Detect replies, interviews, rejections and follow-ups.')} action={t('dash_lite_open_messages', 'Open messages')} onClick={() => setPage?.('messages')} />
             </div>
