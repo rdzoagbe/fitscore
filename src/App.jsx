@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { useAuth } from './context/AuthContext'
 import { hasAcceptedCurrentTerms } from './lib/legal'
 import { supabase } from './lib/supabase'
@@ -9,6 +10,7 @@ import TermsGate from './components/TermsGate'
 import AppNav from './components/AppNav'
 import AppShellBar from './components/AppShellBar'
 import SmartSyncUxBridge from './components/SmartSyncUxBridge'
+import ErrorBoundary from './components/ErrorBoundary'
 import './ui-polish.css'
 import './smart-sync-phase5.css'
 import './phase6-communication-assets.css'
@@ -28,6 +30,34 @@ const ProfileOptimizerPage = lazy(() => import('./pages/ProfileOptimizerPage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
 const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
 const InboxCleanerPage = lazy(() => import('./pages/InboxCleanerPage'))
+function lazyWithReload(factory) {
+  return lazy(() =>
+    factory().catch(err => {
+      const key = 'joblytics_chunk_reload'
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      throw err
+    })
+  )
+}
+
+const Dashboard = lazyWithReload(() => import('./pages/Dashboard'))
+const CareerDashboardPage = lazyWithReload(() => import('./pages/CareerDashboardPage'))
+const PrivacyPage = lazyWithReload(() => import('./pages/PrivacyPage'))
+const TermsPage = lazyWithReload(() => import('./pages/TermsPage'))
+const LegalNoticePage = lazyWithReload(() => import('./pages/LegalNoticePage'))
+const ContactPage = lazyWithReload(() => import('./pages/ContactPage'))
+const MessagesPage = lazyWithReload(() => import('./pages/MessagesPage'))
+const CvCoachPage = lazyWithReload(() => import('./pages/CvCoachPage'))
+const CvBuilderPage = lazyWithReload(() => import('./pages/CvBuilderPage'))
+const ProfileOptimizerPage = lazyWithReload(() => import('./pages/ProfileOptimizerPage'))
+const BillingPage = lazyWithReload(() => import('./pages/BillingPage'))
+const AnalyzerPage = lazyWithReload(() => import('./pages/AnalyzerPage'))
+const SmartSyncSettingsPage = lazyWithReload(() => import('./pages/SmartSyncSettingsPage'))
+const CareerIntelligencePage = lazyWithReload(() => import('./pages/CareerIntelligencePage'))
 
 const PAGE_TO_PATH = {
   dashboard: '/dashboard',
@@ -40,6 +70,8 @@ const PAGE_TO_PATH = {
   contact: '/contact',
   'cv-builder': '/cv-builder',
   'inbox-cleaner': '/inbox-cleaner',
+  'sync-settings': '/sync-settings',
+  'career-intelligence': '/career-intelligence'
 }
 
 const PATH_TO_PAGE = Object.fromEntries(Object.entries(PAGE_TO_PATH).map(([page, path]) => [path, page]))
@@ -75,20 +107,41 @@ function OAuthCallback() {
         return
       }
 
+      let authFailed = false
+      let authErrorMsg = ''
+
       try {
         if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          if (exchangeError) console.warn('Code exchange error (may already be handled):', exchangeError.message)
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) {
+            console.error('OAuth code exchange failed:', exchangeError.message)
+            authFailed = true
+            authErrorMsg = exchangeError.message || 'Sign-in failed. Please try again.'
+          } else if (!exchangeData?.session) {
+            console.error('OAuth code exchange returned no session')
+            authFailed = true
+            authErrorMsg = 'Sign-in could not be completed — no session was returned. Please try again.'
+          }
         } else {
-          await supabase.auth.getSession()
+          const { data, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError || !data?.session) {
+            authFailed = true
+            authErrorMsg = sessionError?.message || 'Sign-in could not be completed. Please try again.'
+          }
         }
       } catch (err) {
         console.error('OAuth callback failed:', err)
+        authFailed = true
+        authErrorMsg = err?.message || 'Sign-in failed. Please try again.'
       }
 
       if (!cancelled) {
-        window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
-        window.location.reload()
+        if (authFailed) {
+          window.location.href = `/?auth_error=${encodeURIComponent(authErrorMsg)}`
+        } else {
+          window.history.replaceState({ page: 'dashboard' }, '', '/dashboard')
+          window.location.reload()
+        }
       }
     }
 
@@ -146,19 +199,22 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
-      case 'dashboard': return <CareerDashboardPage setPage={setPage} />
+      case 'dashboard': return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
       case 'analyzer': return <AnalyzerPage setPage={setPage} prefillAnalysis={selectedAnalysis} onClearPrefill={() => setSelectedAnalysis(null)} />
       case 'history': return <Dashboard onNewAnalysis={() => { setSelectedAnalysis(null); setPage('analyzer') }} onSelectAnalysis={a => selectAndGo(a, 'analyzer')} onBuildCv={a => selectAndGo(a, 'cv-builder')} onGenerateMessage={a => selectAndGo(a, 'coach')} />
-      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} />
+      case 'coach': return <CvCoachPage selectedAnalysis={selectedAnalysis} setPage={setPage} />
       case 'profile': return <ProfileOptimizerPage />
       case 'billing': return <BillingPage />
       case 'messages': return <MessagesPage setPage={setPage} />
+      case 'sync-settings': return <SmartSyncSettingsPage setPage={setPage} />
+      case 'career-intelligence': return <CareerIntelligencePage />
       case 'contact': return <ContactPage onBack={() => setPage('dashboard')} />
       case 'cv-builder': return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
       case 'inbox-cleaner': return <InboxCleanerPage />
       default: return <CareerDashboardPage setPage={setPage} />
+      default: return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
     }
   }
 
-  return <div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={() => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false) }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar /></div>
+  return <ErrorBoundary><div style={{ minHeight: '100dvh', background: 'var(--bg)', color: 'var(--text-primary)' }}><SmartSyncUxBridge />{showOnboarding && <Onboarding onDone={completed => { localStorage.setItem('fitscore_onboarded','true'); setShowOnboarding(false); if (completed) setPage('analyzer') }} />}<AppNav page={page} setPage={setPage} onLogoClick={() => { setSelectedAnalysis(null); setPage('dashboard') }} /><main className="appShellContent"><Suspense fallback={<AppLoading />}>{renderPage()}</Suspense></main><AppShellBar setPage={setPage} /></div><Analytics /></ErrorBoundary>
 }

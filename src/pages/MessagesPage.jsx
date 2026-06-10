@@ -90,6 +90,8 @@ function EmailReader({ selected }) {
   const lines = body ? body.split(/\r?\n/) : []
   const sender = selected?.from || 'Unknown sender'
   const subject = selected?.subject || selected?.title || 'Email content'
+  const aiSummary = selected?.ai_summary || ''
+  const suggestedAction = selected?.suggested_action || ''
 
   return (
     <section className="gmailReader">
@@ -105,6 +107,14 @@ function EmailReader({ selected }) {
           <p><strong>{sender}</strong> <span>to me</span></p>
         </div>
       </div>
+
+      {(aiSummary || suggestedAction) && (
+        <div style={{ margin: '0 16px 12px', padding: '12px 14px', background: 'var(--bg-input)', borderRadius: 12, border: '1px solid var(--border)' }}>
+          <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, color: 'var(--accent)', letterSpacing: '.1em', textTransform: 'uppercase' }}>AI Summary</p>
+          {aiSummary && <p style={{ margin: '0 0 5px', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>{aiSummary}</p>}
+          {suggestedAction && <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>→ {suggestedAction}</p>}
+        </div>
+      )}
 
       <div className="gmailReaderBody">
         {lines.length ? lines.map((line, index) => {
@@ -200,7 +210,9 @@ function normalizeEmail(item = {}, index = 0) {
     company,
     role,
     platform: item.platform || item.source || 'Email',
-    body: item.body || item.emailBody || item.snippet || item.summary || item.ai_summary || '',
+    body: item.body || item.emailBody || item.snippet || item.summary || '',
+    ai_summary: item.ai_summary || '',
+    suggested_action: item.suggested_action || '',
     confidence: item.confidenceLabel || item.confidence_label || (item.confidence ? `${Math.round(Number(item.confidence) * 100)}% confidence` : 'Detected')
   }
 }
@@ -229,25 +241,44 @@ function signalTone(type = '') {
   return 'blue'
 }
 
-function Metric({ label, value, text }) {
-  return <article className="messagesStableMetric"><p>{label}</p><strong>{value}</strong><span>{text}</span></article>
+function Metric({ label, value, text, preview }) {
+  return <article className="messagesStableMetric"><p>{label}</p><strong>{preview ? '—' : value}</strong><span>{text}</span></article>
 }
 
-function SignalList({ items, selectedId, onSelect, tab }) {
-  if (!items.length) {
+const PREVIEW_EMAILS = [
+  { id: 'preview-1', title: 'Acme Corp — Product Manager', subject: 'Your application has been received', type: 'Application', date: '', confidence: 'Preview example', body: '' },
+  { id: 'preview-2', title: 'TechCorp — Frontend Engineer', subject: 'Interview invitation — Thursday 2pm', type: 'Interview', date: '', confidence: 'Preview example', body: '' },
+  { id: 'preview-3', title: 'StartupXYZ — UX Designer', subject: 'Thank you for your interest…', type: 'Rejection', date: '', confidence: 'Preview example', body: '' }
+]
+const PREVIEW_CALENDAR = [
+  { id: 'preview-cal-1', title: 'TechCorp — Technical Interview', subject: 'Video call with engineering team', type: 'Interview', date: '', confidence: 'Preview example', body: '' }
+]
+
+function SignalList({ items, selectedId, onSelect, tab, isPreviewMode }) {
+  const displayItems = items.length ? items : (isPreviewMode ? (tab === 'calendar' ? PREVIEW_CALENDAR : PREVIEW_EMAILS) : [])
+
+  if (!displayItems.length) {
     if (tab === 'calendar') {
       return <div className="messagesStableEmpty"><strong>No interview events detected</strong><p>Interview meetings and recruitment events will appear here after Smart Sync scans your calendar.</p></div>
     }
     return <div className="messagesStableEmpty"><strong>No detected signals yet</strong><p>Run Smart Sync to detect job-related emails and calendar events.</p></div>
   }
+
+  const isExample = isPreviewMode && !items.length
+
   return (
     <div className="messagesStableSignals">
-      {items.map(item => (
-        <button key={item.id} type="button" className={`messagesStableSignal ${selectedId === item.id ? 'is-selected' : ''}`} onClick={() => onSelect(item)}>
+      {isExample && (
+        <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-secondary)', background: 'var(--bg-input)', borderBottom: '1px solid var(--border)' }}>
+          Preview examples — connect to see real signals
+        </div>
+      )}
+      {displayItems.map(item => (
+        <button key={item.id} type="button" className={`messagesStableSignal ${selectedId === item.id ? 'is-selected' : ''} ${isExample ? 'is-preview' : ''}`} onClick={() => !isExample && onSelect(item)} style={isExample ? { opacity: 0.55, cursor: 'default', pointerEvents: 'none' } : {}}>
           <span className={`statusPill ${signalTone(item.type)}`}>{item.type}</span>
           <strong>{item.title}</strong>
           <span className="messagesStableSignalSub">{item.subject}</span>
-          <em>{item.date || item.confidence}</em>
+          <em>{isExample ? 'Preview example' : (item.date || item.confidence)}</em>
         </button>
       ))}
     </div>
@@ -285,9 +316,11 @@ export default function MessagesPage({ setPage }) {
   const [tab, setTab] = useState('emails')
   const [selected, setSelected] = useState(null)
   const [lastSyncAt, setLastSyncAt] = useState('')
+  const [mobileView, setMobileView] = useState('list')
 
   const accountEmail = getAccountEmail(user)
   const providerConnected = connections.has(provider)
+  const isPreviewMode = !providerConnected && emails.length === 0 && calendar.length === 0
 
   useEffect(() => {
     const next = getSignedInProvider(user)
@@ -368,6 +401,7 @@ export default function MessagesPage({ setPage }) {
   useEffect(() => {
     const first = allSignals[0] || null
     setSelected(current => current && allSignals.some(item => item.id === current.id) ? current : first)
+    setMobileView('list')
   }, [tab, emails, calendar])
 
   const connectProvider = async () => {
@@ -477,21 +511,57 @@ export default function MessagesPage({ setPage }) {
         </section>
 
         <section className="messagesStableMetrics">
-          <Metric label="Tracked signals" value={stats.total} text="Email and calendar events" />
-          <Metric label="Applications" value={stats.applications} text="Confirmed applications" />
-          <Metric label="Interviews" value={stats.interviews} text="Detected interviews" />
-          <Metric label="Rejections" value={stats.rejections} text="Negative replies" />
-          <Metric label="Follow-ups" value={stats.followups} text="Potential actions" />
+          {isPreviewMode && (
+            <div style={{ gridColumn: '1 / -1', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', background: 'var(--accent-bg)', color: 'var(--accent)', borderRadius: 6, padding: '2px 8px', display: 'inline-block', marginBottom: 8 }}>Not connected yet</span>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px' }}>Smart Sync reads your inbox for job signals</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>Once connected, Joblytics scans job-related emails and calendar events — detecting application confirmations, recruiter replies, interview invites, and rejections automatically.</p>
+                </div>
+                <button type="button" onClick={handlePrimarySync} disabled={syncLoading} style={{ fontSize: 12, fontWeight: 800, color: 'var(--bg)', background: 'var(--text-primary)', border: 'none', borderRadius: 999, padding: '9px 18px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {syncLoading ? 'Connecting…' : 'Connect & sync now'}
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {[
+                  { step: '1', label: 'Connect Gmail or Outlook', desc: 'Read-only access, revoke any time' },
+                  { step: '2', label: 'Run Smart Sync', desc: 'Scans last 90 days of job emails' },
+                  { step: '3', label: 'See your pipeline', desc: 'Interviews, rejections and follow-ups' }
+                ].map(({ step, label, desc }) => (
+                  <div key={step} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: '10px 12px' }}>
+                    <span style={{ display: 'inline-grid', placeItems: 'center', width: 22, height: 22, borderRadius: 99, background: 'var(--text-primary)', color: 'var(--bg)', fontSize: 10, fontWeight: 950, marginBottom: 6 }}>{step}</span>
+                    <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px' }}>{label}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <Metric label="Tracked signals" value={stats.total} text="Email and calendar events" preview={isPreviewMode} />
+          <Metric label="Applications" value={stats.applications} text="Confirmed applications" preview={isPreviewMode} />
+          <Metric label="Interviews" value={stats.interviews} text="Detected interviews" preview={isPreviewMode} />
+          <Metric label="Rejections" value={stats.rejections} text="Negative replies" preview={isPreviewMode} />
+          <Metric label="Follow-ups" value={stats.followups} text="Potential actions" preview={isPreviewMode} />
         </section>
 
         <section className="messagesStableInbox">
           <div className="messagesStableTabs">
-            <button type="button" className={tab === 'emails' ? 'is-active' : ''} onClick={() => setTab('emails')}>Emails <span>{emails.length}</span></button>
-            <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => setTab('calendar')}>Calendar <span>{calendar.length}</span></button>
+            <button type="button" className={tab === 'emails' ? 'is-active' : ''} onClick={() => { setTab('emails'); setMobileView('list') }}>Emails <span>{emails.length}</span></button>
+            <button type="button" className={tab === 'calendar' ? 'is-active' : ''} onClick={() => { setTab('calendar'); setMobileView('list') }}>Calendar <span>{calendar.length}</span></button>
           </div>
-          <div className="messagesStableSplit">
-            <SignalList items={allSignals} selectedId={selected?.id} onSelect={setSelected} tab={tab} />
-            <SignalDetail selected={selected} mode={tab} />
+          <div className={`messagesStableSplit ${mobileView === 'detail' ? 'show-detail' : 'show-list'}`}>
+            <SignalList
+              items={allSignals}
+              selectedId={selected?.id}
+              onSelect={item => { setSelected(item); setMobileView('detail') }}
+              tab={tab}
+              isPreviewMode={isPreviewMode}
+            />
+            <div>
+              <button type="button" className="msgMobileBack" onClick={() => setMobileView('list')}>← Back to {tab === 'calendar' ? 'Calendar' : 'Emails'}</button>
+              <SignalDetail selected={selected} mode={tab} />
+            </div>
           </div>
         </section>
 

@@ -5,34 +5,63 @@ import crypto from 'crypto'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const PLAN_LIMITS = {
-  free: { id: 'free', label: 'Free', monthly: { profile_optimize: 1 } },
-  starter: { id: 'starter', label: 'Starter', monthly: { profile_optimize: 10 } },
-  pro: { id: 'pro', label: 'Pro', monthly: { profile_optimize: 60 } }
+  free: { id: 'free', label: 'Free', monthly: { career_intelligence: 1 } },
+  starter: { id: 'starter', label: 'Starter', monthly: { career_intelligence: 10 } },
+  pro: { id: 'pro', label: 'Pro', monthly: { career_intelligence: 60 } }
 }
 
-const SYSTEM = `You are a senior LinkedIn profile strategist and technical recruiter.
-Your job is to improve a user's LinkedIn profile for their target role using ONLY the profile text provided by the user.
-Do not invent employers, certifications, numbers, tools, titles, or achievements that are not supported by the text.
-You may suggest placeholders like [number of users], [ticket volume], [team size] only when the user should add evidence.
-Return ONLY valid JSON with this structure:
+const SYSTEM = `You are Joblytics AI Career Intelligence Engine, a senior executive recruiter, compensation strategist and career coach for France and Europe.
+Analyze only the evidence supplied by the user. Do not invent employers, titles, degrees, certifications, numbers or achievements.
+If evidence is missing, say what should be added.
+Return ONLY valid JSON with this exact structure:
 {
-  "score": 0-100,
-  "role_alignment": "one sentence",
-  "current_positioning": "one sentence",
-  "improved_headline": "copy-ready LinkedIn headline under 220 characters",
-  "improved_about": "copy-ready About section, 120-180 words, first person, recruiter-friendly",
-  "keyword_gaps": ["max 10 missing or underused recruiter keywords"],
-  "experience_bullets": ["6 copy-ready bullet upgrades based only on supplied experience"],
-  "priority_fixes": ["max 5 concrete fixes"],
-  "search_keywords": ["max 12 keywords for LinkedIn search visibility"],
-  "proof_needed": ["max 5 claims that need numbers/evidence"],
-  "warnings": ["max 4 honest warnings about missing data or weak sections"]
+  "career_score": 0-100,
+  "career_level": "current level in 3-8 words",
+  "market_position": "one concise market-position statement",
+  "executive_summary": "4-6 sentence strategic career summary",
+  "salary_intelligence": {
+    "france": "range or evidence-limited estimate",
+    "uk": "range or evidence-limited estimate",
+    "switzerland": "range or evidence-limited estimate",
+    "note": "one sentence explaining uncertainty"
+  },
+  "recruiter_view": {
+    "shortlist_probability": 0-100,
+    "why_shortlisted": ["max 5 reasons"],
+    "why_rejected": ["max 5 risks or objections"],
+    "best_fit_roles": ["max 8 role titles"]
+  },
+  "gap_analysis": {
+    "target_role": "target role used",
+    "missing_skills": ["max 10"],
+    "missing_evidence": ["max 8"],
+    "positioning_gaps": ["max 8"]
+  },
+  "roadmap": {
+    "next_30_days": ["max 5 practical actions"],
+    "next_90_days": ["max 5 practical actions"],
+    "next_12_months": ["max 5 strategic actions"]
+  },
+  "application_strategy": {
+    "apply_now": ["max 5 job types to prioritize"],
+    "avoid_for_now": ["max 5 job types to avoid"],
+    "message_angle": "copy-ready 2-3 sentence positioning angle"
+  },
+  "warnings": ["max 5 evidence or data warnings"]
 }`
 
 function clean(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
 }
 
+function safeArray(value, limit = 8) {
+  return Array.isArray(value) ? value.map(clean).filter(Boolean).slice(0, limit) : []
+}
+
+function clampScore(value) {
+  const score = Math.round(Number(value))
+  return Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0
+}
 
 function getSupabaseUrl() {
   return process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -70,14 +99,12 @@ async function requireUser(req, supabase) {
     err.code = 'AUTH_TOKEN_MISSING'
     throw err
   }
-
   if (!supabase) {
-    const err = new Error('Profile optimizer authentication is not configured on the server. Check Supabase environment variables in Vercel.')
+    const err = new Error('Career Intelligence authentication is not configured on the server. Check Supabase environment variables in Vercel.')
     err.statusCode = 500
     err.code = 'SUPABASE_AUTH_CONFIG_MISSING'
     throw err
   }
-
   const { data, error } = await supabase.auth.getUser(token)
   if (error || !data?.user) {
     const err = new Error('Your session could not be verified. Please refresh the page or sign in again.')
@@ -98,7 +125,6 @@ function normalizePlan(value) {
 function resolveUserPlan(user) {
   const adminIds = (process.env.RATE_LIMIT_WHITELIST || process.env.ADMIN_USER_IDS || '').split(',').map(x => x.trim()).filter(Boolean)
   if (adminIds.includes(user?.id)) return PLAN_LIMITS.pro
-
   const meta = { ...(user?.user_metadata || {}), ...(user?.app_metadata || {}) }
   const status = String(meta.subscription_status || meta.stripe_subscription_status || '').toLowerCase()
   const rawPlan = meta.subscription_plan || meta.plan || meta.price_plan || meta.product_plan || meta.tier
@@ -153,7 +179,7 @@ async function checkUsageLimit({ supabase, req, user, eventType }) {
   } catch {}
 
   if (used >= limit) {
-    const err = new Error(`${plan.label} limit reached: ${limit} ${eventType.replace('_', ' ')} per month. Upgrade to continue.`)
+    const err = new Error(`${plan.label} limit reached: ${limit} career intelligence report${limit === 1 ? '' : 's'} per month. Upgrade to continue.`)
     err.statusCode = 429
     err.code = 'PLAN_LIMIT_REACHED'
     err.usage = { plan: plan.id, planLabel: plan.label, eventType, used, limit, remaining: 0, source }
@@ -194,61 +220,42 @@ function publicUsage(usage, increment = 0) {
   }
 }
 
-async function handleProfileImport(req, res) {
-  try {
-    const { fileBase64, filename } = req.body || {}
-    if (!fileBase64) return res.status(400).json({ error: 'Upload a LinkedIn profile PDF first.', code: 'PDF_REQUIRED' })
-    const stripped = String(fileBase64).replace(/^data:application\/pdf;base64,/i, '').trim()
-    const buffer = Buffer.from(stripped, 'base64')
-    if (!buffer.length) return res.status(400).json({ error: 'The uploaded PDF is empty or unreadable.', code: 'EMPTY_PDF' })
-    if (buffer.length > 7 * 1024 * 1024) return res.status(413).json({ error: 'PDF is too large. Please upload a file under 7 MB.', code: 'PDF_TOO_LARGE' })
-    const pdfParse = (await import('pdf-parse')).default
-    const parsed = await pdfParse(buffer)
-    const text = String(parsed.text || '').replace(/\s+/g, ' ').trim()
-    if (text.length < 120) return res.status(422).json({ error: 'The PDF was imported, but not enough readable LinkedIn profile text was found. Please export the profile PDF again from LinkedIn or paste the profile text manually.', code: 'PDF_TEXT_TOO_SHORT', filename: filename || null, text })
-    return res.status(200).json({ success: true, filename: filename || null, characters: text.length, pages: parsed.numpages || null, text })
-  } catch (e) {
-    console.error('LinkedIn PDF import error:', e)
-    return res.status(500).json({ error: 'Could not import this LinkedIn PDF. Please try another exported PDF or paste the profile text manually.', code: 'PDF_IMPORT_FAILED' })
-  }
-}
-
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  if (req.body?.action === 'import') return handleProfileImport(req, res)
 
   const supabase = createServerSupabaseClient()
 
   try {
     const user = await requireUser(req, supabase)
-    const { profileText, targetRole } = req.body || {}
-    const text = clean(profileText)
+    const { cvText, linkedinText, profileText, jobDescription, targetRole, targetMarket } = req.body || {}
+    const profile = clean([cvText, linkedinText, profileText].filter(Boolean).join('\n\n'))
+    const jd = clean(jobDescription)
     const role = clean(targetRole) || 'the user target role'
+    const market = clean(targetMarket) || 'France and Europe'
 
-    if (text.length < 120) {
+    if (profile.length < 250) {
       return res.status(400).json({
-        error: 'Import your LinkedIn PDF or paste your profile text to run AI profile optimization.',
-        code: 'PROFILE_TEXT_REQUIRED',
+        error: 'Add at least 250 characters from a CV, LinkedIn PDF, or professional profile before generating a Career Intelligence report.',
+        code: 'CAREER_PROFILE_TEXT_REQUIRED',
         checklist: [
-          'Upload your LinkedIn profile PDF.',
-          'Or paste your current headline.',
-          'Paste your About section.',
-          'Paste your Experience and Skills sections.'
+          'Upload or paste your CV text.',
+          'Add LinkedIn profile PDF/text if available.',
+          'Add a target role such as Head of IT or IT Operations Manager.',
+          'Optionally paste a job description for sharper gap analysis.'
         ]
       })
     }
 
-    const usage = await checkUsageLimit({ supabase, req, user, eventType: 'profile_optimize' })
+    const usage = await checkUsageLimit({ supabase, req, user, eventType: 'career_intelligence' })
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2200,
+      max_tokens: 3200,
       temperature: 0.2,
       system: SYSTEM,
       messages: [{
         role: 'user',
-        content: `TARGET ROLE:\n${role}\n\nPROFILE TEXT PROVIDED BY USER:\n${text.slice(0, 9000)}`
+        content: `TARGET ROLE:\n${role}\n\nTARGET MARKET:\n${market}\n\nJOB DESCRIPTION, IF PROVIDED:\n${jd || 'Not provided'}\n\nPROFILE EVIDENCE PROVIDED BY USER:\n${profile.slice(0, 14000)}`
       }]
     })
 
@@ -257,38 +264,59 @@ export default async function handler(req, res) {
     try {
       result = JSON.parse(raw)
     } catch (e) {
-      console.error('Profile optimizer JSON parse failed:', raw.slice(0, 500))
-      return res.status(500).json({ error: 'Profile optimization failed. Please try again.', code: 'BAD_AI_JSON' })
+      console.error('Career intelligence JSON parse failed:', raw.slice(0, 800))
+      return res.status(500).json({ error: 'Career Intelligence report failed. Please try again.', code: 'BAD_AI_JSON' })
     }
 
-    const safeArray = value => Array.isArray(value) ? value.map(clean).filter(Boolean) : []
-    const score = Number.isFinite(Number(result.score)) ? Math.max(0, Math.min(100, Math.round(Number(result.score)))) : 0
-
-    await recordUsageEvent({ supabase, user, eventType: 'profile_optimize', usage, meta: { targetRole: role } })
+    await recordUsageEvent({ supabase, user, eventType: 'career_intelligence', usage, meta: { targetRole: role, targetMarket: market, hasJobDescription: Boolean(jd) } })
 
     return res.status(200).json({
       success: true,
       usage: publicUsage(usage, 1),
-      analysis: {
-        score,
-        role_alignment: clean(result.role_alignment),
-        current_positioning: clean(result.current_positioning),
-        improved_headline: clean(result.improved_headline),
-        improved_about: clean(result.improved_about),
-        keyword_gaps: safeArray(result.keyword_gaps).slice(0, 10),
-        experience_bullets: safeArray(result.experience_bullets).slice(0, 8),
-        priority_fixes: safeArray(result.priority_fixes).slice(0, 5),
-        search_keywords: safeArray(result.search_keywords).slice(0, 12),
-        proof_needed: safeArray(result.proof_needed).slice(0, 5),
-        warnings: safeArray(result.warnings).slice(0, 4),
-        target_role: role
+      report: {
+        career_score: clampScore(result.career_score),
+        career_level: clean(result.career_level),
+        market_position: clean(result.market_position),
+        executive_summary: clean(result.executive_summary),
+        salary_intelligence: {
+          france: clean(result.salary_intelligence?.france),
+          uk: clean(result.salary_intelligence?.uk),
+          switzerland: clean(result.salary_intelligence?.switzerland),
+          note: clean(result.salary_intelligence?.note)
+        },
+        recruiter_view: {
+          shortlist_probability: clampScore(result.recruiter_view?.shortlist_probability),
+          why_shortlisted: safeArray(result.recruiter_view?.why_shortlisted, 5),
+          why_rejected: safeArray(result.recruiter_view?.why_rejected, 5),
+          best_fit_roles: safeArray(result.recruiter_view?.best_fit_roles, 8)
+        },
+        gap_analysis: {
+          target_role: clean(result.gap_analysis?.target_role) || role,
+          missing_skills: safeArray(result.gap_analysis?.missing_skills, 10),
+          missing_evidence: safeArray(result.gap_analysis?.missing_evidence, 8),
+          positioning_gaps: safeArray(result.gap_analysis?.positioning_gaps, 8)
+        },
+        roadmap: {
+          next_30_days: safeArray(result.roadmap?.next_30_days, 5),
+          next_90_days: safeArray(result.roadmap?.next_90_days, 5),
+          next_12_months: safeArray(result.roadmap?.next_12_months, 5)
+        },
+        application_strategy: {
+          apply_now: safeArray(result.application_strategy?.apply_now, 5),
+          avoid_for_now: safeArray(result.application_strategy?.avoid_for_now, 5),
+          message_angle: clean(result.application_strategy?.message_angle)
+        },
+        warnings: safeArray(result.warnings, 5),
+        target_role: role,
+        target_market: market,
+        generated_at: new Date().toISOString()
       }
     })
   } catch (e) {
-    console.error('Profile optimizer error:', e.message)
+    console.error('Career intelligence error:', e.message)
     return res.status(e.statusCode || 500).json({
-      error: e.message || 'Profile optimization failed',
-      code: e.code || 'PROFILE_OPTIMIZE_FAILED',
+      error: e.message || 'Career Intelligence report failed',
+      code: e.code || 'CAREER_INTELLIGENCE_FAILED',
       usage: e.usage || null
     })
   }

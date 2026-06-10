@@ -85,7 +85,6 @@ export default function BillingPage() {
   const [legalAccepted, setLegalAccepted] = useState(false)
   const [withdrawalAccepted, setWithdrawalAccepted] = useState(false)
   const [legalError, setLegalError] = useState('')
-  const [readyMessage, setReadyMessage] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState('')
 
   const plans = [
@@ -94,15 +93,14 @@ export default function BillingPage() {
     { planId: 'pro', name: t('billing_pro_name'), price: t('billing_pro_price'), description: t('billing_pro_desc'), bestFor: 'High-volume search', limits: ['200 ATS checks', '60 profile optimizations', 'Future automation'], features: [t('billing_feature_ats_200'), t('billing_feature_profile_60'), t('billing_feature_cv_builder'), t('billing_feature_future')] }
   ]
 
-  const onSelectPlan = plan => { setSelectedPlan(plan); setLegalAccepted(false); setWithdrawalAccepted(false); setLegalError(''); setReadyMessage('') }
+  const onSelectPlan = plan => { setSelectedPlan(plan); setLegalAccepted(false); setWithdrawalAccepted(false); setLegalError('') }
   const onToggleLegal = value => { setLegalAccepted(value); if (value && withdrawalAccepted) setLegalError('') }
   const onToggleWithdrawal = value => { setWithdrawalAccepted(value); if (value && legalAccepted) setLegalError('') }
   const onCancelContract = () => { if (checkoutLoading) return; setSelectedPlan(null); setLegalAccepted(false); setWithdrawalAccepted(false); setLegalError('') }
 
   const onConfirmContract = async () => {
     if (!selectedPlan) return
-    setReadyMessage('')
-    if (!legalAccepted) { setLegalError(t('billing_legal_required')); return }
+        if (!legalAccepted) { setLegalError(t('billing_legal_required')); return }
     if (!withdrawalAccepted) { setLegalError(t('billing_withdrawal_required')); return }
     setLegalError('')
     setCheckoutLoading(selectedPlan.planId)
@@ -138,19 +136,17 @@ export default function BillingPage() {
         </section>
 
         <section className="billing-legalPanel phase8-legalPanel"><div><p className="billing-kicker">{t('billing_legal_title')}</p><h2>{t('billing_checkout_ready')}</h2><p>{t('billing_legal_body')}</p></div><strong>{TERMS_VERSION}</strong></section>
-        {readyMessage && <p className="billing-ready">✓ {readyMessage}</p>}
-
         <section className="billing-grid phase8-grid">{plans.map(plan => <PlanCard key={plan.planId} {...plan} t={t} selected={selectedPlan?.planId === plan.planId} checkoutLoading={checkoutLoading} onSelectPlan={onSelectPlan} />)}</section>
 
         <ComparisonTable />
 
         <section className="phase8-upgradeMoments">
-          <div className="phase8-sectionHead"><p>Upgrade moments</p><h2>When paid plans should feel worth it</h2><span>Users should only see strong upgrade prompts after they understand value.</span></div>
+          <div className="phase8-sectionHead"><p>What you unlock</p><h2>Get more out of every job search</h2><span>Paid plans give you higher analysis quotas and access to the full asset generation suite.</span></div>
           <div className="phase8-momentList">
-            <article><strong>After a strong match</strong><p>Prompt to generate a tailored CV and recruiter outreach message.</p></article>
-            <article><strong>After multiple analyses</strong><p>Prompt when the user is clearly in active search mode.</p></article>
-            <article><strong>Before exporting assets</strong><p>Prompt when the user wants Word/PDF CV outputs or saved message history.</p></article>
-            <article><strong>When tracking pipeline</strong><p>Prompt when the user manages several active applications.</p></article>
+            <article><strong>More ATS checks</strong><p>Run up to 40 or 200 analyses per month — enough for an active job search across multiple roles.</p></article>
+            <article><strong>CV rewrites & cover letters</strong><p>Generate a fully tailored CV and cover letter for each application, not just a score.</p></article>
+            <article><strong>Recruiter outreach</strong><p>Create cold outreach messages and follow-ups grounded in the job analysis data.</p></article>
+            <article><strong>Smart Sync tracking</strong><p>Detect replies, interviews, rejections and needed follow-ups from your inbox automatically.</p></article>
           </div>
         </section>
 

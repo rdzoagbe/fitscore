@@ -48,7 +48,7 @@ select:focus-visible {
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.90));
+  background: var(--bg-card);
   box-shadow: var(--shadow-soft);
   display: grid;
   gap: clamp(16px, 2vw, 22px);
@@ -158,7 +158,7 @@ select:focus-visible {
   min-width: 0;
   border: 1px solid rgba(16,24,43,.10);
   border-radius: 20px;
-  background: rgba(255,255,255,.66);
+  background: var(--bg-card);
   padding: 15px;
   display: grid;
   gap: 12px;
@@ -270,7 +270,7 @@ select:focus-visible {
 .resultTrust-evidence {
   border: 1px solid rgba(16,24,43,.10);
   border-radius: 20px;
-  background: rgba(255,255,255,.66);
+  background: var(--bg-card);
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -331,7 +331,7 @@ select:focus-visible {
   grid-template-columns: minmax(0, 1fr) 86px;
   align-items: center;
   gap: 16px;
-  border: 1px solid rgba(164,81,43,.18);
+  border: 1px solid rgba(172,59,97,.18);
   background: var(--accent-bg);
   border-radius: 22px;
   padding: 17px;
@@ -363,7 +363,7 @@ select:focus-visible {
   justify-self: end;
   color: var(--accent);
   background: var(--bg-card);
-  border: 1px solid rgba(164,81,43,.22);
+  border: 1px solid rgba(172,59,97,.22);
   font-size: 20px;
 }
 
@@ -371,7 +371,7 @@ select:focus-visible {
 .cvBuilder-page {
   min-height: 100dvh;
   background:
-    radial-gradient(circle at 10% -10%, rgba(164,81,43,.10), transparent 34%),
+    radial-gradient(circle at 10% -10%, rgba(172,59,97,.10), transparent 34%),
     radial-gradient(circle at 90% 0%, rgba(67,85,111,.08), transparent 30%),
     var(--bg);
 }
@@ -421,7 +421,7 @@ select:focus-visible {
 }
 
 .cvBuilder-card {
-  background: linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.88));
+  background: var(--bg-card);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
@@ -466,7 +466,7 @@ select:focus-visible {
   border-radius: 999px;
   background: var(--accent-bg);
   color: var(--accent);
-  border: 1px solid rgba(164,81,43,.18);
+  border: 1px solid rgba(172,59,97,.18);
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
@@ -485,7 +485,7 @@ select:focus-visible {
   align-items: start;
   min-width: 0;
   border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.64);
+  background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 15px;
   box-shadow: var(--shadow-card);
@@ -498,10 +498,10 @@ select:focus-visible {
   display: grid;
   place-items: center;
   background: var(--accent);
-  color: #fffdf8;
+  color: #EEE2DC;
   font-size: 15px;
   font-weight: 950;
-  box-shadow: 0 10px 20px rgba(164,81,43,.20);
+  box-shadow: 0 10px 20px rgba(172,59,97,.20);
 }
 
 .cvBuilder-step strong {
@@ -525,8 +525,8 @@ select:focus-visible {
   display: grid;
   gap: 14px;
   padding: 16px;
-  background: rgba(164,81,43,.045);
-  border: 1px solid rgba(164,81,43,.12);
+  background: rgba(172,59,97,.045);
+  border: 1px solid rgba(172,59,97,.12);
   border-radius: var(--radius-md);
 }
 
@@ -553,8 +553,8 @@ select:focus-visible {
   border: 0 !important;
   border-radius: 14px !important;
   background: var(--accent) !important;
-  color: #fffdf8 !important;
-  box-shadow: 0 14px 28px rgba(164,81,43,.20) !important;
+  color: #EEE2DC !important;
+  box-shadow: 0 14px 28px rgba(172,59,97,.20) !important;
   min-height: 50px !important;
   padding: 0 20px !important;
   font: inherit !important;
@@ -595,7 +595,7 @@ select:focus-visible {
   gap: 14px;
   border: 1px solid rgba(16,24,43,.10);
   border-radius: var(--radius-lg);
-  background: rgba(255,255,255,.72);
+  background: var(--bg-input);
   padding: clamp(16px, 2.4vw, 24px);
 }
 
@@ -654,8 +654,8 @@ select:focus-visible {
 
 .cvBuilder-diffGrid > div {
   border-radius: 14px;
-  background: rgba(250,247,241,.7);
-  border: 1px solid rgba(16,24,43,.08);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
   padding: 13px;
 }
 
@@ -687,7 +687,7 @@ select:focus-visible {
   border-radius: 14px;
   border: 1px solid rgba(16,24,43,.12);
   background: var(--text-primary);
-  color: #fffdf8;
+  color: #EEE2DC;
   font-weight: 900;
   cursor: pointer;
 }
@@ -741,9 +741,9 @@ select:focus-visible {
 }
 
 .cvWorkspace-provenance--ai {
-  background: rgba(164,81,43,.09);
+  background: rgba(172,59,97,.09);
   color: var(--accent);
-  border-color: rgba(164,81,43,.20);
+  border-color: rgba(172,59,97,.20);
 }
 
 .cvWorkspace-provenance--proof {
@@ -763,7 +763,7 @@ select:focus-visible {
 .cvWorkspace-livePreview,
 .cvWorkspace-versions {
   border: 1px solid rgba(16,24,43,.10);
-  background: rgba(255,255,255,.68);
+  background: var(--bg-card);
   border-radius: 22px;
   box-shadow: var(--shadow-card);
 }
@@ -823,7 +823,7 @@ select:focus-visible {
 
 .cvWorkspace-toolbarActions button:last-child {
   background: var(--accent);
-  color: #fffdf8;
+  color: #EEE2DC;
   border-color: var(--accent);
 }
 
@@ -850,8 +850,8 @@ select:focus-visible {
 .cvWorkspace-field input,
 .cvWorkspace-field textarea {
   width: 100%;
-  border: 1px solid rgba(16,24,43,.12);
-  background: rgba(250,247,241,.80);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
   border-radius: 14px;
   color: var(--text-primary);
   font: inherit;
@@ -863,8 +863,8 @@ select:focus-visible {
 
 .cvWorkspace-field input:focus,
 .cvWorkspace-field textarea:focus {
-  border-color: rgba(164,81,43,.42);
-  box-shadow: 0 0 0 4px rgba(164,81,43,.10);
+  border-color: rgba(172,59,97,.42);
+  box-shadow: 0 0 0 4px rgba(172,59,97,.10);
   outline: none;
 }
 
@@ -876,7 +876,7 @@ select:focus-visible {
 
 .cvWorkspace-previewPaper {
   min-height: 620px;
-  background: #fff;
+  background: var(--bg-card);
   border: 1px solid rgba(16,24,43,.12);
   border-radius: 18px;
   padding: clamp(18px, 2.4vw, 28px);
@@ -957,9 +957,9 @@ select:focus-visible {
   min-height: 27px;
   border-radius: 999px;
   padding: 0 9px;
-  background: rgba(164,81,43,.08);
+  background: rgba(172,59,97,.08);
   color: var(--accent);
-  border: 1px solid rgba(164,81,43,.14);
+  border: 1px solid rgba(172,59,97,.14);
   font-size: 11px;
   font-weight: 850;
 }
@@ -1043,7 +1043,7 @@ select:focus-visible {
 .smartTrackingPanel,
 .syncResultsPanel {
   background:
-    linear-gradient(180deg, rgba(255,253,248,.98), rgba(255,253,248,.90)) !important;
+    var(--bg-card) !important;
   color: var(--text-primary) !important;
   border: 1px solid rgba(16,24,43,.12) !important;
 }
@@ -1085,14 +1085,14 @@ select:focus-visible {
 .messagesConversation,
 .messagesThread,
 .messagesBubble {
-  background: rgba(255,255,255,.64) !important;
+  background: var(--bg-card) !important;
   border-color: rgba(16,24,43,.10) !important;
 }
 
 .newSyncStepNum,
 .syncCheck {
   background: var(--accent) !important;
-  color: #fffdf8 !important;
+  color: #EEE2DC !important;
 }
 
 .syncTabs button.is-active,
@@ -1111,7 +1111,7 @@ select:focus-visible {
 .messagesNotice {
   background: var(--accent-bg) !important;
   color: var(--accent) !important;
-  border-color: rgba(164,81,43,.18) !important;
+  border-color: rgba(172,59,97,.18) !important;
 }
 
 /* ─── Responsive polish ─────────────────────────────────────────────── */

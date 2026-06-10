@@ -330,6 +330,68 @@ function simpleSummary(signal, classification) {
   return `${status}: ${subject}. ${action}`
 }
 
+async function aiSummaryForSignal(signal) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY || '').trim()
+  if (!apiKey) return null
+
+  const subject = clean(signal.subject || '', 180)
+  const body = clean(signal.body || signal.snippet || '', 500)
+  const company = clean(signal.company || '', 60)
+
+  const prompt = `Job email summary (JSON only):\nSubject: ${subject}\nCompany: ${company}\nContent: ${body}\n\n{"summary":"1 sentence","suggested_action":"1 sentence"}`
+
+  try {
+    const controller = new AbortController()
+    const tid = setTimeout(() => controller.abort(), 6000)
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 120, messages: [{ role: 'user', content: prompt }] }),
+      signal: controller.signal
+    })
+    clearTimeout(tid)
+    if (!res.ok) return null
+    const data = await res.json().catch(() => null)
+    const text = data?.content?.[0]?.text || ''
+    const m = text.match(/\{[\s\S]*?\}/)
+    if (!m) return null
+    const parsed = JSON.parse(m[0])
+    return {
+      summary: clean(parsed.summary || '', 250),
+      suggested_action: clean(parsed.suggested_action || '', 180)
+    }
+  } catch {
+    return null
+  }
+}
+
+async function enrichWithAiSummaries(signals, functionStartedAt) {
+  if (!process.env.ANTHROPIC_API_KEY) return signals
+  if (Date.now() - functionStartedAt > 20000) return signals
+
+  const toEnrich = signals
+    .filter(s => (s.confidence || 0) >= 0.65)
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+    .slice(0, 8)
+
+  if (!toEnrich.length) return signals
+
+  const enrichedMap = new Map()
+  for (const signal of toEnrich) {
+    if (Date.now() - functionStartedAt > 40000) break
+    const ai = await aiSummaryForSignal(signal)
+    if (ai?.summary) enrichedMap.set(signal.id, ai)
+  }
+
+  if (!enrichedMap.size) return signals
+
+  return signals.map(s => {
+    const ai = enrichedMap.get(s.id)
+    if (!ai) return s
+    return { ...s, ai_summary: ai.summary, suggested_action: ai.suggested_action }
+  })
+}
+
 function buildGmailQuery(searchAfter = '2025/01/01') {
   const after = String(searchAfter || '2025/01/01').replace(/[^0-9/]/g, '') || '2025/01/01'
   return `after:${after} ("your application" OR "votre candidature" OR "thank you for applying" OR "merci pour votre candidature" OR "application received" OR "candidature reçue" OR entretien OR interview OR "pas retenu" OR unfortunately OR regrettons OR availability OR disponibilités OR "next steps")`
@@ -405,7 +467,7 @@ function isWithinWindow(dateValue, isoStart, isoNow) {
   return t >= new Date(isoStart).getTime() && t <= new Date(isoNow).getTime()
 }
 
-function shouldStopScan(startMs, budgetMs = 7500) {
+function shouldStopScan(startMs, budgetMs = 45000) {
   return Date.now() - startMs > budgetMs
 }
 
@@ -558,7 +620,9 @@ function buildEmail(item) {
     date: item.date || null,
     snippet: item.snippet || '',
     body: item.body || item.snippet || '',
-    summary: simpleSummary(item, classification)
+    summary: simpleSummary(item, classification),
+    ai_summary: item.ai_summary || null,
+    suggested_action: item.suggested_action || null
   }
 }
 
@@ -1022,7 +1086,9 @@ function eventRowToEmail(row = {}) {
     snippet: row.snippet || row.raw?.snippet || '',
     body: row.raw?.body || row.snippet || row.raw?.snippet || '',
     platform: row.platform || 'Email',
-    company: row.company || 'Unknown'
+    company: row.company || 'Unknown',
+    ai_summary: row.raw?.ai_summary || null,
+    suggested_action: row.raw?.suggested_action || null
   })
 }
 
@@ -1046,7 +1112,7 @@ async function linkSyncEventsToAnalyses(supabase, userId, emails, calendar) {
 
   const signals = [...emails, ...calendar].filter(s =>
     ['interview', 'offer', 'rejected'].includes(s.detected_status) &&
-    (s.confidence ?? 0) >= 0.75 &&
+    (s.confidence ?? 0) >= 0.82 &&
     s.company && normalize(s.company) !== 'unknown' && normalize(s.company) !== 'detected'
   )
   if (!signals.length) return 0
@@ -1071,7 +1137,13 @@ async function linkSyncEventsToAnalyses(supabase, userId, emails, calendar) {
       if (toUpdate.find(u => u.id === analysis.id)) continue
       const aCompany = normalize(analysis.result?.job_context?.company || analysis.job_title || '')
       if (!aCompany || aCompany.length < 3) continue
-      if (!aCompany.includes(sigCompany) && !sigCompany.includes(aCompany)) continue
+      const companyMatch = aCompany.includes(sigCompany) || sigCompany.includes(aCompany)
+      const sigDomain = signal.from?.includes('@') ? signal.from.split('@')[1]?.split('.')[0] || '' : ''
+      const domainMatch = sigDomain.length >= 3 && (
+        aCompany.includes(sigDomain) ||
+        normalize(analysis.result?.job_context?.url || '').includes(sigDomain)
+      )
+      if (!companyMatch && !domainMatch) continue
 
       const currentRank = STATUS_RANK[analysis.application_status] || 0
       const shouldUpdate = newStatus === 'rejected'
@@ -1246,6 +1318,7 @@ export default async function handler(req, res) {
     }
 
     const user = await requireUser(req, supabase)
+    const functionStartedAt = Date.now()
 
     const { data: connections, error } = await supabase
       .from('job_sync_connections')
@@ -1290,11 +1363,12 @@ export default async function handler(req, res) {
         const token = await getUsableAccessToken(supabase, connection)
         const scan = connection.provider === 'microsoft' ? await scanMicrosoft(token) : await scanGoogle(token)
 
-        emails = emails.concat(scan.emails)
+        const enrichedEmails = await enrichWithAiSummaries(scan.emails, functionStartedAt)
+        emails = emails.concat(enrichedEmails)
         calendar = calendar.concat(scan.calendar)
         if (scan.diagnostics) diagnostics[connection.provider] = scan.diagnostics
 
-        const stored = await storeSyncEvents(supabase, user.id, connection.provider, scan.emails, scan.calendar)
+        const stored = await storeSyncEvents(supabase, user.id, connection.provider, enrichedEmails, scan.calendar)
         if (stored.error) {
           errors.push(`${connection.provider}: store-events: ${stored.error.message}`)
         } else {

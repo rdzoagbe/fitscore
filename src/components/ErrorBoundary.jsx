@@ -1,31 +1,57 @@
 import React from 'react'
 
+function isChunkLoadError(error) {
+  const msg = error?.message || ''
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module') ||
+    error?.name === 'ChunkLoadError'
+  )
+}
+
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { error: null }
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error }
+    return { error }
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary]', error, info)
+    console.error('[ErrorBoundary]', error, info?.componentStack)
+    if (isChunkLoadError(error)) {
+      const key = 'joblytics_chunk_reload'
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+      }
+    }
   }
 
   render() {
-    if (!this.state.hasError) return this.props.children
+    if (!this.state.error) return this.props.children
+    const isChunk = isChunkLoadError(this.state.error)
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg, #0f0f0f)', padding: 24 }}>
-        <div style={{ maxWidth: 480, textAlign: 'center' }}>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <h2 style={{ color: 'var(--text-primary, #fff)', marginBottom: 8, fontSize: 20 }}>Something went wrong</h2>
-          <p style={{ color: 'var(--text-secondary, #888)', marginBottom: 24, lineHeight: 1.6 }}>An unexpected error occurred. Your data is safe — reload the page to continue.</p>
-          {process.env.NODE_ENV === 'development' && this.state.error && (
-            <pre style={{ textAlign: 'left', background: '#1a1a1a', color: '#ef4444', padding: '12px 14px', borderRadius: 8, fontSize: 12, overflow: 'auto', marginBottom: 20 }}>{String(this.state.error)}</pre>
-          )}
-          <button type="button" onClick={() => window.location.reload()} style={{ padding: '12px 28px', borderRadius: 12, background: 'var(--accent, #6c63ff)', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Reload page</button>
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 480, width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 24, padding: 32, textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 26, fontWeight: 400, letterSpacing: '-0.05em', color: 'var(--text-primary)', margin: '0 0 10px' }}>
+            {isChunk ? 'Update available' : 'Something went wrong'}
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65, margin: '0 0 24px' }}>
+            {isChunk
+              ? 'Joblytics was updated since you last loaded the page. Reload to get the latest version.'
+              : 'An unexpected error occurred. Refreshing the page usually fixes this.'}
+          </p>
+          <button
+            onClick={() => { sessionStorage.removeItem('joblytics_chunk_reload'); window.location.reload() }}
+            style={{ minHeight: 44, padding: '0 24px', borderRadius: 999, border: 0, background: 'var(--text-primary)', color: 'var(--bg)', fontWeight: 900, cursor: 'pointer', fontSize: 14 }}
+          >
+            {isChunk ? 'Reload to update' : 'Reload page'}
+          </button>
         </div>
       </div>
     )

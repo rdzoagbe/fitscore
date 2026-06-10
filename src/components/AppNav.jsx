@@ -9,27 +9,28 @@ import './AppNav.css'
 const navItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'career-intelligence', icon: 'CI', labelKey: 'nav_career_intelligence', fallback: 'Career AI' },
   { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' }
+  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' }
 ]
 
 const workspaceItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'career-intelligence', icon: 'CI', labelKey: 'nav_career_intelligence', fallback: 'Career Intelligence' },
   { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'LinkedIn Profile' },
-  { id: 'billing', icon: '€', labelKey: 'nav_billing', fallback: 'Billing' }
+  { id: 'billing', icon: '€', labelKey: 'nav_billing', fallback: 'Billing' },
+  { id: 'sync-settings', icon: '⚙', labelKey: 'nav_sync_settings', fallback: 'Smart Sync settings' }
 ]
 
 const mobileNavItems = [
   { id: 'dashboard', icon: '✦', labelKey: 'nav_dashboard', fallback: 'Dashboard' },
   { id: 'analyzer', icon: 'AI', labelKey: 'nav_analyze', fallback: 'Analyze' },
+  { id: 'career-intelligence', icon: 'CI', labelKey: 'nav_career_intelligence_mobile', fallback: 'Career' },
   { id: 'coach', icon: 'CV', labelKey: 'nav_coach', fallback: 'CV Coach' },
-  { id: 'messages', icon: 'M', labelKey: 'nav_messages', fallback: 'Messages' },
-  { id: 'profile', icon: 'in', labelKey: 'nav_profile', fallback: 'Profile' }
+  { id: 'history', icon: 'H', labelKey: 'nav_history', fallback: 'History' }
 ]
 
 export default function AppNav({ page, setPage, onLogoClick }) {

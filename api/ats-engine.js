@@ -82,10 +82,27 @@ function canonical(value = '') {
   return titleCase(value)
 }
 
+const GENERIC_REQUIREMENT_SUFFIXES = ['interface experience', 'experience', 'administration', 'management', 'operations']
+
+// extractRequirements turns bare skills into labels like "Active Directory experience" /
+// "M365 management" / "EDR administration" — but candidate skills are stored as the bare
+// term ("Active Directory" / "Microsoft 365" / "EDR"). Without stripping the generic
+// descriptor, those labels can never alias-match the skill they were generated from, which
+// silently crushes requirementScore even when the candidate clearly has the experience.
+function stripGenericRequirementSuffix(value = '') {
+  const key = clean(value)
+  for (const suffix of GENERIC_REQUIREMENT_SUFFIXES) {
+    if (key.length > suffix.length + 1 && key.endsWith(` ${suffix}`)) return key.slice(0, -(suffix.length + 1)).trim()
+  }
+  return key
+}
+
 function aliasesFor(value = '') {
   const key = clean(value)
-  const group = SYNONYMS.find(items => items.map(clean).includes(key))
-  return group ? group.map(canonical) : [canonical(value)]
+  const core = stripGenericRequirementSuffix(value)
+  const group = SYNONYMS.find(items => items.map(clean).includes(key)) || (core !== key ? SYNONYMS.find(items => items.map(clean).includes(core)) : null)
+  if (group) return group.map(canonical)
+  return core !== key ? unique([canonical(value), canonical(core)], 4) : [canonical(value)]
 }
 
 function hasTerm(text = '', term = '') {
@@ -375,7 +392,17 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
   const requirementScore = clamp((requirementDelta.matched.length / Math.max(job.requirements.length, 1)) * 100, job.requirements.length ? 0 : 70)
   const yearsScore = job.minimum_years_experience ? clamp((cv.schema.candidate_years_signal / job.minimum_years_experience) * 100, cv.schema.candidate_years_signal ? 45 : 30) : 70
   const proofPenalty = Math.min(18, proofNeeds.length * 3)
-  const finalScore = clamp(skillScore * 0.42 + requirementScore * 0.28 + yearsScore * 0.15 + cv.parse_quality * 0.15 - proofPenalty, 50)
+  const deterministicScore = clamp(skillScore * 0.42 + requirementScore * 0.28 + yearsScore * 0.15 + cv.parse_quality * 0.15 - proofPenalty, 50)
+
+  // The deterministic engine only recognizes a fixed keyword/regex vocabulary, so on its own it
+  // badly under-scores roles phrased outside that list (or outside IT/helpdesk entirely). The
+  // model actually reads both texts in context, so blend its read back in instead of discarding
+  // it: keyword-leaning for the ATS-style pass-through number, model-leaning for the more
+  // holistic recruiter/interview read — which also keeps the two scores meaningfully distinct.
+  const aiDisplayScore = clamp(analysis.display_score, deterministicScore)
+  const aiMatchProbability = clamp(analysis.match_probability, aiDisplayScore)
+  const finalScore = clamp(Math.round(deterministicScore * 0.6 + aiDisplayScore * 0.4))
+  const matchProbability = clamp(Math.round(aiMatchProbability * 0.65 + deterministicScore * 0.35))
   const verdict = finalScore >= 78 ? 'strong_shortlist' : finalScore >= 58 ? 'possible_shortlist' : 'unlikely_shortlist'
   const overall = finalScore >= 75 ? 'likely_passed' : finalScore >= 55 ? 'borderline' : 'likely_filtered'
   const quickWins = buildQuickWins(keywordDelta.missing, requirementDelta.missing, proofNeeds)
@@ -446,7 +473,7 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
     quick_wins: quickWins,
     strict_ats_result: strictAtsResult,
     display_score: finalScore,
-    match_probability: finalScore,
+    match_probability: matchProbability,
     keyword_match: {
       ...(analysis.keyword_match || {}),
       score: skillScore,
@@ -473,7 +500,7 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
     },
     recruiter_shortlist: {
       ...(analysis.recruiter_shortlist || {}),
-      probability: finalScore,
+      probability: matchProbability,
       verdict,
       reason: recruiterSummary,
       top_screening_factors: unique([...keywordsAnalysis.found_in_cv, ...requirementsAnalysis.requirements_met, ...cv.schema.job_titles], 8),
@@ -504,7 +531,7 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
       recruiter_view: {
         rank_bucket: finalScore >= 78 ? 'Highly Qualified' : finalScore >= 62 ? 'Review / Maybe' : 'Low Priority',
         visibility: finalScore >= 78 ? 'top_of_shortlist' : finalScore >= 62 ? 'visible_if_recruiter_reviews_more_profiles' : 'bottom_of_pagination',
-        shortlist_probability: finalScore,
+        shortlist_probability: matchProbability,
         reason: recruiterSummary
       }
     },
@@ -527,6 +554,6 @@ export function enhanceAnalysisWithAts(analysis = {}, jobText = '', cvText = '')
         : proofNeeds.length
           ? `Matched items need stronger proof: ${proofNeeds.join(', ')}.`
           : 'Required keywords and responsibilities are matched and supported.',
-    analysis_version: 'ats-v7-clean-ui-schema-compatible'
+    analysis_version: 'ats-v8-blended-score'
   }
 }

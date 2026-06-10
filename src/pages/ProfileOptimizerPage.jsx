@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLang } from '../context/LangContext'
 import { supabase } from '../lib/supabase'
@@ -14,11 +14,6 @@ function readFileAsBase64(file) {
   })
 }
 
-function looksLikeOnlyLinkedInUrl(value) {
-  const text = String(value || '').trim()
-  if (!text || text.split(/\s+/).length > 2) return false
-  return /linkedin\.com\//i.test(text)
-}
 
 async function getFreshAccessToken(session) {
   if (session?.access_token) return session.access_token
@@ -42,8 +37,35 @@ export default function ProfileOptimizerPage() {
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importInfo, setImportInfo] = useState(null)
+  const [savedProfiles, setSavedProfiles] = useState(() => { try { return JSON.parse(localStorage.getItem('joblytics_saved_profiles') || '[]') } catch { return [] } })
+  const [showSaveForm, setShowSaveForm] = useState(false)
+  const [saveProfileName, setSaveProfileName] = useState('')
   const [error, setError] = useState('')
   const [checklist, setChecklist] = useState(null)
+
+  const saveCurrentProfile = () => {
+    const name = saveProfileName.trim() || importInfo?.filename || `Profile ${savedProfiles.length + 1}`
+    const profile = { id: Date.now().toString(), name, text, importInfo, savedAt: new Date().toISOString() }
+    const updated = [profile, ...savedProfiles.filter(p => p.name !== name)].slice(0, 5)
+    setSavedProfiles(updated)
+    try { localStorage.setItem('joblytics_saved_profiles', JSON.stringify(updated)) } catch {}
+    setShowSaveForm(false)
+    setSaveProfileName('')
+  }
+
+  const loadSavedProfile = profile => {
+    setText(profile.text)
+    setImportInfo(profile.importInfo)
+    setResult(null)
+    setChecklist(null)
+    setError('')
+  }
+
+  const deleteSavedProfile = id => {
+    const updated = savedProfiles.filter(p => p.id !== id)
+    setSavedProfiles(updated)
+    try { localStorage.setItem('joblytics_saved_profiles', JSON.stringify(updated)) } catch {}
+  }
 
   const hasEnoughProfileText = text.trim().length >= 120
   const canAnalyze = hasEnoughProfileText
@@ -51,16 +73,7 @@ export default function ProfileOptimizerPage() {
   const scoreCaption = loading ? t('profile_analyzing') : result?.score !== undefined ? t('profile_score') : importInfo ? t('profile_ready_to_analyze', 'ready to analyze') : hasEnoughProfileText ? t('profile_ready_to_analyze', 'ready to analyze') : t('profile_ai_optimizer')
 
   const handleProfileTextChange = e => {
-    const value = e.target.value
-    if (looksLikeOnlyLinkedInUrl(value)) {
-      setText('')
-      setResult(null)
-      setChecklist(null)
-      setImportInfo(null)
-      setError(t('profile_url_removed_notice', 'A LinkedIn URL alone cannot be analyzed. Upload your LinkedIn PDF or paste your profile text.'))
-      return
-    }
-    setText(value)
+    setText(e.target.value)
     setResult(null)
     setChecklist(null)
     setError('')
@@ -117,7 +130,7 @@ export default function ProfileOptimizerPage() {
           Authorization: `Bearer ${accessToken}`,
           'X-Joblytics-Device-Id': getDeviceId()
         },
-        body: JSON.stringify({ profileText: text, targetRole, profileUrl: null })
+        body: JSON.stringify({ profileText: text, targetRole })
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -155,6 +168,23 @@ export default function ProfileOptimizerPage() {
 
         <section className="profileOpt-grid">
           <article className="profileOpt-card">
+            {savedProfiles.length > 0 && (
+              <div className="profileOpt-savedSection">
+                <p className="profileOpt-kicker">Saved profiles</p>
+                <div className="profileOpt-savedList">
+                  {savedProfiles.map(p => (
+                    <div key={p.id} className="profileOpt-savedItem">
+                      <button type="button" className="profileOpt-savedLoad" onClick={() => loadSavedProfile(p)}>
+                        <strong>{p.name}</strong>
+                        <span>{new Date(p.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {p.text?.length || 0} chars</span>
+                      </button>
+                      <button type="button" className="profileOpt-savedDelete" onClick={() => deleteSavedProfile(p.id)} title="Remove">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="profileOpt-importBox">
               <div>
                 <p className="profileOpt-kicker">{t('profile_import_content_title', 'Import profile content')}</p>
@@ -172,6 +202,21 @@ export default function ProfileOptimizerPage() {
               {importInfo && <p className="profileOpt-importSuccess">✓ {t('profile_pdf_import_success', { name: importInfo.filename, count: importInfo.characters }, `Imported ${importInfo.filename} · ${importInfo.characters} characters`)}</p>}
             </div>
 
+
+            {hasEnoughProfileText && (
+              <div className="profileOpt-saveRow">
+                {!showSaveForm ? (
+                  <button type="button" className="profileOpt-saveBtn" onClick={() => { setSaveProfileName(importInfo?.filename || ''); setShowSaveForm(true) }}>+ Save this profile</button>
+                ) : (
+                  <div className="profileOpt-saveForm">
+                    <input autoFocus value={saveProfileName} onChange={e => setSaveProfileName(e.target.value)} placeholder={importInfo?.filename || 'Profile name'} onKeyDown={e => { if (e.key === 'Enter') saveCurrentProfile(); if (e.key === 'Escape') setShowSaveForm(false) }} />
+                    <button type="button" className="profileOpt-saveDo" onClick={saveCurrentProfile}>Save</button>
+                    <button type="button" className="profileOpt-saveCancel" onClick={() => setShowSaveForm(false)}>Cancel</button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <label>{t('profile_target_role')}<input value={targetRole} onChange={e => { setTargetRole(e.target.value); setResult(null); setChecklist(null); setError('') }} placeholder={t('profile_target_placeholder')} /></label>
             <label>{t('profile_text_label')}<textarea value={text} onChange={handleProfileTextChange} rows={14} placeholder={t('profile_text_placeholder_pdf_clean', 'Upload your LinkedIn PDF to auto-fill this box, or paste your Headline, About, Experience and Skills here...')} /></label>
             {text.trim().length > 0 && !hasEnoughProfileText && <p className="profileOpt-warning">{t('profile_min_warning')}</p>}
@@ -184,8 +229,8 @@ export default function ProfileOptimizerPage() {
             <p className="profileOpt-kicker">{t('profile_what_improves')}</p>
             <h2>{t('profile_sections')}</h2>
             <ul><li>{t('profile_role_positioning')}</li><li>{t('profile_headline')}</li><li>{t('profile_about')}</li><li>{t('profile_experience')}</li><li>{t('profile_keywords')}</li><li>{t('profile_evidence')}</li></ul>
-            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes PDF-imported or pasted text only, so it does not invent experience or scrape inaccessible LinkedIn pages.')}</p>
-            <div className="profileOpt-futureNote"><strong>{t('profile_future_import_title', 'Future option')}</strong><p>{t('profile_future_import_body', 'A one-click LinkedIn import could be added later through a browser extension, where the user imports their own visible profile content from their own browser session.')}</p></div>
+            <p>{t('profile_help_desc_pdf_clean', 'The AI analyzes your PDF-imported or pasted text only. It does not invent experience or add skills you have not listed.')}</p>
+            <div className="profileOpt-futureNote"><strong>Export tip</strong><p>Get your LinkedIn PDF from LinkedIn → Me → View Profile → More → Save to PDF. It captures your full profile in one click.</p></div>
           </aside>
         </section>
 

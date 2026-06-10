@@ -33,12 +33,12 @@ export default function Onboarding({ onDone }) {
               {t('onb_back')}
             </button>
           )}
-          <button onClick={() => isLast ? onDone() : setStep(s => s+1)} style={{ flex: 2, padding: '13px', borderRadius: 12, background: 'var(--accent)', border: 'none', color: '#1A1B22', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
+          <button onClick={() => isLast ? onDone(true) : setStep(s => s+1)} style={{ flex: 2, padding: '13px', borderRadius: 12, background: 'var(--accent)', border: 'none', color: '#1A1B22', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Syne, sans-serif' }}>
             {isLast ? t('onb_get_started') : t('onb_next')}
           </button>
         </div>
 
-        <button onClick={onDone} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', marginTop: 16, padding: 4 }}>
+        <button onClick={() => onDone(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', marginTop: 16, padding: 4 }}>
           {t('onb_skip')}
         </button>
       </div>

@@ -9,7 +9,7 @@ const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const ANTHROPIC_TIMEOUT_MS = Number.parseInt(process.env.ANTHROPIC_TIMEOUT_MS || '30000', 10)
 const JOB_TEXT_LIMIT = 4500
 const CV_TEXT_LIMIT = 4500
-const CACHE_VERSION = 'ats-v5-strict-master-prompt'
+const CACHE_VERSION = 'ats-v6-blended-score'
 
 const SYSTEM = `You are Joblytics-AI, a dual-engine system: a strict Enterprise Applicant Tracking System (ATS) and an expert Career Coach.
 Your objective is to extract data from a job description and a candidate resume, strictly map the hard-skill matches, and provide actionable feedback to help the candidate beat ATS filters.
@@ -23,6 +23,8 @@ Scores must be integers from 0 to 100.
 Step 1: Data Extraction
 - From the job description, extract must-have technical/hard skills as 1-3 word terms.
 - From the job description, extract the minimum required years of experience as an integer. Use 0 when not specified.
+- From the job description, extract the name and/or title of the hiring manager or recruiter if explicitly mentioned (e.g. "Contact John Smith", "Managed by Sarah Lee"). Set hiring_contact to null if not found. Also extract their LinkedIn profile URL if present (e.g. linkedin.com/in/...) and set it as hiring_contact_linkedin, otherwise null.
+- From the job description, extract brief summaries: 1-2 sentences about the company, 1-2 sentences about the role, up to 4 key responsibilities (short phrases), up to 4 key requirements (short phrases), and any notable benefits (1 sentence or null).
 - From the candidate resume, extract all verifiable technical/hard skills as 1-3 word terms.
 - From the candidate resume, calculate total years of relevant experience as an integer using explicit years and date ranges when visible.
 
@@ -72,7 +74,15 @@ Return a single JSON object. It must include strict_ats_result exactly in this s
     "languages_required": ["string"],
     "apply_url": null,
     "easy_apply": false,
-    "hiring_contact": null
+    "hiring_contact": "Full name and/or title of recruiter or hiring manager if explicitly mentioned, otherwise null",
+    "hiring_contact_linkedin": "LinkedIn profile URL (linkedin.com/in/...) of the hiring contact if present in the job posting, otherwise null"
+  },
+  "job_sections": {
+    "about_company": "1-2 sentence description of the company from the job posting, or null",
+    "about_role": "1-2 sentence overview of what the role entails, or null",
+    "key_responsibilities": ["up to 4 short responsibility phrases"],
+    "key_requirements": ["up to 4 short requirement phrases"],
+    "benefits": "1 sentence summary of benefits/perks if mentioned, or null"
   },
   "job_summary": "string",
   "match_probability": 0,
@@ -358,48 +368,78 @@ function extractBestJobTextFromHtml(html = '') {
   return cleanText(html, JOB_TEXT_LIMIT)
 }
 
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Upgrade-Insecure-Requests': '1'
+}
+
+async function tryDirectFetch(url) {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
+    const res = await fetch(url, { signal: controller.signal, headers: BROWSER_HEADERS, redirect: 'follow' })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const html = await res.text()
+    const text = extractBestJobTextFromHtml(html)
+    return text.length >= 150 ? text : null
+  } catch {
+    return null
+  }
+}
+
+async function tryJinaFetch(url) {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    const jinaKey = (process.env.JINA_API_KEY || '').trim()
+    const jinaUrl = `https://r.jina.ai/${url}`
+    const res = await fetch(jinaUrl, {
+      signal: controller.signal,
+      headers: {
+        'Accept': 'text/plain,text/markdown',
+        'X-Return-Format': 'text',
+        ...(jinaKey ? { 'Authorization': `Bearer ${jinaKey}` } : {})
+      }
+    })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const raw = await res.text()
+    const markerIdx = raw.indexOf('Markdown Content:')
+    const content = markerIdx >= 0 ? raw.slice(markerIdx + 17).trim() : raw.trim()
+    return content.length >= 150 ? content.slice(0, JOB_TEXT_LIMIT) : null
+  } catch {
+    return null
+  }
+}
+
 async function fetchJobText(url) {
   const restrictedBoard = getRestrictedBoardName(url)
 
-  if (restrictedBoard) {
-    const err = new Error(`${restrictedBoard} blocks automated reading. Please paste the job description directly using text mode.`)
-    err.statusCode = 400
-    err.code = 'RESTRICTED_JOB_BOARD'
-    throw err
-  }
+  // Attempt 1: Direct fetch with full browser headers
+  let text = await tryDirectFetch(url)
 
-  let res
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 3000)
+  // Attempt 2: Jina Reader — renders JS-heavy pages and bypasses common bot blocks
+  if (!text) text = await tryJinaFetch(url)
 
-    res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8'
-      },
-      redirect: 'follow'
-    })
-    clearTimeout(timeout)
-  } catch {
-    const err = new Error(`${restrictedBoard || 'This job page'} could not be reached quickly from URL mode. Please use Mode texte and paste the job description.`)
+  if (!text) {
+    const hint = restrictedBoard
+      ? `${restrictedBoard} blocked automated access. Copy the job description from the page and use Paste mode.`
+      : 'This job page could not be reached. Try Paste mode and paste the job description directly.'
+    const err = new Error(hint)
     err.statusCode = 400
     err.code = 'URL_FETCH_FAILED'
-    throw err
-  }
-  if (!res.ok) {
-    const err = new Error(`${restrictedBoard || 'This job page'} returned ${res.status}. Paste mode is available as a fallback.`)
-    err.statusCode = 400
-    err.code = restrictedBoard ? 'RESTRICTED_JOB_BOARD' : 'URL_FETCH_FAILED'
-    throw err
-  }
-  const text = extractBestJobTextFromHtml(await res.text())
-  if (text.length < 200) {
-    const err = new Error(`${restrictedBoard || 'This job page'} did not expose enough readable job text. Please use Mode texte and paste the job description.`)
-    err.statusCode = 400
-    err.code = 'URL_TEXT_TOO_SHORT'
     throw err
   }
   return text.slice(0, JOB_TEXT_LIMIT)
@@ -409,6 +449,7 @@ async function ocrCvWithClaude(base64Data, client) {
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2000,
+    temperature: 0,
     messages: [{
       role: 'user',
       content: [
@@ -472,12 +513,41 @@ function hashContent(...parts) {
   return crypto.createHash('sha256').update(parts.join('||')).digest('hex')
 }
 
+function normalizeUrlForCache(url) {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    const strip = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref','referer','source','trk']
+    strip.forEach(p => u.searchParams.delete(p))
+    const path = u.pathname.replace(/\/+$/, '') || '/'
+    return `${u.hostname}${path}${u.search}`
+  } catch {
+    return url.toLowerCase().trim()
+  }
+}
+
 async function getSupabaseClient() {
   try {
     const url = process.env.SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY
     if (!url || !key) return null
     return createClient(url, key, { auth: { persistSession: false } })
+  } catch {
+    return null
+  }
+}
+
+async function getUserFromToken(req) {
+  const header = req.headers.authorization || req.headers.Authorization || ''
+  const token = typeof header === 'string' ? (header.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || null) : null
+  if (!token) return null
+  try {
+    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+    if (!url || !key) return null
+    const sb = createClient(url, key, { auth: { persistSession: false } })
+    const { data, error } = await sb.auth.getUser(token)
+    return error ? null : (data?.user || null)
   } catch {
     return null
   }
@@ -680,19 +750,19 @@ function getAnthropicClient() {
     err.code = 'ANTHROPIC_CONFIG_MISSING'
     throw err
   }
-  return new Anthropic({ apiKey })
+  return new Anthropic({ apiKey: apiKey.trim() })
 }
 
 async function runClaudeAnalysis(jobText, cvText) {
   const client = getAnthropicClient()
   const message = await client.messages.create({
     model: DEFAULT_MODEL,
-    max_tokens: 1800,
+    max_tokens: 2200,
     temperature: 0,
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
   }, { timeout: Number.isFinite(ANTHROPIC_TIMEOUT_MS) ? ANTHROPIC_TIMEOUT_MS : 30000 })
-  const raw = message.content.map(block => block.text || '').join('').trim()
+  const raw = (message.content || []).map(block => block.text || '').join('').trim()
   return extractJsonObject(raw)
 }
 
@@ -706,7 +776,14 @@ async function streamingHandler(req, res) {
   const send = data => res.write(`data: ${JSON.stringify(data)}\n\n`)
 
   try {
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName } = req.body || {}
+    const authUser = await getUserFromToken(req)
+    if (!authUser) {
+      send({ t: 'err', status: 401, error: 'Authentication required. Please sign in and try again.', code: 'UNAUTHORIZED' })
+      return res.end()
+    }
+
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName } = req.body || {}
+    const userId = authUser.id
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) {
       send({ t: 'err', status: 400, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
       return res.end()
@@ -742,7 +819,15 @@ async function streamingHandler(req, res) {
       return res.end()
     }
 
-    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const urlCacheKey = jobUrl ? hashContent('url-v1', cvText.slice(0, CV_TEXT_LIMIT), normalizeUrlForCache(jobUrl)) : null
+    if (urlCacheKey) {
+      const urlCached = await readCachedAnalysis(supabase, userId, urlCacheKey)
+      if (urlCached) {
+        send({ t: 'done', analysis: urlCached, cached: true, rateLimit, planLimit })
+        return res.end()
+      }
+    }
+    const cacheKey = urlCacheKey || hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       send({ t: 'done', analysis: cached, cached: true, rateLimit, planLimit })
@@ -754,7 +839,7 @@ async function streamingHandler(req, res) {
 
     const stream = client.messages.stream({
       model: DEFAULT_MODEL,
-      max_tokens: 1800,
+      max_tokens: 2200,
       temperature: 0,
       system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: `Here is the data to analyze:\n\n[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
@@ -851,7 +936,11 @@ export default async function handler(req, res) {
 
   try {
     timer.mark('start')
-    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, userId, cvFileName, debug = false, skipAi = false } = req.body || {}
+    const authUser = await getUserFromToken(req)
+    if (!authUser) return res.status(401).json({ success: false, error: 'Authentication required. Please sign in and try again.', code: 'UNAUTHORIZED' })
+
+    const { jobUrl, jobText: providedJobText, cvBase64, cvMimeType, cvFileName, debug = false, skipAi = false } = req.body || {}
+    const userId = authUser.id
     if ((!jobUrl && !providedJobText) || !cvBase64 || !cvMimeType) return res.status(400).json({ success: false, error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' })
 
     const supabase = await getSupabaseClient()
@@ -873,7 +962,15 @@ export default async function handler(req, res) {
     if (!cvText || cvText.trim().length < 50) return res.status(400).json({ success: false, error: 'Could not extract enough text from your CV. Make sure it is not a scanned image.', code: 'CV_TEXT_TOO_SHORT', debug: timer.steps() })
     if (!jobText || jobText.trim().length < 100) return res.status(400).json({ success: false, error: 'The job description is too short. Please paste at least 100 characters of the actual job posting.', code: 'JOB_TEXT_TOO_SHORT', debug: timer.steps() })
 
-    const cacheKey = hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
+    const urlCacheKey = jobUrl ? hashContent('url-v1', cvText.slice(0, CV_TEXT_LIMIT), normalizeUrlForCache(jobUrl)) : null
+    if (urlCacheKey) {
+      const urlCached = await readCachedAnalysis(supabase, userId, urlCacheKey)
+      if (urlCached) {
+        timer.mark('url_cache_hit')
+        return res.status(200).json({ success: true, analysis: urlCached, cached: true, rateLimit, planLimit, debug: debug ? timer.steps() : undefined })
+      }
+    }
+    const cacheKey = urlCacheKey || hashContent(CACHE_VERSION, cvText.slice(0, CV_TEXT_LIMIT), jobText.slice(0, JOB_TEXT_LIMIT))
     const cached = await readCachedAnalysis(supabase, userId, cacheKey)
     if (cached) {
       timer.mark('cache_hit')

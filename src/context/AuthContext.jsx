@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { legalAcceptancePayload } from '../lib/legal'
 import { clearPreviousUserBrowserData, getNormalizedUserMetadata, getUserEmail, getUserDisplayName } from '../lib/userProfile'
+import { setUser as setSentryUser } from '../lib/sentry.js'
 
 const AuthContext = createContext({})
 
@@ -82,6 +83,7 @@ export function AuthProvider({ children }) {
       const nextUser = nextSession?.user ?? null
       setSession(nextSession ?? null)
       setUser(nextUser)
+      setSentryUser(nextUser)
       if (nextUser) normalizeSignedInUserInBackground(nextUser)
     })
 
@@ -117,7 +119,26 @@ export function AuthProvider({ children }) {
     options: { data: legalAcceptancePayload(legalSource) }
   })
 
-  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
+  const signIn = async (email, password) => {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Sign in timed out. Check your internet connection or try again in a moment.')), 12000)
+    )
+    let result
+    try {
+      result = await Promise.race([
+        supabase.auth.signInWithPassword({ email, password }),
+        timeoutPromise
+      ])
+    } catch (e) {
+      return { data: null, error: e }
+    }
+    if (!result.error && result.data?.session) {
+      setSession(result.data.session)
+      setUser(result.data.user)
+      if (result.data.user) normalizeSignedInUserInBackground(result.data.user)
+    }
+    return result
+  }
 
   const signInWithGoogle = (legalSource = 'signup_google') => supabase.auth.signInWithOAuth({
     provider: 'google',
