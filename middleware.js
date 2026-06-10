@@ -51,5 +51,5 @@ export default function middleware(request) {
 }
 
 export const config = {
-  matcher: '/api/analyze'
+  matcher: ['/api/analyze', '/api/analyze-accurate']
 }
