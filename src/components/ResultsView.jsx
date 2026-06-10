@@ -21,7 +21,8 @@ const premium = {
   green: '#557C64',
   red: '#B85C55',
   gold: '#B9863B',
-  blue: '#516483'
+  blue: '#516483',
+  purple: '#7B61B8'
 }
 
 function safeArray(value, limit = 8) {
@@ -29,7 +30,7 @@ function safeArray(value, limit = 8) {
 }
 
 function unique(items = [], limit = 8) {
-  return [...new Set(items.filter(Boolean))].slice(0, limit)
+  return [...new Set(items.filter(Boolean).map(item => String(item).trim()).filter(Boolean))].slice(0, limit)
 }
 
 function safeScore(value, fallback = 0) {
@@ -52,6 +53,12 @@ function formatDate(value) {
   } catch {
     return ''
   }
+}
+
+function scoreTone(score) {
+  if (score >= 75) return premium.green
+  if (score >= 55) return premium.gold
+  return premium.red
 }
 
 function Tag({ label, type = 'found' }) {
@@ -96,90 +103,52 @@ function SummaryCard({ title, children }) {
   )
 }
 
+function ScoreBreakdownCard({ label, score, helper, color }) {
+  const s = safeScore(score, 0)
+  const tone = color || scoreTone(s)
+  return (
+    <article style={{ border: `1px solid ${premium.line}`, borderRadius: 18, padding: 15, background: 'rgba(255,255,255,0.54)', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 58, height: 58, borderRadius: '50%', border: `6px solid ${tone}`, background: 'rgba(255,255,255,0.6)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+          <strong style={{ color: tone, fontSize: 15 }}>{s}%</strong>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <h4 style={{ margin: '0 0 5px', color: premium.navy, fontSize: 12, fontWeight: 950, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</h4>
+          <p style={{ margin: 0, color: premium.muted, fontSize: 12, lineHeight: 1.45 }}>{helper}</p>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function JobDetailsCard({ data }) {
   const sections = data.job_sections || {}
   const context = data.job_context || {}
-  const hiringContact = context.hiring_contact && !['null', 'not mentioned', 'not stated', 'n/a'].includes(String(context.hiring_contact).toLowerCase().trim())
-    ? context.hiring_contact : null
-  const rawLinkedIn = context.hiring_contact_linkedin || null
-  const hiringContactLinkedIn = rawLinkedIn && rawLinkedIn !== 'null' && String(rawLinkedIn).toLowerCase().includes('linkedin')
-    ? (String(rawLinkedIn).startsWith('http') ? rawLinkedIn : `https://${rawLinkedIn}`)
-    : null
-  const experienceRequired = context.experience_required && !['null', 'not stated', 'not specified'].includes(String(context.experience_required).toLowerCase().trim())
-    ? context.experience_required : null
+  const hiringContact = context.hiring_contact && !['null', 'not mentioned', 'not stated', 'n/a'].includes(String(context.hiring_contact).toLowerCase().trim()) ? context.hiring_contact : null
+  const experienceRequired = context.experience_required && !['null', 'not stated', 'not specified'].includes(String(context.experience_required).toLowerCase().trim()) ? context.experience_required : null
   const aboutCompany = sections.about_company && sections.about_company !== 'null' ? sections.about_company : null
   const aboutRole = sections.about_role && sections.about_role !== 'null' ? sections.about_role : null
   const responsibilities = safeArray(sections.key_responsibilities, 4)
   const requirements = safeArray(sections.key_requirements, 4)
   const benefits = sections.benefits && sections.benefits !== 'null' ? sections.benefits : null
-
   const hasAny = hiringContact || experienceRequired || aboutCompany || aboutRole || responsibilities.length || requirements.length || benefits
   if (!hasAny) return null
 
   return (
     <section style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: '18px 20px', background: premium.paper, marginBottom: 16 }}>
       <p style={{ margin: '0 0 14px', fontSize: 10, fontWeight: 950, letterSpacing: '0.12em', textTransform: 'uppercase', color: premium.copper }}>About this role</p>
-
       {(hiringContact || experienceRequired) && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: aboutCompany || aboutRole || responsibilities.length || requirements.length ? 14 : 0 }}>
-          {hiringContact && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16,24,43,0.05)', borderRadius: 10, padding: '8px 12px' }}>
-              <span style={{ fontSize: 14 }}>👤</span>
-              <div>
-                <p style={{ margin: 0, fontSize: 9, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Hiring contact</p>
-                <strong style={{ fontSize: 12, color: premium.navy }}>{hiringContact}</strong>
-                {hiringContactLinkedIn && (
-                  <a href={hiringContactLinkedIn} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: '#0A66C2', fontWeight: 700, textDecoration: 'none' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                    View profile
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-          {experienceRequired && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: 'rgba(16,24,43,0.05)', borderRadius: 10, padding: '8px 12px' }}>
-              <span style={{ fontSize: 14 }}>🗓</span>
-              <div>
-                <p style={{ margin: 0, fontSize: 9, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Experience required</p>
-                <strong style={{ fontSize: 12, color: premium.navy }}>{experienceRequired}</strong>
-              </div>
-            </div>
-          )}
+          {hiringContact && <InfoPill label="Hiring contact" value={hiringContact} />}
+          {experienceRequired && <InfoPill label="Experience required" value={experienceRequired} />}
         </div>
       )}
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-        {aboutCompany && (
-          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
-            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>About the company</p>
-            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutCompany}</p>
-          </div>
-        )}
-        {aboutRole && (
-          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
-            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>The role</p>
-            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutRole}</p>
-          </div>
-        )}
-        {responsibilities.length > 0 && (
-          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
-            <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Key responsibilities</p>
-            <BulletList items={responsibilities} tone="good" empty="" max={4} />
-          </div>
-        )}
-        {requirements.length > 0 && (
-          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
-            <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Key requirements</p>
-            <BulletList items={requirements} tone="good" empty="" max={4} />
-          </div>
-        )}
-        {benefits && (
-          <div style={{ borderRadius: 14, padding: '12px 14px', background: 'rgba(255,255,255,0.6)', border: `1px solid ${premium.line}` }}>
-            <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 900, letterSpacing: '0.10em', textTransform: 'uppercase', color: premium.copper }}>Benefits</p>
-            <p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{benefits}</p>
-          </div>
-        )}
+        {aboutCompany && <SummaryCard title="About the company"><p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutCompany}</p></SummaryCard>}
+        {aboutRole && <SummaryCard title="The role"><p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{aboutRole}</p></SummaryCard>}
+        {responsibilities.length > 0 && <SummaryCard title="Key responsibilities"><BulletList items={responsibilities} tone="good" empty="" max={4} /></SummaryCard>}
+        {requirements.length > 0 && <SummaryCard title="Key requirements"><BulletList items={requirements} tone="good" empty="" max={4} /></SummaryCard>}
+        {benefits && <SummaryCard title="Benefits"><p style={{ margin: 0, fontSize: 12, color: premium.muted, lineHeight: 1.55 }}>{benefits}</p></SummaryCard>}
       </div>
     </section>
   )
@@ -195,39 +164,55 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
   const strictMatched = safeArray(strictAnalysis.matched_skills, 12)
   const cleanKeywords = data.keywords_analysis || {}
   const cleanReq = data.requirements_analysis || {}
+  const semantic = data.semantic_fit || {}
+  const seniority = data.seniority_fit || data.seniority || {}
 
   const score = safeScore(data.display_score ?? data.match_probability, 0)
-  const tone = score >= 75 ? premium.green : score >= 55 ? premium.gold : premium.red
+  const tone = scoreTone(score)
   const title = context.job_title || context.title || data.job_title || t('selected_analysis_fallback_title', 'Selected analysis')
   const company = context.company && !['Not specified', 'Not stated'].includes(context.company) ? context.company : null
   const analyzedAt = formatDate(savedRow?.created_at || data.created_at)
   const subtitle = [company, analyzedAt].filter(Boolean).join(' · ')
   const summary = context.job_summary || data.job_summary || data.match_reasoning || recruiter.reason || 'Joblytics analyzed the job description against the current CV and extracted the strongest ATS signals.'
 
-  const missingKeywords = unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 8)
-  const foundKeywords = unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 10)
+  const missingKeywords = unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 10)
+  const foundKeywords = unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 12)
   const quickWins = safeArray(data.quick_wins, 5)
-  const gaps = unique([...(data.gaps_to_address || []), ...(data.critical_gaps || []), ...(cleanReq.requirements_missing || []), ...(strictAnalysis.needs_proof || [])], 5)
-  const met = unique([...(cleanReq.requirements_met || []), ...(req.met || []), ...strictMatched.map(item => item.required_skill)], 5)
-  const unmet = unique([...(cleanReq.requirements_missing || []), ...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 5)
+  const gaps = unique([...(data.gaps_to_address || []), ...(data.critical_gaps || []), ...(cleanReq.requirements_missing || []), ...(strictAnalysis.needs_proof || [])], 6)
+  const met = unique([...(cleanReq.requirements_met || []), ...(req.met || []), ...strictMatched.map(item => item.required_skill)], 6)
+  const unmet = unique([...(cleanReq.requirements_missing || []), ...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 6)
   const salaryText = context.salary || context.salary_range || data.salary_assessment?.assessment || 'Not stated'
   const statusText = savedRow ? 'Saved' : 'Ready to save'
   const recruiterSummary = data.recruiter_screening_summary || recruiter.reason || data.overall_reason || 'Use this result to decide what to fix before applying.'
+
+  const keywordScore = safeScore(keyword.score, foundKeywords.length || missingKeywords.length ? Math.round((foundKeywords.length / Math.max(1, foundKeywords.length + missingKeywords.length)) * 100) : score)
+  const experienceScore = safeScore(req.score ?? data.experience_depth?.score, score)
+  const semanticScore = safeScore(semantic.score, score)
+  const seniorityScore = safeScore(seniority.score, score)
+  const recruiterScore = safeScore(recruiter.probability, score)
 
   return (
     <section style={{ marginBottom: 20, padding: 24, borderRadius: 28, background: premium.paper, border: `1px solid ${premium.line}`, boxShadow: '0 24px 70px rgba(16,24,43,0.08)' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 20, alignItems: 'start', borderBottom: `1px solid ${premium.line}`, paddingBottom: 18 }}>
         <div>
           <p style={{ margin: 0, color: premium.copper, fontSize: 10, fontWeight: 950, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{t('selected_analysis', 'Selected analysis')}</p>
-          <h1 style={{ margin: '7px 0 6px', color: premium.navy, fontFamily: 'Georgia, Newsreader, serif', fontSize: 'clamp(26px,4vw,42px)', lineHeight: 1, letterSpacing: '-0.055em', fontWeight: 500 }}>{title}</h1>
+          <h1 style={{ margin: '7px 0 6px', color: premium.navy, fontFamily: 'Georgia, Newsreader, serif', fontSize: 'clamp(28px,4vw,48px)', lineHeight: 1, letterSpacing: '-0.055em', fontWeight: 500 }}>{title}</h1>
           {subtitle && <p style={{ margin: 0, color: premium.muted, fontSize: 12 }}>{subtitle}</p>}
         </div>
-        <div style={{ width: 96, height: 96, borderRadius: '50%', border: `1.5px solid ${tone}`, background: score >= 75 ? 'rgba(85,124,100,0.10)' : score >= 55 ? 'rgba(185,134,59,0.10)' : 'rgba(184,92,85,0.10)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <div style={{ width: 108, height: 108, borderRadius: '50%', border: `9px solid ${tone}`, background: score >= 75 ? 'rgba(85,124,100,0.10)' : score >= 55 ? 'rgba(185,134,59,0.10)' : 'rgba(184,92,85,0.10)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <div style={{ textAlign: 'center' }}>
-            <strong style={{ display: 'block', fontFamily: 'Georgia, Newsreader, serif', color: tone, fontSize: 30, lineHeight: 1 }}>{score}%</strong>
+            <strong style={{ display: 'block', fontFamily: 'Georgia, Newsreader, serif', color: tone, fontSize: 31, lineHeight: 1 }}>{score}%</strong>
             <span style={{ display: 'block', marginTop: 5, color: tone, fontSize: 9, fontWeight: 950, letterSpacing: '0.07em' }}>{scoreLabel(score, data.overall_verdict)}</span>
           </div>
         </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginTop: 18 }}>
+        <ScoreBreakdownCard label="Keywords" score={keywordScore} helper={`${foundKeywords.length} found · ${missingKeywords.length} missing`} color={premium.gold} />
+        <ScoreBreakdownCard label="Experience" score={experienceScore} helper="Relevant experience evidence" color={premium.green} />
+        <ScoreBreakdownCard label="Semantic fit" score={semanticScore} helper="Role/responsibility alignment" color={premium.blue} />
+        <ScoreBreakdownCard label="Seniority" score={seniorityScore} helper="Level and scope alignment" color={premium.purple} />
+        <ScoreBreakdownCard label="Recruiter" score={recruiterScore} helper="Shortlist probability signal" color={tone} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 18 }}>
@@ -247,9 +232,7 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
 
         <div style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: 16, background: 'rgba(255,255,255,0.50)' }}>
           <h3 style={{ margin: '0 0 14px', color: premium.navy, fontSize: 14, fontWeight: 950 }}>Missing keywords</h3>
-          <div style={{ minHeight: 42 }}>
-            {missingKeywords.length ? missingKeywords.map(k => <Tag key={`missing-${k}`} label={k} type="missing" />) : <p style={{ margin: 0, color: premium.green, fontSize: 12 }}>No critical missing keywords detected.</p>}
-          </div>
+          <div style={{ minHeight: 42 }}>{missingKeywords.length ? missingKeywords.map(k => <Tag key={`missing-${k}`} label={k} type="missing" />) : <p style={{ margin: 0, color: premium.green, fontSize: 12 }}>No critical missing keywords detected.</p>}</div>
           <h3 style={{ margin: '18px 0 10px', color: premium.navy, fontSize: 14, fontWeight: 950 }}>Found in CV</h3>
           <div>{foundKeywords.length ? foundKeywords.map(k => <Tag key={`found-${k}`} label={k} type="found" />) : <p style={{ margin: 0, color: premium.muted, fontSize: 12 }}>No strong keyword evidence returned.</p>}</div>
         </div>
@@ -277,12 +260,10 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
   const autoSaveStatus = analysisRow ? 'saved' : 'idle'
 
   useEffect(() => {
-    if (serverSavedRow && (!analysisRow || analysisRow.id !== serverSavedRow.id)) {
-      setAnalysisRow(serverSavedRow)
-    }
+    if (serverSavedRow && (!analysisRow || analysisRow.id !== serverSavedRow.id)) setAnalysisRow(serverSavedRow)
   }, [serverSavedRow, analysisRow])
 
-  const handleStatusUpdate = (updated) => setAnalysisRow(updated)
+  const handleStatusUpdate = updated => setAnalysisRow(updated)
   const selectedForRebuilder = analysisRow?.result ? analysisRow : { ...(analysisRow || {}), result: data, score, id: analysisRow?.id || data.id || 'current-analysis' }
 
   return (
@@ -327,7 +308,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       <div className="btn-row">
         <button onClick={onReset} className="btn-primary" style={{ width: '100%', background: premium.navy, color: premium.ivory }}>↻ {t('run_another')}</button>
         {onGoCoach && (
-          <button onClick={onGoCoach} style={{ padding: '14px', borderRadius: 14, background: premium.paper, color: premium.muted, border: `1px solid ${premium.line}`, fontFamily: 'Georgia, Newsreader, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <button onClick={onGoCoach} style={{ padding: 14, borderRadius: 14, background: premium.paper, color: premium.muted, border: `1px solid ${premium.line}`, fontFamily: 'Georgia, Newsreader, serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             🎤 {t('nav_coach')}
           </button>
         )}
