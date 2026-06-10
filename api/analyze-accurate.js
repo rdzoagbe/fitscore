@@ -8,7 +8,7 @@ export const config = { maxDuration: 60 }
 const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
-const CACHE_VERSION = 'ats-v8-jina-first-quality-gate'
+const CACHE_VERSION = 'ats-v9-jina-https-quality-gate'
 
 const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
@@ -164,9 +164,18 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
   }
 }
 
+function buildJinaTargets(url) {
+  const clean = String(url || '').trim()
+  const withoutScheme = clean.replace(/^https?:\/\//i, '')
+  return [...new Set([
+    `https://r.jina.ai/${clean}`,
+    `https://r.jina.ai/http://${withoutScheme}`,
+    `https://r.jina.ai/http://https://${withoutScheme}`
+  ])]
+}
+
 async function fetchViaJina(url) {
   const jinaApiKey = getJinaApiKey()
-  const target = `https://r.jina.ai/http://${url.replace(/^https?:\/\//i, '')}`
   const headers = {
     Accept: 'text/plain,text/markdown,*/*',
     'X-Return-Format': 'markdown',
@@ -174,20 +183,27 @@ async function fetchViaJina(url) {
   }
   if (jinaApiKey) headers.Authorization = `Bearer ${jinaApiKey}`
 
-  const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 22000)
-  if (!res.ok) {
-    const err = new Error(`Jina extraction failed with HTTP ${res.status}`)
-    err.code = 'JINA_FETCH_FAILED'
-    throw err
+  const attempts = []
+  for (const target of buildJinaTargets(url)) {
+    try {
+      const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 24000)
+      if (!res.ok) {
+        attempts.push({ target, status: res.status })
+        continue
+      }
+      const raw = await res.text()
+      const text = normalizeJinaContent(raw)
+      if (text.length >= 150) return { text, provider: jinaApiKey ? 'jina-authenticated' : 'jina-public', jinaTarget: target }
+      attempts.push({ target, status: res.status, reason: 'TEXT_TOO_SHORT', length: text.length })
+    } catch (error) {
+      attempts.push({ target, code: error?.code || 'JINA_TARGET_FAILED', message: error?.message || 'Jina target failed' })
+    }
   }
-  const raw = await res.text()
-  const text = normalizeJinaContent(raw)
-  if (text.length < 150) {
-    const err = new Error('Jina returned too little readable content.')
-    err.code = 'JINA_TEXT_TOO_SHORT'
-    throw err
-  }
-  return { text, provider: jinaApiKey ? 'jina-authenticated' : 'jina-public' }
+
+  const err = new Error('Jina extraction failed for all target formats.')
+  err.code = 'JINA_FETCH_FAILED'
+  err.attempts = attempts
+  throw err
 }
 
 async function fetchDirectHtml(url) {
@@ -216,15 +232,13 @@ async function fetchJobText(url) {
   const attempts = []
 
   try {
-    const result = await fetchViaJina(url)
-    return result
+    return await fetchViaJina(url)
   } catch (error) {
-    attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed' })
+    attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed', attempts: error?.attempts })
   }
 
   try {
-    const result = await fetchDirectHtml(url)
-    return result
+    return await fetchDirectHtml(url)
   } catch (error) {
     attempts.push({ provider: 'direct-html', code: error?.code || 'DIRECT_FAILED', message: error?.message || 'Direct extraction failed' })
   }
@@ -323,6 +337,7 @@ export default async function handler(req, res) {
 
     const quality = validateJobTextQuality(jobText, { source: providedJobText ? 'paste' : 'url', url: jobUrl })
     quality.extractionProvider = jobExtraction.provider
+    quality.jinaTarget = jobExtraction.jinaTarget || null
     if (!quality.ok) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
 
     const normalizedUrl = jobUrl ? normalizeUrlForCache(jobUrl) : ''
@@ -345,6 +360,7 @@ export default async function handler(req, res) {
     analysis.job_url = jobUrl || null
     analysis.job_source = jobUrl ? 'url' : 'pasted'
     analysis.extraction_provider = jobExtraction.provider
+    analysis.extraction_jina_target = jobExtraction.jinaTarget || null
     analysis.cv_preview = cleanText(cvText, 800)
     analysis.cv_preview_truncated = cvText.trim().length > 800
     analysis.job_text_quality = quality
