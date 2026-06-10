@@ -20,15 +20,8 @@ function readClipperPayload() {
   try {
     const params = new URLSearchParams(window.location.search)
     if (params.get('source') !== 'clipper') return null
-    return {
-      jobText: params.get('jobText') || '',
-      jobUrl: params.get('jobUrl') || '',
-      title: params.get('jobTitle') || '',
-      company: params.get('company') || ''
-    }
-  } catch {
-    return null
-  }
+    return { jobText: params.get('jobText') || '', jobUrl: params.get('jobUrl') || '', title: params.get('jobTitle') || '', company: params.get('company') || '' }
+  } catch { return null }
 }
 
 const HUB_ICONS = {
@@ -38,13 +31,7 @@ const HUB_ICONS = {
 }
 
 function AnalyzeShortcut({ icon, title, text, onClick }) {
-  return (
-    <button type="button" className="analyzeHub-shortcut" onClick={onClick}>
-      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{HUB_ICONS[icon] ?? icon}</span>
-      <strong>{title}</strong>
-      <p>{text}</p>
-    </button>
-  )
+  return <button type="button" className="analyzeHub-shortcut" onClick={onClick}><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{HUB_ICONS[icon] ?? icon}</span><strong>{title}</strong><p>{text}</p></button>
 }
 
 export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill }) {
@@ -81,20 +68,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     return trimmed
   }
 
-  const isValidUrl = str => {
-    try {
-      const u = new URL(normalizeJobUrl(str))
-      return u.protocol === 'http:' || u.protocol === 'https:'
-    } catch { return false }
-  }
-
-  const isLikelyJobDescription = value => {
-    const text = String(value || '').trim()
-    if (text.length < MIN_JOB_TEXT_LENGTH) return false
-    if (isValidUrl(text)) return false
-    return /\s/.test(text)
-  }
-
+  const isValidUrl = str => { try { const u = new URL(normalizeJobUrl(str)); return u.protocol === 'http:' || u.protocol === 'https:' } catch { return false } }
+  const isLikelyJobDescription = value => { const text = String(value || '').trim(); if (text.length < MIN_JOB_TEXT_LENGTH) return false; if (isValidUrl(text)) return false; return /\s/.test(text) }
   const detectRestrictedJobBoard = url => {
     if (!isValidUrl(url)) return null
     const lower = normalizeJobUrl(url).toLowerCase()
@@ -112,7 +87,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
 
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
   const restrictedJobBoard = detectRestrictedJobBoard(jobUrl)
-  const canAnalyzeUrl = isValidUrl(jobUrl)
+  const isLinkedInUrl = isValidUrl(jobUrl) && normalizedJobUrl.toLowerCase().includes('linkedin.com')
+  const canAnalyzeUrl = isValidUrl(jobUrl) && !isLinkedInUrl
   const canAnalyzePaste = jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
@@ -121,32 +97,17 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     const payload = readClipperPayload()
     if (!payload) return
     setClipperInfo(payload)
-    if (payload.jobText && payload.jobText.trim().length >= MIN_JOB_TEXT_LENGTH) {
-      setJobText(payload.jobText)
-      setShowTextPaste(true)
-      setUserToggledMode(false)
-    } else if (payload.jobUrl) {
-      setJobUrl(normalizeJobUrl(payload.jobUrl))
-      setShowTextPaste(false)
-      setUserToggledMode(false)
-    }
+    if (payload.jobText && payload.jobText.trim().length >= MIN_JOB_TEXT_LENGTH) { setJobText(payload.jobText); setShowTextPaste(true); setUserToggledMode(false) }
+    else if (payload.jobUrl) { setJobUrl(normalizeJobUrl(payload.jobUrl)); setShowTextPaste(false); setUserToggledMode(false) }
     window.history.replaceState({ page: 'analyzer' }, '', '/analyzer')
   }, [])
 
   const switchToPasteMode = () => { setShowTextPaste(true); setUserToggledMode(true); setJobText('') }
-  const handleUrlChange = e => {
-    const value = e.target.value
-    if (isLikelyJobDescription(value)) { setJobText(value); setJobUrl(''); setShowTextPaste(true); setUserToggledMode(false); return }
-    setJobUrl(value)
-  }
-  const handlePasteTextChange = e => {
-    const value = e.target.value
-    if (isValidUrl(value)) { setJobUrl(normalizeJobUrl(value)); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); return }
-    setJobText(value)
-  }
+  const handleUrlChange = e => { const value = e.target.value; if (isLikelyJobDescription(value)) { setJobText(value); setJobUrl(''); setShowTextPaste(true); setUserToggledMode(false); return } setJobUrl(value) }
+  const handlePasteTextChange = e => { const value = e.target.value; if (isValidUrl(value)) { setJobUrl(normalizeJobUrl(value)); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); return } setJobText(value) }
 
   const handleAnalyze = async () => {
-    if (!cvFile) return
+    if (!cvFile || isLinkedInUrl) return
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MSGS.length), 1800)
     if (canAnalyzePaste) await analyze(null, cvFile, jobText.trim())
@@ -155,10 +116,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  const handleReset = useCallback(() => {
-    reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); setClipperInfo(null); onClearPrefill?.()
-  }, [reset, onClearPrefill])
-
+  const handleReset = useCallback(() => { reset(); setViewingAnalysis(null); setJobUrl(''); setJobText(''); setShowTextPaste(false); setUserToggledMode(false); setMsgIdx(0); setClipperInfo(null); onClearPrefill?.() }, [reset, onClearPrefill])
   useEffect(() => { if (prefillAnalysis) { setViewingAnalysis(prefillAnalysis); setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80) } }, [prefillAnalysis])
   useEffect(() => { if (status === 'done' && data?.display_score >= 70) { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2600) } }, [status, data])
   useEffect(() => { if (status === 'error') { setTimeout(() => errorCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 150) } }, [status])
@@ -172,30 +130,19 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
       {showConfetti && <Confetti />}
       <main className="analyzePro-shell">
         {displayStatus !== 'done' && <>
-          <div className="analyzePro-pageHero">
-            <p className="analyzePro-kicker">{t('analyzer_kicker')}</p>
-            <h1>{t('analyzer_title')}</h1>
-            <p>{t('analyzer_subtitle')}</p>
-          </div>
+          <div className="analyzePro-pageHero"><p className="analyzePro-kicker">{t('analyzer_kicker')}</p><h1>{t('analyzer_title')}</h1><p>{t('analyzer_subtitle')}</p></div>
           <div className="analyzePro-layout">
             <section className="analyzePro-card">
               {clipperInfo && <TipCard type="success" title="Job clipped from browser" body={`${clipperInfo.title || 'Job'}${clipperInfo.company ? ` at ${clipperInfo.company}` : ''} was imported into the analyzer. Upload or confirm your CV, then run the match.`} />}
-              <p className="analyzePro-sectionLabel">Your CV</p>
-              <CvPanel uploadTrigger={uploadTrigger} />
+              <p className="analyzePro-sectionLabel">Your CV</p><CvPanel uploadTrigger={uploadTrigger} />
               <div ref={errorCardRef} className="analyzePro-jobSection">
                 <p className="analyzePro-sectionLabel">Job listing</p>
-                <div className="analyzePro-modeTabs">
-                  <button type="button" className={`analyzePro-modeTab${!showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }}>{t('analyzer_url_mode')}</button>
-                  <button type="button" className={`analyzePro-modeTab${showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }}>Accurate paste mode</button>
-                </div>
+                <div className="analyzePro-modeTabs"><button type="button" className={`analyzePro-modeTab${!showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(false); setUserToggledMode(true) }}>{t('analyzer_url_mode')}</button><button type="button" className={`analyzePro-modeTab${showTextPaste ? ' is-active' : ''}`} onClick={() => { setShowTextPaste(true); setUserToggledMode(true) }}>Accurate paste mode</button></div>
                 {!showTextPaste ? <>
-                  {restrictedJobBoard ? (
-                    <TipCard type="warning" title={`${restrictedJobBoard} may block URL extraction`} body={`${restrictedJobBoard} often hides the full job description behind login, cookies or anti-bot protection. Paste the full job description for the most reliable ATS score.`} />
-                  ) : (
-                    <TipCard type="info" title="URL mode is quick" body="Paste a public job URL and Joblytics will try to extract the job description. For best accuracy, use Accurate paste mode with the full description." />
-                  )}
+                  {isLinkedInUrl ? <TipCard type="warning" title="LinkedIn needs Accurate paste mode" body="LinkedIn does not reliably expose the full job description to URL readers. To avoid misleading scores, copy the full LinkedIn job description and paste it in Accurate paste mode." /> : restrictedJobBoard ? <TipCard type="warning" title={`${restrictedJobBoard} may block URL extraction`} body={`${restrictedJobBoard} can hide the full job description behind access controls. If the score looks incomplete, paste the full job description instead.`} /> : <TipCard type="info" title="URL mode is quick" body="Paste a public job URL and Joblytics will try to extract the job description. For best accuracy, use Accurate paste mode with the full description." />}
                   <input type="text" inputMode="url" value={jobUrl} onChange={handleUrlChange} onBlur={() => setJobUrl(value => normalizeJobUrl(value))} placeholder={t('analyzer_url_placeholder')} />
                   {jobUrl.trim() && !isValidUrl(jobUrl) && <TipCard type="warning" title={t('analyzer_link_invalid_title')} body={t('analyzer_link_invalid_body')} />}
+                  {isLinkedInUrl && <TipCard type="info" title="What to paste from LinkedIn" body="Copy the job title, company context, responsibilities, required skills, experience level, languages and location. Then click Accurate paste mode and run the ATS check." />}
                   {restrictedJobBoard && <button type="button" onClick={switchToPasteMode} style={{ width: '100%', marginTop: 10, padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', fontWeight: 900, cursor: 'pointer' }}>Use Accurate paste mode</button>}
                   {urlHistory.length > 0 && <div style={{ marginTop: 10 }}><button type="button" onClick={() => setShowHistory(v => !v)} style={{ background: 'transparent', border: 0, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>{t('analyzer_recent_links')}</button>{showHistory && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{urlHistory.slice(0,5).map(url => <button key={url} type="button" onClick={() => { setJobUrl(normalizeJobUrl(url)); setJobText(''); setShowTextPaste(false); setShowHistory(false) }} style={{ textAlign: 'left', padding: 8, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{url}</button>)}</div>}</div>}
                 </> : <>
@@ -207,7 +154,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                 {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
                 {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
                 {status === 'loading' && <div style={{ marginTop: 12 }}><p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontSize: 13 }}>{LOADING_MSGS[msgIdx]}</p>{streamProgress > 0 && <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}><div style={{ height: '100%', width: `${streamProgress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.4s ease' }} /></div>}</div>}
-                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !canAnalyze} style={{ width: '100%', marginTop: 14 }}>{status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
+                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !canAnalyze || isLinkedInUrl} style={{ width: '100%', marginTop: 14 }}>{isLinkedInUrl ? 'Use Accurate paste mode for LinkedIn' : status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
               </div>
             </section>
             <aside className="analyzePro-side analyzeHub-side">
