@@ -17,6 +17,19 @@ import './phase6-communication-assets.css'
 import './cv-coach-layout-fix.css'
 import './smart-sync-inbox-polish.css'
 
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const CareerDashboardPage = lazy(() => import('./pages/CareerDashboardPage'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
+const LegalNoticePage = lazy(() => import('./pages/LegalNoticePage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const MessagesPage = lazy(() => import('./pages/MessagesPage'))
+const CvCoachPage = lazy(() => import('./pages/CvCoachPage'))
+const CvBuilderPage = lazy(() => import('./pages/CvBuilderPage'))
+const ProfileOptimizerPage = lazy(() => import('./pages/ProfileOptimizerPage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
+const InboxCleanerPage = lazy(() => import('./pages/InboxCleanerPage'))
 function lazyWithReload(factory) {
   return lazy(() =>
     factory().catch(err => {
@@ -56,6 +69,7 @@ const PAGE_TO_PATH = {
   messages: '/messages',
   contact: '/contact',
   'cv-builder': '/cv-builder',
+  'inbox-cleaner': '/inbox-cleaner',
   'sync-settings': '/sync-settings',
   'career-intelligence': '/career-intelligence'
 }
@@ -196,6 +210,8 @@ export default function App() {
       case 'career-intelligence': return <CareerIntelligencePage />
       case 'contact': return <ContactPage onBack={() => setPage('dashboard')} />
       case 'cv-builder': return <CvBuilderPage selectedAnalysis={selectedAnalysis} />
+      case 'inbox-cleaner': return <InboxCleanerPage />
+      default: return <CareerDashboardPage setPage={setPage} />
       default: return <CareerDashboardPage setPage={setPage} onOpenAnalysis={a => selectAndGo(a, 'analyzer')} />
     }
   }
