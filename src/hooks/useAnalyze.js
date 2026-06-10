@@ -4,50 +4,32 @@ import { supabase } from '../lib/supabase'
 import { getDeviceId } from '../utils/deviceId'
 import { trackEvent, trackError } from '../utils/productAnalytics'
 
-function friendlyAnalyzeError(error, responseStatus, serverMessage) {
+function friendlyAnalyzeError(error, responseStatus, serverMessage, payload = null) {
   if (responseStatus === 504 || responseStatus === 524) {
     return 'The analysis took too long. Paste a shorter version of the job offer, ideally the mission, requirements, and skills sections only.'
   }
 
-  if (responseStatus === 401) {
-    return serverMessage || 'Please sign in again to continue.'
-  }
-
-  if (responseStatus === 429) {
-    return serverMessage || "You've reached your plan limit. Upgrade to continue."
-  }
-
-  if (responseStatus >= 500) {
-    return 'The analysis service is temporarily unavailable. Try again in a moment, or switch to Paste mode with a shorter job description.'
-  }
+  if (responseStatus === 401) return serverMessage || 'Please sign in again to continue.'
+  if (responseStatus === 429) return serverMessage || "You've reached your plan limit. Upgrade to continue."
+  if (responseStatus >= 500) return 'The analysis service is temporarily unavailable. Try again in a moment, or switch to Paste mode with a shorter job description.'
 
   if (responseStatus >= 400) {
-    return serverMessage || 'The job or CV could not be analyzed. Check the file and job text, then try again.'
+    const reasons = payload?.quality?.reasons
+    const provider = payload?.quality?.extractionProvider
+    const suffix = Array.isArray(reasons) && reasons.length
+      ? `\n\nWhy: ${reasons.join(' ')}${provider ? `\nExtraction: ${provider}` : ''}`
+      : ''
+    return `${serverMessage || 'The job or CV could not be analyzed. Check the file and job text, then try again.'}${suffix}`
   }
 
-  if (error?.name === 'AbortError') {
-    return 'The analysis timed out. Paste a shorter job description and try again.'
-  }
+  if (error?.name === 'AbortError') return 'The analysis timed out. Paste a shorter job description and try again.'
 
   const raw = error?.message || ''
   const lower = raw.toLowerCase()
-
-  if (lower.includes('failed to read file')) {
-    return 'The CV file could not be read. Try uploading a PDF or Word document again.'
-  }
-
-  if (lower.includes('invalid response')) {
-    return 'The server returned an incomplete result. Try again, or use Paste mode with a shorter job description.'
-  }
-
-  if (lower.includes('failed to fetch') || lower.includes('network')) {
-    return 'Network connection failed. Check your internet connection and try again.'
-  }
-
-  if (lower.includes('stream ended') || lower.includes('stream ended unexpectedly')) {
-    return 'The analysis took too long to complete. Try again with a shorter job description, or switch to Paste mode.'
-  }
-
+  if (lower.includes('failed to read file')) return 'The CV file could not be read. Try uploading a PDF or Word document again.'
+  if (lower.includes('invalid response')) return 'The server returned an incomplete result. Try again, or use Paste mode with a shorter job description.'
+  if (lower.includes('failed to fetch') || lower.includes('network')) return 'Network connection failed. Check your internet connection and try again.'
+  if (lower.includes('stream ended') || lower.includes('stream ended unexpectedly')) return 'The analysis took too long to complete. Try again with a shorter job description, or switch to Paste mode.'
   return raw || 'Analysis failed. Please try again.'
 }
 
@@ -93,43 +75,20 @@ async function saveAnalysisClientSide({ user, analysis, jobUrl, jobText, cvFile 
   }
 
   try {
-    const { data: existing } = await supabase
-      .from('analyses')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('cache_key', cacheKey)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
+    const { data: existing } = await supabase.from('analyses').select('id').eq('user_id', user.id).eq('cache_key', cacheKey).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (existing?.id) {
-      const { data, error } = await supabase
-        .from('analyses')
-        .update(basePayload)
-        .eq('id', existing.id)
-        .select()
-        .single()
+      const { data, error } = await supabase.from('analyses').update(basePayload).eq('id', existing.id).select().single()
       if (error) throw error
       return data || null
     }
-
-    const { data, error } = await supabase
-      .from('analyses')
-      .insert(basePayload)
-      .select()
-      .single()
+    const { data, error } = await supabase.from('analyses').insert(basePayload).select().single()
     if (error) throw error
     return data || null
   } catch (error) {
     console.warn('Client-side analysis save failed:', error?.message || error)
-
     try {
       const { cache_key, ...payloadWithoutCacheKey } = basePayload
-      const { data, error: insertError } = await supabase
-        .from('analyses')
-        .insert(payloadWithoutCacheKey)
-        .select()
-        .single()
+      const { data, error: insertError } = await supabase.from('analyses').insert(payloadWithoutCacheKey).select().single()
       if (insertError) throw insertError
       return data || null
     } catch (secondError) {
@@ -173,11 +132,8 @@ export function useAnalyze() {
         'X-Joblytics-Device-Id': getDeviceId()
       }
 
-      const res = await fetch('/api/analyze-accurate', {
-        method: 'POST', headers, body, signal: controller.signal
-      })
+      const res = await fetch('/api/analyze-accurate', { method: 'POST', headers, body, signal: controller.signal })
       clearTimeout(timeoutId)
-
       const contentType = res.headers.get('content-type') || ''
 
       if (contentType.includes('text/event-stream')) {
@@ -206,33 +162,32 @@ export function useAnalyze() {
               setState(prev => ({ ...prev, streamProgress: event.msg === 'analyzing' ? 15 : 5 }))
             } else if (event.t === 'done') {
               let savedRow = event.savedRow || null
-              if (!savedRow && user?.id) {
-                savedRow = await saveAnalysisClientSide({ user, analysis: event.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
-              }
+              if (!savedRow && user?.id) savedRow = await saveAnalysisClientSide({ user, analysis: event.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
               trackEvent('analysis_completed', { mode, score: event.analysis?.display_score || 0, saved: !!savedRow, streamed: true })
               setState({ status: 'done', data: event.analysis, error: null, savedRow, rateLimit: event.rateLimit || null, planLimit: event.planLimit || null, streamProgress: 100 })
               return
             } else if (event.t === 'err') {
-              throw new Error(friendlyAnalyzeError(null, event.status, event.error))
+              throw new Error(friendlyAnalyzeError(null, event.status, event.error, event))
             }
           }
         }
         throw new Error('Analysis stream ended unexpectedly. Please try again.')
-      } else {
-        let data = null
-        if (contentType.includes('application/json')) {
-          try { data = await res.json() } catch {}
-        }
-        if (!res.ok) throw new Error(friendlyAnalyzeError(null, res.status, data?.error))
-        if (!data?.analysis) throw new Error('Invalid response from server. Please try again.')
-
-        let savedRow = data.savedRow || null
-        if (!savedRow && user?.id) {
-          savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
-        }
-        trackEvent('analysis_completed', { mode, score: data.analysis?.display_score || 0, saved: !!savedRow })
-        setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, planLimit: data.planLimit || null, streamProgress: 100 })
       }
+
+      let data = null
+      if (contentType.includes('application/json')) {
+        try { data = await res.json() } catch {}
+      }
+      if (!res.ok) {
+        console.warn('[Joblytics analyze debug]', data)
+        throw new Error(friendlyAnalyzeError(null, res.status, data?.error, data))
+      }
+      if (!data?.analysis) throw new Error('Invalid response from server. Please try again.')
+
+      let savedRow = data.savedRow || null
+      if (!savedRow && user?.id) savedRow = await saveAnalysisClientSide({ user, analysis: data.analysis, jobUrl: jobUrl || null, jobText: jobText || null, cvFile })
+      trackEvent('analysis_completed', { mode, score: data.analysis?.display_score || 0, saved: !!savedRow })
+      setState({ status: 'done', data: data.analysis, error: null, savedRow, rateLimit: data.rateLimit || null, planLimit: data.planLimit || null, streamProgress: 100 })
     } catch (e) {
       clearTimeout(timeoutId)
       const friendly = friendlyAnalyzeError(e)
