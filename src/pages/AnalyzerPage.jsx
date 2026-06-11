@@ -4,6 +4,7 @@ import { useAnalyze } from '../hooks/useAnalyze'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { useJobUrlHistory } from '../hooks/useJobUrlHistory'
 import { sanitizeAnalysisForDisplay } from '../utils/analysisSanitizer'
+import { detectLanguage } from '../utils/detectLanguage'
 import ResultsView from '../components/ResultsView'
 import Confetti from '../components/Confetti'
 import PWAInstallPrompt from '../components/PWAInstallPrompt'
@@ -92,6 +93,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const canAnalyzePaste = showTextPaste && jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
+  const jobTextLanguage = showTextPaste && jobText.trim().length >= 200 ? detectLanguage(jobText) : null
 
   useEffect(() => {
     const payload = readClipperPayload()
@@ -149,6 +151,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                   <TipCard type="success" title="Recommended for accurate scoring" body="Paste the full job description, especially the mission, responsibilities, requirements, skills, experience level and language requirements. This gives the ATS engine enough evidence to calculate a trustworthy score." />
                   <textarea value={jobText} onChange={handlePasteTextChange} placeholder="Paste the complete job description here: company context, role mission, responsibilities, required skills, experience level, languages and location." rows={10} />
                   {jobText.trim().length > 0 && !canAnalyzePaste && <TipCard type="warning" title="Add more of the job description" body={`For a reliable ATS score, paste at least ${MIN_JOB_TEXT_LENGTH} characters. Current progress: ${pasteProgress}%. Include responsibilities, requirements and skills.`} />}
+                  {jobTextLanguage?.code !== 'unknown' && jobTextLanguage?.label && <TipCard type="info" title={`This job offer looks like it's written in ${jobTextLanguage.label}`} body={`For the most accurate ATS score, make sure the CV selected above is also written in ${jobTextLanguage.label}. If not, add a ${jobTextLanguage.label} version of your CV before running the analysis.`} />}
                 </>}
                 {planLimit?.plan === 'free' && planLimit?.limit > 0 && <p style={{ fontSize: 12, color: planLimit.used >= planLimit.limit - 1 ? 'var(--accent)' : 'var(--text-secondary)', textAlign: 'center', margin: '8px 0 0' }}>{planLimit.used} / {planLimit.limit} {t('analyzer_analyses_used', 'analyses used this month')}</p>}
                 {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}

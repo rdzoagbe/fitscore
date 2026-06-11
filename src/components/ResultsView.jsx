@@ -121,6 +121,25 @@ function ScoreBreakdownCard({ label, score, helper, color }) {
   )
 }
 
+function LanguageMismatchBanner({ languageCheck }) {
+  if (!languageCheck?.mismatch) return null
+  const jobLabel = languageCheck.job?.label
+  const cvLabel = languageCheck.cv?.label
+  if (!jobLabel || !cvLabel) return null
+
+  return (
+    <div style={{ background: 'rgba(185,134,59,0.08)', border: '1px solid rgba(185,134,59,0.22)', borderRadius: 18, padding: '14px 16px', marginBottom: 12, display: 'flex', gap: 10 }}>
+      <span style={{ color: premium.gold, flexShrink: 0 }}>⚠</span>
+      <div>
+        <p style={{ fontSize: 10, fontWeight: 900, color: premium.gold, letterSpacing: '0.10em', textTransform: 'uppercase', marginBottom: 6 }}>Language mismatch detected</p>
+        <p style={{ fontSize: 12, color: premium.muted, lineHeight: 1.5, margin: 0 }}>
+          This job offer looks like it's written in {jobLabel}, but your CV looks like it's in {cvLabel}. Keyword matching is language-sensitive, so this score may be less accurate. For a more reliable result, try re-running the analysis with a {jobLabel} version of your CV.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function JobDetailsCard({ data }) {
   const sections = data.job_sections || {}
   const context = data.job_context || {}
@@ -270,6 +289,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
       <SelectedAnalysisSummary data={data} savedRow={analysisRow || serverSavedRow} t={t} />
       <JobDetailsCard data={data} />
+      <LanguageMismatchBanner languageCheck={data.language_check} />
       <WaitlistBanner rateLimit={rateLimit} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '0 4px', gap: 8, flexWrap: 'wrap' }}>
