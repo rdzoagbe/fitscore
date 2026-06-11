@@ -88,10 +88,9 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
   const restrictedJobBoard = detectRestrictedJobBoard(jobUrl)
   const isLinkedInUrl = isValidUrl(jobUrl) && normalizedJobUrl.toLowerCase().includes('linkedin.com')
-  const isUrlModeLinkedIn = !showTextPaste && isLinkedInUrl
-  const canAnalyzeUrl = !showTextPaste && isValidUrl(jobUrl) && !isLinkedInUrl
+  const canAnalyzeUrl = !showTextPaste && isValidUrl(jobUrl)
   const canAnalyzePaste = showTextPaste && jobText.trim().length >= MIN_JOB_TEXT_LENGTH
-  const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl || isUrlModeLinkedIn)
+  const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
 
   useEffect(() => {
@@ -109,7 +108,6 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
 
   const handleAnalyze = async () => {
     if (!cvFile) return
-    if (isUrlModeLinkedIn) { switchToPasteMode(); return }
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MSGS.length), 1800)
     if (canAnalyzePaste) await analyze(null, cvFile, jobText.trim())
@@ -156,7 +154,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
                 {isLimitError && <UpgradePrompt title={t('upgrade_analyze_title')} body={t('upgrade_analyze_body')} onUpgrade={() => setPage('billing')} />}
                 {status === 'error' && !isLimitError && <TipCard type="error" title={t('analyzer_failed')} body={error} />}
                 {status === 'loading' && <div style={{ marginTop: 12 }}><p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontSize: 13 }}>{LOADING_MSGS[msgIdx]}</p>{streamProgress > 0 && <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}><div style={{ height: '100%', width: `${streamProgress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.4s ease' }} /></div>}</div>}
-                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !canAnalyze} style={{ width: '100%', marginTop: 14 }}>{isUrlModeLinkedIn ? 'Switch to Accurate paste mode' : status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
+                <button className="btn-primary" onClick={handleAnalyze} disabled={status === 'loading' || !canAnalyze} style={{ width: '100%', marginTop: 14 }}>{status === 'loading' ? t('analyzer_analyzing') : t('analyzer_analyze_match')}</button>
               </div>
             </section>
             <aside className="analyzePro-side analyzeHub-side">
