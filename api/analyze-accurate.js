@@ -169,8 +169,7 @@ function buildJinaTargets(url) {
   const withoutScheme = clean.replace(/^https?:\/\//i, '')
   return [...new Set([
     `https://r.jina.ai/${clean}`,
-    `https://r.jina.ai/http://${withoutScheme}`,
-    `https://r.jina.ai/http://https://${withoutScheme}`
+    `https://r.jina.ai/http://${withoutScheme}`
   ])]
 }
 
@@ -186,7 +185,7 @@ async function fetchViaJina(url) {
   const attempts = []
   for (const target of buildJinaTargets(url)) {
     try {
-      const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 24000)
+      const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 12000)
       if (!res.ok) {
         attempts.push({ target, status: res.status })
         continue
@@ -232,15 +231,15 @@ async function fetchJobText(url) {
   const attempts = []
 
   try {
-    return await fetchViaJina(url)
-  } catch (error) {
-    attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed', attempts: error?.attempts })
-  }
-
-  try {
     return await fetchDirectHtml(url)
   } catch (error) {
     attempts.push({ provider: 'direct-html', code: error?.code || 'DIRECT_FAILED', message: error?.message || 'Direct extraction failed' })
+  }
+
+  try {
+    return await fetchViaJina(url)
+  } catch (error) {
+    attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed', attempts: error?.attempts })
   }
 
   const err = new Error('This job page could not be reliably extracted. Paste the job description directly for accurate scoring.')
