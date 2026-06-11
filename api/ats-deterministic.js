@@ -78,18 +78,19 @@ function containsTerm(text, term) {
 export function validateJobTextQuality(jobText = '', { source = 'paste', url = '' } = {}) {
   const raw = String(jobText || '').trim()
   const normalized = normalizeText(raw)
-  const reasons = []
+  const hardReasons = []
+  const softReasons = []
   const lowerUrl = String(url || '').toLowerCase()
   const isUrl = source === 'url'
   const restricted = ['linkedin.', 'indeed.', 'glassdoor.', 'workday', 'welcometothejungle.com'].some(domain => lowerUrl.includes(domain))
 
-  if (raw.length < 450) reasons.push('The extracted job text is too short to score accurately.')
-  if (normalized.length < 300) reasons.push('The extracted job text has too little readable content.')
+  if (raw.length < 450) softReasons.push('The extracted job text is too short to score accurately.')
+  if (normalized.length < 300) softReasons.push('The extracted job text has too little readable content.')
 
   const blockedPatterns = [
     'enable javascript','please enable javascript','sign in to continue','login to continue','cookies must be enabled','access denied','are you a human','captcha','bot detection','cloudflare','temporarily unavailable','just a moment','error 403','forbidden','continue to join','privacy policy','user agreement','join linkedin','sign in join now'
   ]
-  if (blockedPatterns.some(pattern => normalized.includes(normalizeText(pattern)))) reasons.push('The URL appears to return a login, JavaScript, cookie, or anti-bot page instead of the job description.')
+  if (blockedPatterns.some(pattern => normalized.includes(normalizeText(pattern)))) hardReasons.push('The URL appears to return a login, JavaScript, cookie, or anti-bot page instead of the job description.')
 
   const sectionHits = [
     'responsibilities','missions','mission','requirements','qualifications','profile','profil','skills','competences','compétences','experience','expérience','about the role','what you will do','your role','le poste','vos missions','what you bring','required skills','job description','responsabilites','requis'
@@ -99,19 +100,26 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
     'manage','lead','support','deploy','configure','maintain','monitor','implement','coordinate','develop','design','deliver','analyze','secure','migrate','pilot','gérer','piloter','déployer','configurer','maintenir','coordonner','analyser','sécuriser','build','own','operate','supervise','administer'
   ].filter(term => normalized.includes(normalizeText(term))).length
 
-  if (sectionHits < 2 && actionWordHits < 4) reasons.push('The extracted text does not contain enough visible responsibilities or requirements.')
+  if (sectionHits < 2 && actionWordHits < 4) softReasons.push('The extracted text does not contain enough visible responsibilities or requirements.')
 
   const navNoiseHits = PAGE_NOISE_PATTERNS.filter(term => normalized.includes(normalizeText(term))).length
   const meaningfulJobSignals = sectionHits + actionWordHits
-  if (navNoiseHits >= 3 && meaningfulJobSignals < 8) reasons.push('The extracted text looks more like page navigation or login content than a real job posting.')
-  if (restricted && isUrl && navNoiseHits >= 2 && raw.length < 2200) reasons.push('This restricted job board returned partial or noisy content instead of the full job description.')
-  if (restricted && isUrl && sectionHits < 3 && actionWordHits < 7) reasons.push('This restricted job board did not expose enough job responsibilities or requirements to score reliably.')
+  if (navNoiseHits >= 3 && meaningfulJobSignals < 8) softReasons.push('The extracted text looks more like page navigation or login content than a real job posting.')
+  if (restricted && isUrl && navNoiseHits >= 2 && raw.length < 2200) softReasons.push('This restricted job board returned partial or noisy content instead of the full job description.')
+  if (restricted && isUrl && sectionHits < 3 && actionWordHits < 7) softReasons.push('This restricted job board did not expose enough job responsibilities or requirements to score reliably.')
 
+  const reasons = [...hardReasons, ...softReasons]
   const ok = reasons.length === 0
+  // URL extractions are mostly out of the user's control, so only hard-block on
+  // unusable content (anti-bot/login pages). Soft quality issues still get
+  // surfaced via `quality`/`reasons`, but the analysis still runs. Pasted text
+  // is fully within the user's control, so soft issues block it too.
+  const blocked = hardReasons.length > 0 || (!isUrl && softReasons.length > 0)
   const quality = ok && raw.length >= 1800 && sectionHits >= 3 ? 'strong' : ok ? 'partial' : 'thin'
 
   return {
     ok,
+    blocked,
     quality,
     reasons,
     source,

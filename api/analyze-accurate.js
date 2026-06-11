@@ -338,7 +338,7 @@ export default async function handler(req, res) {
     const quality = validateJobTextQuality(jobText, { source: providedJobText ? 'paste' : 'url', url: jobUrl })
     quality.extractionProvider = jobExtraction.provider
     quality.jinaTarget = jobExtraction.jinaTarget || null
-    if (!quality.ok) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
+    if (quality.blocked) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
 
     const normalizedUrl = jobUrl ? normalizeUrlForCache(jobUrl) : ''
     const cvHash = hashContent('cv-v1', cvText.slice(0, CV_TEXT_LIMIT))
