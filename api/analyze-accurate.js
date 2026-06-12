@@ -8,7 +8,7 @@ export const config = { maxDuration: 60 }
 const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
-const CACHE_VERSION = 'ats-v10-skill-extraction-fix'
+const CACHE_VERSION = 'ats-v11-jina-first-restore'
 
 const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
@@ -169,7 +169,8 @@ function buildJinaTargets(url) {
   const withoutScheme = clean.replace(/^https?:\/\//i, '')
   return [...new Set([
     `https://r.jina.ai/${clean}`,
-    `https://r.jina.ai/http://${withoutScheme}`
+    `https://r.jina.ai/http://${withoutScheme}`,
+    `https://r.jina.ai/http://https://${withoutScheme}`
   ])]
 }
 
@@ -185,7 +186,7 @@ async function fetchViaJina(url) {
   const attempts = []
   for (const target of buildJinaTargets(url)) {
     try {
-      const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 12000)
+      const res = await fetchWithTimeout(target, { headers, redirect: 'follow' }, 24000)
       if (!res.ok) {
         attempts.push({ target, status: res.status })
         continue
@@ -231,15 +232,15 @@ async function fetchJobText(url) {
   const attempts = []
 
   try {
-    return await fetchDirectHtml(url)
-  } catch (error) {
-    attempts.push({ provider: 'direct-html', code: error?.code || 'DIRECT_FAILED', message: error?.message || 'Direct extraction failed' })
-  }
-
-  try {
     return await fetchViaJina(url)
   } catch (error) {
     attempts.push({ provider: 'jina', code: error?.code || 'JINA_FAILED', message: error?.message || 'Jina extraction failed', attempts: error?.attempts })
+  }
+
+  try {
+    return await fetchDirectHtml(url)
+  } catch (error) {
+    attempts.push({ provider: 'direct-html', code: error?.code || 'DIRECT_FAILED', message: error?.message || 'Direct extraction failed' })
   }
 
   const err = new Error('This job page could not be reliably extracted. Paste the job description directly for accurate scoring.')
@@ -337,7 +338,7 @@ export default async function handler(req, res) {
     const quality = validateJobTextQuality(jobText, { source: providedJobText ? 'paste' : 'url', url: jobUrl })
     quality.extractionProvider = jobExtraction.provider
     quality.jinaTarget = jobExtraction.jinaTarget || null
-    if (quality.blocked) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
+    if (!quality.ok) return res.status(400).json({ success: false, error: quality.message, code: providedJobText ? 'JOB_TEXT_INCOMPLETE' : 'URL_EXTRACTION_WEAK', quality })
 
     const normalizedUrl = jobUrl ? normalizeUrlForCache(jobUrl) : ''
     const cvHash = hashContent('cv-v1', cvText.slice(0, CV_TEXT_LIMIT))
