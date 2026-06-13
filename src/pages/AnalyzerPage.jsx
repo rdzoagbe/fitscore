@@ -89,8 +89,8 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
   const normalizedJobUrl = normalizeJobUrl(jobUrl)
   const restrictedJobBoard = detectRestrictedJobBoard(jobUrl)
   const isLinkedInUrl = isValidUrl(jobUrl) && normalizedJobUrl.toLowerCase().includes('linkedin.com')
-  const isUrlModeLinkedIn = !showTextPaste && isLinkedInUrl
-  const canAnalyzeUrl = !showTextPaste && isValidUrl(jobUrl) && !isLinkedInUrl
+  const isUrlModeLinkedIn = false
+  const canAnalyzeUrl = !showTextPaste && isValidUrl(jobUrl)
   const canAnalyzePaste = showTextPaste && jobText.trim().length >= MIN_JOB_TEXT_LENGTH
   const canAnalyze = status !== 'loading' && !!cvFile && (canAnalyzePaste || canAnalyzeUrl || isUrlModeLinkedIn)
   const pasteProgress = Math.min(100, Math.round((jobText.trim().length / MIN_JOB_TEXT_LENGTH) * 100))
