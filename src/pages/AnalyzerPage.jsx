@@ -117,7 +117,7 @@ export default function AnalyzerPage({ setPage, prefillAnalysis, onClearPrefill 
     }
     setViewingAnalysis(null)
     intervalRef.current = setInterval(() => setMsgIdx(i => (i + 1) % LOADING_MSGS.length), 1800)
-    if (canAnalyzePaste) await analyze(null, cvFile, jobText.trim())
+    if (canAnalyzePaste) await analyze(isValidUrl(jobUrl) ? normalizedJobUrl : null, cvFile, jobText.trim())
     else if (canAnalyzeUrl) await analyze(normalizedJobUrl, cvFile)
     clearInterval(intervalRef.current)
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
