@@ -120,8 +120,12 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
   if (raw.length < 450) softReasons.push('The extracted job text is too short to score accurately.')
   if (normalized.length < 300) softReasons.push('The extracted job text has too little readable content.')
 
+  // Only genuine anti-bot / login-wall / JS-shell signals belong here, since a
+  // match HARD-blocks the analysis. Generic footer phrases like "privacy policy"
+  // or "user agreement" appear on legitimate job pages too, so they are handled
+  // as soft PAGE_NOISE_PATTERNS instead of hard blockers (see #70 regression).
   const blockedPatterns = [
-    'enable javascript','please enable javascript','sign in to continue','login to continue','cookies must be enabled','access denied','are you a human','captcha','bot detection','cloudflare','temporarily unavailable','just a moment','error 403','forbidden','continue to join','privacy policy','user agreement','join linkedin','sign in join now'
+    'enable javascript','please enable javascript','sign in to continue','login to continue','cookies must be enabled','access denied','are you a human','captcha','bot detection','cloudflare','temporarily unavailable','just a moment','error 403','forbidden','continue to join','join linkedin','sign in join now'
   ]
   if (blockedPatterns.some(pattern => normalized.includes(normalizeText(pattern)))) hardReasons.push('The URL appears to return a login, JavaScript, cookie, or anti-bot page instead of the job description.')
 
