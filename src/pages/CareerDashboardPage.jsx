@@ -4,6 +4,7 @@ import { useLang } from '../context/LangContext'
 import { useCvPersist } from '../hooks/useCvPersist'
 import { useProgressMetrics } from '../hooks/useProgressMetrics'
 import { extractScore, getUserDisplayName } from '../utils/progressUtils'
+import { getMatchedJobs } from '../utils/jobMatchUtils'
 import './CareerDashboardPage.css'
 import './dashboard-simplified.css'
 
@@ -179,6 +180,35 @@ function MissingKeywordsWidget({ keywords, onCoach }) {
   )
 }
 
+function MatchedJobCard({ job, onAnalyze, t }) {
+  const prefix = `jobmatch_${job.key}`
+  return (
+    <article className="careerDash-matchCard">
+      <div className="careerDash-matchTop">
+        <div>
+          <p>{t(`${prefix}_category`, job.category)}</p>
+          <h3>{t(`${prefix}_title`, job.title)}</h3>
+          <span>{t(job.level.includes('Senior') ? 'jobmatch_level_senior_manager' : 'jobmatch_level_manager', job.level)}</span>
+        </div>
+        <strong>{job.score}%</strong>
+      </div>
+
+      <p className="careerDash-matchReason">{t(`${prefix}_reason`, job.reasons[0])}</p>
+
+      <div className="careerDash-matchKeywords">
+        {(job.matchedKeywords.length ? job.matchedKeywords : job.keywords.slice(0, 4)).map(keyword => (
+          <span key={keyword}>{keyword}</span>
+        ))}
+      </div>
+
+      <div className="careerDash-matchActions">
+        <a href={job.searchUrl} target="_blank" rel="noreferrer">{t('dash_find_roles', 'Find roles')}</a>
+        <button type="button" onClick={onAnalyze}>{t('dash_analyze_job', 'Analyze job')}</button>
+      </div>
+    </article>
+  )
+}
+
 export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
   const { user } = useAuth()
   const { t } = useLang()
@@ -211,6 +241,9 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
   }, [metrics.analyses])
 
   const showUsageBanner = plan === 'free' && thisMonthUsed > 0
+
+  const matchedJobs = useMemo(() => getMatchedJobs(metrics.analyses), [metrics.analyses])
+  const matchSourceLabel = matchedJobs[0]?.isProfileBased ? t('dash_based_saved', 'Based on your saved analyses') : t('dash_starter_recs', 'Starter recommendations')
 
   return (
     <div className="careerDash-page dashLite-page">
@@ -296,6 +329,27 @@ export default function CareerDashboardPage({ setPage, onOpenAnalysis }) {
             )}
           </aside>
         </section>
+
+        {matchedJobs.length > 0 && (
+          <section className="careerDash-card careerDash-matchedJobs">
+            <div className="careerDash-cardHeader">
+              <div>
+                <p className="careerDash-kicker">{t('dash_matched_jobs', 'Matched jobs')} · {matchSourceLabel}</p>
+                <h2>{t('dash_roles_aligned', 'Roles aligned to your profile')}</h2>
+                <p>{t('dash_roles_desc', 'Use these role targets to discover opportunities, then run an ATS check before applying.')}</p>
+              </div>
+              <button type="button" className="careerDash-linkBtn" onClick={() => setPage?.('analyzer')}>
+                {t('dash_analyze_job', 'Analyze job')}
+              </button>
+            </div>
+
+            <div className="careerDash-matchGrid">
+              {matchedJobs.map(job => (
+                <MatchedJobCard key={job.title} job={job} t={t} onAnalyze={() => setPage?.('analyzer')} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {(showUsageBanner || (recent.length > 0 && topMissingKeywords.length > 0)) && (
           <div className="dashLite-banners">

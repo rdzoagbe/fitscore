@@ -40,6 +40,23 @@ function normalizeText(value = '') {
     .trim()
 }
 
+// True when a token is really part of a URL / tracking query-string / percent-encoding
+// rather than a job skill. Failed restricted-board extractions (e.g. a LinkedIn redirect
+// page) leave the raw URL behind, and `https://fr.linkedin.com/jobs/view/441...?trk=...`
+// decodes into tokens like "https", "www.linkedin.com", "3a", "2f", "trk", "aero-v1".
+function looksLikeUrlNoise(term = '') {
+  const t = normalizeText(term)
+  if (!t) return true
+  if (/\b(https?|www|ftp)\b/.test(t)) return true
+  if (/[a-z0-9-]+\.(com|net|org|io|ai|co|app|dev|fr|uk|de|es|eu|us|nl|it|pt|ca)\b/.test(t)) return true
+  if (/linkedin|indeed|glassdoor|welcometothejungle|workday/.test(t)) return true
+  if (/\b[0-9a-f]?2f[a-z0-9]*\b/.test(t)) return true   // %2F leftovers: 2f, 2fwww, 2fjobs, 2ffr
+  if (/\b3a\b/.test(t)) return true                     // %3A leftover (the ":" in "https://")
+  if (/\b(trk|utm[_a-z]*|ref|aero(-v\d+)?|sessionid|gclid|fbclid)\b/.test(t)) return true
+  if (/\b\d{5,}\b/.test(t)) return true                 // long numeric ids (job ids)
+  return false
+}
+
 function unique(items) {
   return [...new Set(items.filter(Boolean).map(item => String(item).trim()).filter(Boolean))]
 }
@@ -88,6 +105,7 @@ function canonicalSkill(term = '') {
 function isNoiseTerm(term = '') {
   const normalized = normalizeText(term)
   if (!normalized || normalized.length < 3) return true
+  if (looksLikeUrlNoise(normalized)) return true
   if (PAGE_NOISE_PATTERNS.some(pattern => normalized.includes(normalizeText(pattern)))) return true
   if (/^\d+\s+(day|days|week|weeks|month|months|hour|hours)\s+ago$/.test(normalized)) return true
   if (/^(of|in|at|to|for|from)\s+/.test(normalized) && normalized.split(' ').length <= 4) return true
@@ -144,6 +162,18 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
   if (navNoiseHits >= 3 && meaningfulJobSignals < 8) softReasons.push('The extracted text looks more like page navigation or login content than a real job posting.')
   if (restricted && isUrl && navNoiseHits >= 2 && raw.length < 2200) softReasons.push('This restricted job board returned partial or noisy content instead of the full job description.')
   if (restricted && isUrl && sectionHits < 3 && actionWordHits < 7) softReasons.push('This restricted job board did not expose enough job responsibilities or requirements to score reliably.')
+
+  // A failed restricted-board extraction (e.g. a LinkedIn redirect/login page) leaves
+  // mostly the raw URL + tracking params behind, which would otherwise be scored as if
+  // the query-string were job "keywords". If the readable text is dominated by URL noise
+  // and carries almost no real job signal, treat it as unusable rather than score junk.
+  const words = normalized.split(' ').filter(Boolean)
+  const urlNoiseWords = words.filter(word => looksLikeUrlNoise(word)).length
+  const urlNoiseRatio = words.length ? urlNoiseWords / words.length : 0
+  if (urlNoiseRatio >= 0.25 && meaningfulJobSignals < 6) hardReasons.push('The extracted content is mostly a link/redirect rather than the job description itself.')
+  // Anything this short never contains a scorable job description, so block it even for
+  // URLs (soft "too short" issues otherwise pass through for URL sources).
+  if (raw.length < 220) hardReasons.push('The extracted job text is too short to contain a real job description — the page likely returned a redirect or login wall.')
 
   const reasons = [...hardReasons, ...softReasons]
   const ok = reasons.length === 0

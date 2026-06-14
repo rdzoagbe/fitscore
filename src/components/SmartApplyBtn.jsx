@@ -3,9 +3,11 @@ import { useLang } from '../context/LangContext'
 
 export default function SmartApplyBtn({ context, jobUrl, verdict }) {
   const { t } = useLang()
-  if (!context) return null
 
-  const applyUrl = context.apply_url || jobUrl
+  // Show the button whenever we have a link to the job — even if the AI job_context
+  // came back empty (e.g. a deterministic-only / fallback analysis). The analyzed
+  // job URL is the reliable source; apply_url is only an optional enrichment.
+  const applyUrl = context?.apply_url || jobUrl
   const isPassed = verdict === 'likely_passed'
   const isBorderline = verdict === 'borderline'
   if (!applyUrl) return null
