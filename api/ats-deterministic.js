@@ -1,7 +1,10 @@
 const COMMON_STOPWORDS = new Set([
   'avec','pour','dans','vous','nous','les','des','une','aux','sur','qui','que','par','plus','vos','nos','notre','votre','leur','leurs','afin','ainsi','poste','mission','profil','équipe','equipe','candidat','candidate','emploi','travail','entreprise','client','clients','projet','projets','expérience','experience',
   'the','and','for','with','your','our','this','that','from','role','team','work','working','job','candidate','company','business','project','projects','experience','skills','required','requirements','responsibilities','profile','about','will','have','has','are','you','we','they','their','them','into','within',
-  'of','an','a','to','in','on','is','as','or','be','by','at','it','its','if','not','do','does','did','can','could','would','should','all','any','each','more','most','some','such','than','then','there','these','those','what','when','where','which','who','why','how','i','my','me','us'
+  'of','an','a','to','in','on','is','as','or','be','by','at','it','its','if','not','do','does','did','can','could','would','should','all','any','each','more','most','some','such','than','then','there','these','those','what','when','where','which','who','why','how','i','my','me','us',
+  // French function words — without these, prose fragments like "commercial et la",
+  // "de haut niveau", "du capital humain" leak through as fake "skills".
+  'le','la','les','un','une','de','du','des','et','ou','où','à','au','aux','en','dans','sur','sous','par','pour','avec','sans','ce','cet','cette','ces','son','sa','ses','leur','notre','votre','est','sont','être','etre','avoir','plus','moins','très','tres','tout','tous','toute','toutes','d','l','n','s','t','qu','vos','nos','ainsi','afin','selon','entre','vers','chez','dont','car','mais','donc','ni','soit'
 ])
 
 const SKILL_SYNONYMS = [
@@ -291,6 +294,20 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
 
   const verdict = displayScore >= 75 ? 'likely_passed' : displayScore >= 55 ? 'borderline' : 'likely_filtered'
 
+  // Decide whether the keyword overlap is trustworthy enough to drive the headline
+  // score. It is NOT when the job and CV are in different languages (literal matching
+  // breaks) or when extraction found few genuine skills (known tech terms or crisp
+  // single-word skills) versus prose fragments. In those cases the caller should
+  // defer to the AI's semantic read instead of this keyword estimate.
+  const jobLang = detectTextLanguage(jobText)
+  const cvLang = detectTextLanguage(cvText)
+  const languageMismatch = jobLang.code !== 'unknown' && cvLang.code !== 'unknown' && jobLang.code !== cvLang.code
+  const realSkillCount = requiredSkills.filter(skill =>
+    TECH_PATTERNS.some(pattern => canonicalSkill(pattern) === canonicalSkill(skill)) ||
+    (!skill.includes(' ') && skill.length >= 3)
+  ).length
+  const keywordSignalReliable = !languageMismatch && realSkillCount >= 3
+
   // match_probability reflects interview chances rather than ATS keyword passthrough,
   // so it leans more on experience/seniority fit and less on raw keyword density.
   const matchProbability = Math.max(0, Math.min(100, Math.round(
@@ -316,7 +333,9 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
     verdict,
     candidateYears,
     requiredYears,
-    confidence: requiredSkills.length >= 6 ? 'medium' : 'low'
+    languageMismatch,
+    keywordSignalReliable,
+    confidence: !keywordSignalReliable ? 'low' : requiredSkills.length >= 6 ? 'medium' : 'low'
   }
 }
 
@@ -325,6 +344,11 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
   const merged = { ...(analysis || {}) }
   const matchedLabels = ats.matchedSkills.map(item => item.required_skill)
   const missingLabels = ats.missingSkills
+
+  // Capture the AI's own read BEFORE we overwrite these fields with deterministic
+  // values, so we can defer to it when keyword matching isn't trustworthy.
+  const aiSemantic = Number(analysis?.semantic_fit?.score)
+  const aiRecruiter = Number(analysis?.recruiter_shortlist?.probability)
 
   const jobLanguage = detectTextLanguage(jobText)
   const cvLanguage = detectTextLanguage(cvText)
@@ -398,6 +422,27 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
   }
   merged.gaps_to_address = unique([...(merged.gaps_to_address || []), ...missingLabels]).slice(0, 8)
   merged.quick_wins = unique([...(merged.quick_wins || []), ...missingLabels.slice(0, 4).map(skill => `Add truthful evidence for ${skill} if you have it.`)]).slice(0, 6)
+
+  merged.keyword_signal_reliable = ats.keywordSignalReliable
+  merged.language_check.mismatch = merged.language_check.mismatch || ats.languageMismatch
+
+  if (!ats.keywordSignalReliable) {
+    // Keyword overlap can't be trusted here (cross-language or junk extraction), so
+    // defer the headline to the AI's semantic read; if the AI didn't run, fall back
+    // to language-independent experience/seniority rather than a keyword-tanked score.
+    const deferred = Number.isFinite(aiSemantic) && aiSemantic > 0
+      ? Math.round(aiSemantic * 0.6 + ats.experienceScore * 0.4)
+      : Math.round(ats.experienceScore * 0.5 + ats.seniorityScore * 0.3 + 60 * 0.2)
+    merged.display_score = Math.max(0, Math.min(100, deferred))
+    merged.match_probability = Number.isFinite(aiRecruiter) && aiRecruiter > 0 ? Math.round(aiRecruiter) : merged.display_score
+    merged.overall_verdict = merged.display_score >= 75 ? 'likely_passed' : merged.display_score >= 55 ? 'borderline' : 'likely_filtered'
+    // The keyword/missing lists are unreliable, so don't present them as critical gaps.
+    merged.keyword_match = { ...merged.keyword_match, missing_required: [] }
+    merged.keywords_analysis = { ...merged.keywords_analysis, missing_keywords: [] }
+    merged.gaps_to_address = (analysis?.gaps_to_address || []).slice(0, 8)
+    merged.quick_wins = (analysis?.quick_wins || []).slice(0, 6)
+    if (!Number.isFinite(aiSemantic)) merged.confidence = { ...(merged.confidence || {}), level: 'low' }
+  }
 
   return merged
 }

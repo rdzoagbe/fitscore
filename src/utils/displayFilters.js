@@ -37,6 +37,17 @@ export function isDegradedAnalysis(data = {}) {
   const quality = data.job_text_quality?.quality || data.quality?.quality
   if (quality === 'thin' || data.job_text_quality?.blocked) reasons.push('The job description we could read was thin or incomplete.')
 
+  if (data.language_check?.mismatch) {
+    const jobLang = data.language_check?.job?.label
+    const cvLang = data.language_check?.cv?.label
+    reasons.push(jobLang && cvLang
+      ? `The job is in ${jobLang} but your CV is in ${cvLang}, so keyword matching is unreliable.`
+      : 'The job and your CV appear to be in different languages, so keyword matching is unreliable.')
+  }
+  if (data.keyword_signal_reliable === false && !data.language_check?.mismatch) {
+    reasons.push('We could not extract clear, comparable skills from this posting, so the keyword score is an estimate.')
+  }
+
   const title = data.job_context?.title || data.job_context?.job_title || data.job_title
   if (!title || ['not specified', 'not stated'].includes(String(title).toLowerCase())) reasons.push('We could not identify the job title from the source.')
 
