@@ -195,6 +195,11 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
   const subtitle = [company, analyzedAt].filter(Boolean).join(' · ')
   const summary = context.job_summary || data.job_summary || data.match_reasoning || recruiter.reason || 'Joblytics analyzed the job description against the current CV and extracted the strongest ATS signals.'
 
+  const confidenceLevel = String(data.confidence?.level || '').toLowerCase()
+  const confidence = ['high', 'medium', 'low'].includes(confidenceLevel)
+    ? { level: confidenceLevel, color: confidenceLevel === 'high' ? premium.green : confidenceLevel === 'medium' ? premium.gold : '#B85C55' }
+    : null
+
   const missingKeywords = cleanLabels(unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 10))
   const foundKeywords = cleanLabels(unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 12))
   // Quick wins are templated from keywords ("Add truthful evidence for X"), so drop
@@ -220,6 +225,17 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
           <p style={{ margin: 0, color: premium.copper, fontSize: 10, fontWeight: 950, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{t('selected_analysis', 'Selected analysis')}</p>
           <h1 style={{ margin: '7px 0 6px', color: premium.navy, fontFamily: 'Georgia, Newsreader, serif', fontSize: 'clamp(28px,4vw,48px)', lineHeight: 1, letterSpacing: '-0.055em', fontWeight: 500 }}>{title}</h1>
           {subtitle && <p style={{ margin: 0, color: premium.muted, fontSize: 12 }}>{subtitle}</p>}
+          {confidence && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 9,
+              padding: '4px 10px', borderRadius: 999, background: `${confidence.color}1A`,
+              border: `1px solid ${confidence.color}55`, color: confidence.color,
+              fontSize: 10.5, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase'
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: confidence.color }} />
+              {t(`confidence_${confidence.level}`, `${confidence.level} confidence`)}
+            </span>
+          )}
         </div>
         <div style={{ width: 108, height: 108, borderRadius: '50%', border: `9px solid ${tone}`, background: score >= 75 ? 'rgba(85,124,100,0.10)' : score >= 55 ? 'rgba(185,134,59,0.10)' : 'rgba(184,92,85,0.10)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <div style={{ textAlign: 'center' }}>
