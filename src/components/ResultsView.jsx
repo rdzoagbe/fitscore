@@ -9,6 +9,7 @@ import CvBuilderCard from './CvBuilderCard'
 import StatusPill from './StatusPill'
 import WaitlistBanner from './WaitlistBanner'
 import { useLang } from '../context/LangContext'
+import { cleanLabels, isDegradedAnalysis } from '../utils/displayFilters'
 
 const premium = {
   ivory: '#FAF7F1',
@@ -194,12 +195,14 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
   const subtitle = [company, analyzedAt].filter(Boolean).join(' · ')
   const summary = context.job_summary || data.job_summary || data.match_reasoning || recruiter.reason || 'Joblytics analyzed the job description against the current CV and extracted the strongest ATS signals.'
 
-  const missingKeywords = unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 10)
-  const foundKeywords = unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 12)
-  const quickWins = safeArray(data.quick_wins, 5)
-  const gaps = unique([...(data.gaps_to_address || []), ...(data.critical_gaps || []), ...(cleanReq.requirements_missing || []), ...(strictAnalysis.needs_proof || [])], 6)
-  const met = unique([...(cleanReq.requirements_met || []), ...(req.met || []), ...strictMatched.map(item => item.required_skill)], 6)
-  const unmet = unique([...(cleanReq.requirements_missing || []), ...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 6)
+  const missingKeywords = cleanLabels(unique([...(cleanKeywords.missing_keywords || []), ...(keyword.missing_required || []), ...(strictAnalysis.missing_skills || [])], 10))
+  const foundKeywords = cleanLabels(unique([...(cleanKeywords.found_in_cv || []), ...(keyword.found || []), ...strictMatched.map(item => item.required_skill)], 12))
+  // Quick wins are templated from keywords ("Add truthful evidence for X"), so drop
+  // any line built from a URL/junk fragment before it reaches the user as advice.
+  const quickWins = safeArray(data.quick_wins, 8).filter(line => cleanLabels([line]).length).slice(0, 5)
+  const gaps = cleanLabels(unique([...(data.gaps_to_address || []), ...(data.critical_gaps || []), ...(cleanReq.requirements_missing || []), ...(strictAnalysis.needs_proof || [])], 8)).slice(0, 6)
+  const met = cleanLabels(unique([...(cleanReq.requirements_met || []), ...(req.met || []), ...strictMatched.map(item => item.required_skill)], 8)).slice(0, 6)
+  const unmet = cleanLabels(unique([...(cleanReq.requirements_missing || []), ...(req.unmet || []), ...(strictAnalysis.missing_skills || [])], 8)).slice(0, 6)
   const salaryText = context.salary || context.salary_range || data.salary_assessment?.assessment || 'Not stated'
   const statusText = savedRow ? 'Saved' : 'Ready to save'
   const recruiterSummary = data.recruiter_screening_summary || recruiter.reason || data.overall_reason || 'Use this result to decide what to fix before applying.'
@@ -267,6 +270,34 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
   )
 }
 
+function LimitedAnalysisBanner({ data, onReset }) {
+  const { t } = useLang()
+  const { degraded, reasons } = isDegradedAnalysis(data)
+  if (!degraded) return null
+  return (
+    <div style={{
+      marginBottom: 16, padding: '14px 18px', borderRadius: 16,
+      border: '1.5px solid rgba(184,92,85,0.35)', background: 'rgba(184,92,85,0.07)'
+    }}>
+      <p style={{ margin: 0, fontSize: 11, fontWeight: 950, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#B85C55' }}>
+        {t('limited_analysis_title', 'Limited analysis — treat this score with caution')}
+      </p>
+      <p style={{ margin: '6px 0 0', fontSize: 12.5, lineHeight: 1.6, color: premium.muted }}>
+        {t('limited_analysis_desc', 'We could not fully read this job posting, so the score below is a rough keyword estimate rather than a reliable ATS verdict.')}
+      </p>
+      <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: premium.muted, fontSize: 12, lineHeight: 1.6 }}>
+        {reasons.map(reason => <li key={reason}>{reason}</li>)}
+      </ul>
+      <button type="button" onClick={onReset} style={{
+        marginTop: 10, fontSize: 12, fontWeight: 800, color: '#B5663C',
+        background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline'
+      }}>
+        {t('limited_analysis_cta', 'Re-run in Accurate paste mode for a trustworthy score →')}
+      </button>
+    </div>
+  )
+}
+
 export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit, onReset, onGoCoach }) {
   const { t } = useLang()
   const score = data.display_score ?? 0
@@ -287,6 +318,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
 
   return (
     <div style={{ animation: 'fadeUp 0.5s ease' }}>
+      <LimitedAnalysisBanner data={data} onReset={onReset} />
       <SelectedAnalysisSummary data={data} savedRow={analysisRow || serverSavedRow} t={t} />
       <JobDetailsCard data={data} />
       <LanguageMismatchBanner languageCheck={data.language_check} />
