@@ -482,6 +482,59 @@ export function simulateImprovements(ats) {
   }
 }
 
+// One plain-language sentence explaining the verdict in terms of concrete strengths/gaps.
+function describeScore({ verdict, keywordScore, experienceScore, seniorityScore }) {
+  const strengths = []
+  const gaps = []
+  if (keywordScore >= 70) strengths.push('strong skill/keyword overlap')
+  else if (keywordScore < 50) gaps.push('several required skills are missing')
+  if (experienceScore >= 75) strengths.push('enough years of experience')
+  else if (experienceScore < 55) gaps.push('less experience than the role asks for')
+  if (seniorityScore >= 75) strengths.push('a seniority level that fits')
+  else if (seniorityScore < 50) gaps.push('a seniority mismatch')
+  const lead = verdict === 'likely_passed'
+    ? 'You likely pass the ATS filter for this role.'
+    : verdict === 'borderline'
+      ? 'You are a borderline fit — an ATS or recruiter could go either way.'
+      : 'You would likely be filtered out by an ATS for this role.'
+  const s = strengths.length ? ` Strengths: ${strengths.join(', ')}.` : ''
+  const g = gaps.length ? ` Main gaps: ${gaps.join(', ')}.` : ''
+  return `${lead}${s}${g}`.trim()
+}
+
+// Coercion helpers + a normalizer that guarantees the analysis object always has the
+// full expected shape with safe defaults, so a partial/malformed AI response can never
+// leave the UI rendering blanks or crashing on undefined.
+const asStr = (value, fallback = '') => (typeof value === 'string' && value.trim() ? value : fallback)
+const asArr = value => (Array.isArray(value) ? value : [])
+const asObj = value => (value && typeof value === 'object' && !Array.isArray(value) ? value : {})
+
+export function normalizeAnalysisShape(analysis) {
+  const a = asObj(analysis)
+  return {
+    ...a,
+    job_context: { title: 'Not specified', company: 'Not specified', location: 'Not specified', work_mode: 'unknown', contract_type: 'unknown', salary_range: 'Not specified', experience_required: 'Not specified', languages_required: [], apply_url: null, easy_apply: false, hiring_contact: null, hiring_contact_linkedin: null, ...asObj(a.job_context) },
+    job_sections: { about_company: null, about_role: null, key_responsibilities: [], key_requirements: [], benefits: null, ...asObj(a.job_sections) },
+    job_summary: asStr(a.job_summary),
+    match_reasoning: asStr(a.match_reasoning),
+    recruiter_shortlist: { probability: 0, verdict: 'possible_shortlist', reason: '', top_screening_factors: [], likely_recruiter_concerns: [], ...asObj(a.recruiter_shortlist) },
+    next_best_action: { action: '', label: '', reason: '', steps: [], ...asObj(a.next_best_action) },
+    confidence: { level: 'low', score: 0, reasons: [], job_text_quality: 'partial', cv_text_quality: 'partial', ...asObj(a.confidence) },
+    semantic_fit: { score: 0, matched_responsibilities: [], weak_or_missing_responsibilities: [], domain_fit: 'moderate', domain_reason: '', ...asObj(a.semantic_fit) },
+    experience_depth: { score: 0, hands_on: 'unclear', leadership: 'unclear', scale: 'unclear', metrics: 'unclear', ownership: 'unclear', proof_summary: '', ...asObj(a.experience_depth) },
+    proof_gaps: asArr(a.proof_gaps),
+    hidden_expectations: asArr(a.hidden_expectations),
+    red_flags: asArr(a.red_flags),
+    salary_assessment: { specified: false, assessment: 'unknown', comment: '', ...asObj(a.salary_assessment) },
+    verdict: asStr(a.verdict),
+    overall_reason: asStr(a.overall_reason),
+    format_warnings: asArr(a.format_warnings),
+    quick_wins: asArr(a.quick_wins),
+    jobseeker_strategy: { apply_message_angle: '', follow_up_timing: '', questions_to_ask_recruiter: [], skip_reason: null, ...asObj(a.jobseeker_strategy) },
+    interview_prep: { show_prep: true, likely_questions: [], your_edges: [], weak_spots: [], salary_negotiation_hint: '', ...asObj(a.interview_prep) }
+  }
+}
+
 export function buildDeterministicAts(jobText = '', cvText = '') {
   const requiredSkills = extractSkillTerms(jobText, 22)
   const candidateSkills = extractSkillTerms(cvText, 40)
@@ -520,6 +573,17 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
   // so it leans more on experience/seniority fit and less on raw keyword density.
   const matchProbability = scores.matchProbability
 
+  // Transparent breakdown: how each weighted factor contributes to the headline number,
+  // so the score is explainable instead of a black box.
+  const scoreBreakdown = [
+    { key: 'keywords', label: 'Keyword & skill match', score: keywordScore, weight: 35 },
+    { key: 'experience', label: 'Experience fit', score: experienceScore, weight: 30 },
+    { key: 'semantic', label: 'Role / semantic fit', score: semanticScore, weight: 20 },
+    { key: 'seniority', label: 'Seniority fit', score: seniorityScore, weight: 10 },
+    { key: 'baseline', label: 'Baseline', score: 70, weight: 5 }
+  ].map(factor => ({ ...factor, points: Math.round((factor.score * factor.weight) / 100 * 10) / 10 }))
+  const scoreExplanation = describeScore({ verdict, keywordScore, experienceScore, seniorityScore })
+
   return {
     deterministic: true,
     requiredSkills,
@@ -537,13 +601,18 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
     requiredYears,
     languageMismatch,
     keywordSignalReliable,
+    criticalGapPenalty: scores.criticalGapPenalty,
+    scoreBreakdown,
+    scoreExplanation,
     confidence: !keywordSignalReliable ? 'low' : requiredSkills.length >= 6 ? 'medium' : 'low'
   }
 }
 
 export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
   const ats = buildDeterministicAts(jobText, cvText)
-  const merged = { ...(analysis || {}) }
+  // Guarantee a complete, well-typed shape so the UI never renders blanks on a partial
+  // or malformed AI response, then overlay the deterministic fields below.
+  const merged = normalizeAnalysisShape(analysis)
   const matchedLabels = ats.matchedSkills.map(item => item.required_skill)
   const missingLabels = ats.missingSkills
 
@@ -644,10 +713,13 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
     if (!Number.isFinite(aiSemantic)) merged.confidence = { ...(merged.confidence || {}), level: 'low' }
   }
 
-  // Path-to-interview simulator: only attach when the keyword signal is trustworthy, so
-  // the projected scores reflect the same number the user actually sees.
-  if (ats.keywordSignalReliable && ats.missingSkills.length) {
-    merged.improvement_plan = simulateImprovements(ats)
+  // Path-to-interview simulator + transparent breakdown: only attach when the keyword
+  // signal is trustworthy, so projections and the breakdown reflect the number shown.
+  if (ats.keywordSignalReliable) {
+    if (ats.missingSkills.length) merged.improvement_plan = simulateImprovements(ats)
+    merged.score_breakdown = ats.scoreBreakdown
+    merged.score_penalty = ats.criticalGapPenalty
+    merged.score_explanation = ats.scoreExplanation
   }
 
   return merged
