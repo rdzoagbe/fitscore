@@ -27,6 +27,70 @@ const TECH_PATTERNS = [
   'react','next.js','typescript','javascript','node.js','python','postgres','supabase','stripe','vercel','tailwind','firebase','graphql','rest api','html','css'
 ]
 
+// Multilingual skill lexicon: a canonical (normalized, English) skill mapped to its
+// surface forms across languages. Forms are matched as substrings after normalization
+// (accents stripped, lowercased), so a French job's "gestion de projet" and an English
+// CV's "project management" both resolve to the canonical "project management". This
+// makes cross-language extraction AND matching reliable instead of merely deferred.
+const SKILL_LEXICON = [
+  ['project management', ['project management','gestion de projet','gestion de projets','conduite de projet','gestion de proyectos','projektmanagement','gestao de projetos','gestione progetti','projectmanagement']],
+  ['program management', ['program management','gestion de programme','gestion de programa','programmmanagement']],
+  ['team management', ['team management','people management','gestion d equipe','management d equipe','encadrement d equipe','encadrement','gestion de equipos','teamfuhrung','gestao de equipe','gestione del team','teammanagement']],
+  ['leadership', ['leadership','liderazgo','lideranca','fuhrung','leiderschap']],
+  ['communication', ['communication','comunicacion','kommunikation','comunicacao','comunicazione','communicatie']],
+  ['customer relationship', ['customer relationship','relation client','relation clients','gestion de la relation client','customer relationship management','crm','atencion al cliente','relacion con el cliente','kundenbeziehung','relacionamento com o cliente']],
+  ['customer service', ['customer service','service client','service clients','servicio al cliente','kundenservice','atendimento ao cliente','assistenza clienti','klantenservice']],
+  ['sales', ['sales','vente','ventes','ventas','vertrieb','vendas','vendite','verkoop']],
+  ['business development', ['business development','developpement commercial','developpement des affaires','desarrollo de negocio','geschaftsentwicklung','desenvolvimento de negocios','sviluppo commerciale']],
+  ['marketing', ['marketing','mercadeo','mercadotecnia']],
+  ['digital marketing', ['digital marketing','marketing digital','marketing numerique','digitales marketing']],
+  ['accounting', ['accounting','comptabilite','contabilidad','buchhaltung','contabilidade','contabilita','boekhouding']],
+  ['finance', ['finance','finanzas','finanzen','financas','financa','finanza','financien']],
+  ['budget management', ['budget management','gestion budgetaire','gestion du budget','gestion de presupuesto','budgetverwaltung','gestao orcamentaria']],
+  ['profit and loss management', ['profit and loss','p l management','p l ownership','compte de resultat','perdidas y ganancias','gewinn und verlust','demonstracao de resultados']],
+  ['human resources', ['human resources','ressources humaines','recursos humanos','personalwesen','risorse umane','personeelszaken']],
+  ['recruitment', ['recruitment','recruiting','recrutement','reclutamiento','rekrutierung','recrutamento','reclutamento','werving']],
+  ['training', ['training','formation','formacion','schulung','formacao','formazione','opleiding']],
+  ['negotiation', ['negotiation','negociation','negociacion','verhandlung','negociacao','negoziazione','onderhandeling']],
+  ['problem solving', ['problem solving','resolution de problemes','resolucion de problemas','problemlosung','resolucao de problemas','problem-solving','probleemoplossing']],
+  ['data analysis', ['data analysis','analyse de donnees','analisis de datos','datenanalyse','analise de dados','analisi dei dati','data-analyse']],
+  ['strategy', ['strategy','strategie','estrategia','strategia']],
+  ['consulting', ['consulting','conseil','consultoria','beratung','consulenza','advies']],
+  ['digital transformation', ['digital transformation','transformation digitale','transformation numerique','transformacion digital','digitale transformation','transformacao digital','trasformazione digitale','digitale transformatie']],
+  ['agile', ['agile','agil','methode agile','metodologia agil','metodo agile']],
+  ['scrum', ['scrum']],
+  ['software development', ['software development','developpement logiciel','desarrollo de software','softwareentwicklung','desenvolvimento de software','sviluppo software','softwareontwikkeling']],
+  ['web development', ['web development','developpement web','desarrollo web','webentwicklung','desenvolvimento web','sviluppo web','webontwikkeling']],
+  ['quality assurance', ['quality assurance','assurance qualite','controle qualite','aseguramiento de la calidad','qualitatssicherung','garantia de qualidade','controllo qualita']],
+  ['supply chain', ['supply chain','chaine d approvisionnement','chaine logistique','cadena de suministro','lieferkette','cadeia de suprimentos','catena di fornitura','toeleveringsketen']],
+  ['logistics', ['logistics','logistique','logistica','logistik','logistiek']],
+  ['procurement', ['procurement','purchasing','achats','approvisionnement','compras','einkauf','beschaffung','acquisti','inkoop']],
+  ['audit', ['audit','auditoria','auditing','wirtschaftsprufung']],
+  ['reporting', ['reporting','reportes','informes','berichterstattung','relatorios','rapportage']],
+  ['teamwork', ['teamwork','travail d equipe','travail en equipe','trabajo en equipo','teamarbeit','trabalho em equipe','lavoro di squadra','samenwerking']],
+  ['autonomy', ['autonomy','autonomie','autonomia']],
+  ['project planning', ['project planning','planification','planificacion','planejamento','pianificazione','planung']],
+  ['risk management', ['risk management','gestion des risques','gestion de riesgos','risikomanagement','gestao de riscos','gestione del rischio','risicomanagement']],
+  ['change management', ['change management','conduite du changement','gestion du changement','gestion del cambio','anderungsmanagement','gestao da mudanca','gestione del cambiamento','verandermanagement']],
+  ['product management', ['product management','gestion de produit','gestion de producto','produktmanagement','gestao de produto','product owner']],
+  ['stakeholder management', ['stakeholder management','gestion des parties prenantes','gestion de partes interesadas','stakeholdermanagement']],
+  ['presentation', ['presentation','presentaciones','prasentation','apresentacao','presentazione','presentatie']],
+  ['business analysis', ['business analysis','analyse metier','analyse fonctionnelle','analisis de negocio','geschaftsanalyse','analise de negocios']],
+  ['account management', ['account management','gestion de comptes','gestion de cuentas','kundenbetreuung','gestao de contas','gestione clienti']],
+  ['pre-sales', ['pre-sales','presales','avant-vente','preventa','vorverkauf','prevendita']],
+  ['mentoring', ['mentoring','mentorat','mentoria','mentoring']],
+  ['process improvement', ['process improvement','amelioration des processus','mejora de procesos','prozessverbesserung','melhoria de processos','miglioramento dei processi']],
+  ['compliance', ['compliance','conformite','cumplimiento','conformidade','conformita','naleving']]
+]
+
+// All language-neutral canonical skills (tech + multilingual lexicon). A required
+// skill that maps to one of these is "known" — trustworthy regardless of the job's
+// language — versus a raw prose n-gram guessed out of a sentence.
+const KNOWN_CANONICAL_SKILLS = new Set([
+  ...TECH_PATTERNS.map(term => term),
+  ...SKILL_LEXICON.map(([canonical]) => canonical)
+])
+
 const PAGE_NOISE_PATTERNS = [
   'sign in','sign up','sign in to','sign in to continue','continue to join','join now','join linkedin','authwall','login','log in','create account','privacy policy','cookie policy','cookies policy','user agreement','terms of service','terms and conditions','community of','jobs people learning','skip to main content','open app','download app','followers','connections','1 week ago','2 weeks ago','3 weeks ago','posted on','promoted','save job','show more','show less','see who','applicants','be among the first','share this job','copy link','of madrid spain','madrid community of'
 ]
@@ -102,7 +166,22 @@ function canonicalSkill(term = '') {
   for (const [canonical, synonyms] of SKILL_SYNONYMS) {
     if (normalized === canonical || synonyms.some(syn => normalized === normalizeText(syn))) return canonical
   }
+  for (const [canonical, forms] of SKILL_LEXICON) {
+    if (normalized === canonical || forms.some(form => normalized === normalizeText(form))) return canonical
+  }
   return normalized
+}
+
+// Find which canonical lexicon skills appear in the text, in any supported language.
+// Used alongside TECH_PATTERNS so multilingual business/soft skills extract cleanly
+// instead of leaking through as prose fragments.
+function lexiconSkillsIn(text = '') {
+  const padded = ` ${normalizeText(text)} `
+  const found = []
+  for (const [canonical, forms] of SKILL_LEXICON) {
+    if (forms.some(form => padded.includes(` ${normalizeText(form)} `))) found.push(canonical)
+  }
+  return found
 }
 
 function isNoiseTerm(term = '') {
@@ -124,6 +203,13 @@ function containsTerm(text, term) {
   for (const [canonical, synonyms] of SKILL_SYNONYMS) {
     if (normalizedTerm === canonical || synonyms.some(syn => normalizedTerm === normalizeText(syn))) {
       terms.push(canonical, ...synonyms.map(normalizeText))
+    }
+  }
+  // Cross-language equivalence: matching a canonical skill should match any of its
+  // surface forms in the text, so an English required skill hits a French CV (or vice versa).
+  for (const [canonical, forms] of SKILL_LEXICON) {
+    if (normalizedTerm === canonical || forms.some(form => normalizedTerm === normalizeText(form))) {
+      terms.push(canonical, ...forms.map(normalizeText))
     }
   }
   return unique(terms).some(candidate => normalizedText.includes(` ${candidate} `) || normalizedText.includes(candidate))
@@ -204,6 +290,7 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
 export function extractSkillTerms(text = '', limit = 18) {
   const normalized = normalizeText(text)
   const foundPatterns = TECH_PATTERNS.filter(term => containsTerm(normalized, term))
+  const foundLexicon = lexiconSkillsIn(normalized)
   // A bigram/trigram only counts as a candidate skill if every word in it is meaningful —
   // a single function word ("of", "we need an", "experience with active") makes the whole
   // n-gram a sentence fragment, not a skill, even though not *all* of its words are stopwords.
@@ -215,12 +302,19 @@ export function extractSkillTerms(text = '', limit = 18) {
     .filter(term => term.split(' ').every(word => /[a-z0-9]/.test(word)))
     .filter(term => !term.split(' ').some(part => COMMON_STOPWORDS.has(part)))
 
+  // Known canonical skills (tech + multilingual lexicon) are clean, language-neutral,
+  // and matchable across languages. Raw phrase n-grams are noisy guesses from prose, so
+  // once we have a solid set of known skills we drop the fragments entirely; only when
+  // known coverage is thin do we fall back to phrases to avoid returning nothing.
+  const knownFound = unique([...foundPatterns, ...foundLexicon].map(canonicalSkill))
+  const candidates = knownFound.length >= 5 ? [...foundPatterns, ...foundLexicon] : [...foundPatterns, ...foundLexicon, ...phraseMatches]
+
   const scored = new Map()
-  for (const term of [...foundPatterns, ...phraseMatches]) {
+  for (const term of candidates) {
     const canonical = canonicalSkill(term)
     if (!canonical || isNoiseTerm(canonical) || COMMON_STOPWORDS.has(canonical)) continue
-    const isKnownTech = TECH_PATTERNS.some(pattern => canonicalSkill(pattern) === canonical)
-    const score = (scored.get(canonical) || 0) + (isKnownTech ? 5 : canonical.includes(' ') ? 2 : 1)
+    const isKnown = KNOWN_CANONICAL_SKILLS.has(canonical)
+    const score = (scored.get(canonical) || 0) + (isKnown ? 5 : canonical.includes(' ') ? 2 : 1)
     scored.set(canonical, score)
   }
 
@@ -232,7 +326,7 @@ export function extractSkillTerms(text = '', limit = 18) {
 
 export function estimateYears(text = '') {
   const normalized = normalizeText(text)
-  const explicit = [...normalized.matchAll(/(\d{1,2})\s*\+?\s*(?:years|ans|annees|années)/g)]
+  const explicit = [...normalized.matchAll(/(\d{1,2})\s*\+?\s*(?:years|ans|annees|anos|jahre|anni|jaar)/g)]
     .map(match => Number.parseInt(match[1], 10))
     .filter(Number.isFinite)
   if (explicit.length) return Math.max(...explicit)
@@ -302,11 +396,12 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
   const jobLang = detectTextLanguage(jobText)
   const cvLang = detectTextLanguage(cvText)
   const languageMismatch = jobLang.code !== 'unknown' && cvLang.code !== 'unknown' && jobLang.code !== cvLang.code
-  const realSkillCount = requiredSkills.filter(skill =>
-    TECH_PATTERNS.some(pattern => canonicalSkill(pattern) === canonicalSkill(skill)) ||
-    (!skill.includes(' ') && skill.length >= 3)
-  ).length
-  const keywordSignalReliable = !languageMismatch && realSkillCount >= 3
+  // The multilingual lexicon resolves skills to language-neutral canonicals, so a
+  // cross-language job/CV pair is still trustworthy as long as enough required skills
+  // map to known canonical skills. Only when too few do (mostly prose fragments) is the
+  // keyword signal unreliable and the caller should defer to the AI's semantic read.
+  const knownSkillCount = requiredSkills.filter(skill => KNOWN_CANONICAL_SKILLS.has(canonicalSkill(skill))).length
+  const keywordSignalReliable = knownSkillCount >= 3
 
   // match_probability reflects interview chances rather than ATS keyword passthrough,
   // so it leans more on experience/seniority fit and less on raw keyword density.
