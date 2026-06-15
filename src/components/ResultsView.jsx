@@ -104,6 +104,45 @@ function SummaryCard({ title, children }) {
   )
 }
 
+function ScoreMathCard({ breakdown, penalty, explanation, total }) {
+  if (!Array.isArray(breakdown) || !breakdown.length) return null
+  const score = safeScore(total, 0)
+  return (
+    <section style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: 18, background: 'rgba(255,255,255,0.5)', marginTop: 14 }}>
+      <h3 style={{ margin: '0 0 4px', color: premium.navy, fontSize: 15, fontWeight: 950 }}>How this score is calculated</h3>
+      {explanation && <p style={{ margin: '0 0 12px', color: premium.muted, fontSize: 12.5, lineHeight: 1.55 }}>{explanation}</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {breakdown.map(factor => {
+          const sub = safeScore(factor.score, 0)
+          const tone = scoreTone(sub)
+          return (
+            <div key={factor.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <span style={{ color: premium.navy, fontSize: 12.5, fontWeight: 700 }}>{factor.label}</span>
+                  <span style={{ color: premium.muted, fontSize: 11.5 }}>{sub}% × {factor.weight}% = <strong style={{ color: premium.navy }}>{factor.points}</strong> pts</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 4, background: 'rgba(16,24,43,0.08)', overflow: 'hidden' }}>
+                  <div style={{ width: `${sub}%`, height: '100%', background: tone }} />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {penalty > 0 && (
+        <p style={{ margin: '10px 0 0', color: premium.red, fontSize: 12 }}>
+          − {penalty} pts penalty for missing several critical skills
+        </p>
+      )}
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${premium.line}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: premium.navy, fontSize: 13, fontWeight: 950 }}>Final ATS score</span>
+        <strong style={{ color: scoreTone(score), fontSize: 18 }}>{score}%</strong>
+      </div>
+    </section>
+  )
+}
+
 function ImprovementPlanCard({ plan }) {
   if (!plan || !Array.isArray(plan.addressable_skills) || !plan.addressable_skills.length) return null
   const current = safeScore(plan.current_score, 0)
@@ -359,6 +398,7 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
         <SummaryCard title="Requirements missing"><BulletList items={unmet} tone="bad" empty="No missing requirements detected." max={5} /></SummaryCard>
       </div>
 
+      <ScoreMathCard breakdown={data.score_breakdown} penalty={data.score_penalty} explanation={data.score_explanation} total={data.display_score} />
       <ImprovementPlanCard plan={data.improvement_plan} />
     </section>
   )

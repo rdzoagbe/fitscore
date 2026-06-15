@@ -7,6 +7,7 @@ import {
   buildDeterministicAts,
   applyDeterministicAts,
   simulateImprovements,
+  normalizeAnalysisShape,
   validateJobTextQuality
 } from './ats-deterministic.js'
 
@@ -151,6 +152,39 @@ test('applyDeterministicAts attaches an improvement plan with a path to intervie
   if (merged.improvement_plan.to_interview) {
     assert.ok('reachable' in merged.improvement_plan.to_interview)
   }
+})
+
+test('normalizeAnalysisShape fills a complete shape from empty/partial/garbage input', () => {
+  for (const input of [null, undefined, {}, { job_summary: 123, quick_wins: 'nope' }, 'string']) {
+    const a = normalizeAnalysisShape(input)
+    assert.equal(typeof a.job_context, 'object')
+    assert.equal(typeof a.job_context.title, 'string')
+    assert.ok(Array.isArray(a.quick_wins))
+    assert.ok(Array.isArray(a.red_flags))
+    assert.equal(typeof a.recruiter_shortlist, 'object')
+    assert.equal(typeof a.interview_prep, 'object')
+    assert.ok(Array.isArray(a.interview_prep.likely_questions))
+    assert.equal(typeof a.job_summary, 'string')
+  }
+})
+
+test('normalizeAnalysisShape preserves valid AI values', () => {
+  const a = normalizeAnalysisShape({ job_summary: 'Great role', quick_wins: ['x'], job_context: { title: 'Engineer' } })
+  assert.equal(a.job_summary, 'Great role')
+  assert.deepEqual(a.quick_wins, ['x'])
+  assert.equal(a.job_context.title, 'Engineer')
+  assert.equal(a.job_context.company, 'Not specified') // default filled
+})
+
+test('applyDeterministicAts exposes a score breakdown that explains the number', () => {
+  const cv = 'Senior DevOps engineer, 7 years. AWS, Kubernetes, Docker, Terraform, Python, CI/CD, monitoring, security.'
+  const merged = applyDeterministicAts({}, EN_DEVOPS_JOB, cv)
+  assert.ok(Array.isArray(merged.score_breakdown))
+  const totalPoints = merged.score_breakdown.reduce((sum, f) => sum + f.points, 0) - (merged.score_penalty || 0)
+  // breakdown points (minus penalty) should land within rounding of the display score
+  assert.ok(Math.abs(totalPoints - merged.display_score) <= 2, `breakdown ${totalPoints} vs score ${merged.display_score}`)
+  assert.equal(typeof merged.score_explanation, 'string')
+  assert.ok(merged.score_explanation.length > 0)
 })
 
 test('validateJobTextQuality blocks an anti-bot / login wall page', () => {
