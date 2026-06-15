@@ -122,7 +122,7 @@ function ScoreBreakdownCard({ label, score, helper, color }) {
   )
 }
 
-function LanguageMismatchBanner({ languageCheck }) {
+function LanguageMismatchBanner({ languageCheck, onReset }) {
   if (!languageCheck?.mismatch) return null
   const jobLabel = languageCheck.job?.label
   const cvLabel = languageCheck.cv?.label
@@ -134,8 +134,21 @@ function LanguageMismatchBanner({ languageCheck }) {
       <div>
         <p style={{ fontSize: 10, fontWeight: 900, color: premium.gold, letterSpacing: '0.10em', textTransform: 'uppercase', marginBottom: 6 }}>Language mismatch detected</p>
         <p style={{ fontSize: 12, color: premium.muted, lineHeight: 1.5, margin: 0 }}>
-          This job offer looks like it's written in {jobLabel}, but your CV looks like it's in {cvLabel}. Keyword matching is language-sensitive, so this score may be less accurate. For a more reliable result, try re-running the analysis with a {jobLabel} version of your CV.
+          This job offer looks like it's written in {jobLabel}, but your CV looks like it's in {cvLabel}. Keyword matching is language-sensitive, so this score may be less accurate. For a more reliable result, re-run the analysis with a {jobLabel} version of your CV.
         </p>
+        {onReset && (
+          <button
+            type="button"
+            onClick={onReset}
+            style={{
+              marginTop: 10, padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
+              border: `1px solid ${premium.gold}`, background: 'rgba(185,134,59,0.12)',
+              color: premium.gold, fontSize: 11.5, fontWeight: 800, letterSpacing: '0.02em'
+            }}
+          >
+            Analyze with a {jobLabel} CV →
+          </button>
+        )}
       </div>
     </div>
   )
@@ -337,7 +350,7 @@ export default function ResultsView({ data, savedRow: serverSavedRow, rateLimit,
       <LimitedAnalysisBanner data={data} onReset={onReset} />
       <SelectedAnalysisSummary data={data} savedRow={analysisRow || serverSavedRow} t={t} />
       <JobDetailsCard data={data} />
-      <LanguageMismatchBanner languageCheck={data.language_check} />
+      <LanguageMismatchBanner languageCheck={data.language_check} onReset={onReset} />
       <WaitlistBanner rateLimit={rateLimit} />
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, padding: '0 4px', gap: 8, flexWrap: 'wrap' }}>
