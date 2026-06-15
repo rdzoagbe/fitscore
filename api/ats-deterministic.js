@@ -289,33 +289,19 @@ export function validateJobTextQuality(jobText = '', { source = 'paste', url = '
 
 export function extractSkillTerms(text = '', limit = 18) {
   const normalized = normalizeText(text)
+  // Only recognized, canonical skills are returned: known tech (TECH_PATTERNS) and the
+  // multilingual lexicon. We deliberately do NOT guess skills from raw prose n-grams —
+  // those produced misleading junk like "technology -strategy" or "v beta t" in any
+  // language. A clean short list beats a noisy long one; recall is grown by the lexicon
+  // (and the AI step), not by scraping sentence fragments.
   const foundPatterns = TECH_PATTERNS.filter(term => containsTerm(normalized, term))
   const foundLexicon = lexiconSkillsIn(normalized)
-  // A bigram/trigram only counts as a candidate skill if every word in it is meaningful —
-  // a single function word ("of", "we need an", "experience with active") makes the whole
-  // n-gram a sentence fragment, not a skill, even though not *all* of its words are stopwords.
-  const phraseMatches = [...normalized.matchAll(/\b(?:[a-z0-9+#.-]+\s+){0,2}[a-z0-9+#.-]+\b/g)]
-    .map(match => match[0].trim())
-    .filter(term => term.length >= 3 && term.length <= 35)
-    .filter(term => !isNoiseTerm(term))
-    .filter(term => !COMMON_STOPWORDS.has(term))
-    .filter(term => term.split(' ').every(word => /[a-z0-9]/.test(word)))
-    .filter(term => !term.split(' ').some(part => COMMON_STOPWORDS.has(part)))
-
-  // Known canonical skills (tech + multilingual lexicon) are clean, language-neutral,
-  // and matchable across languages. Raw phrase n-grams are noisy guesses from prose, so
-  // once we have a solid set of known skills we drop the fragments entirely; only when
-  // known coverage is thin do we fall back to phrases to avoid returning nothing.
-  const knownFound = unique([...foundPatterns, ...foundLexicon].map(canonicalSkill))
-  const candidates = knownFound.length >= 5 ? [...foundPatterns, ...foundLexicon] : [...foundPatterns, ...foundLexicon, ...phraseMatches]
 
   const scored = new Map()
-  for (const term of candidates) {
+  for (const term of [...foundPatterns, ...foundLexicon]) {
     const canonical = canonicalSkill(term)
     if (!canonical || isNoiseTerm(canonical) || COMMON_STOPWORDS.has(canonical)) continue
-    const isKnown = KNOWN_CANONICAL_SKILLS.has(canonical)
-    const score = (scored.get(canonical) || 0) + (isKnown ? 5 : canonical.includes(' ') ? 2 : 1)
-    scored.set(canonical, score)
+    scored.set(canonical, (scored.get(canonical) || 0) + 1)
   }
 
   return [...scored.entries()]
@@ -531,11 +517,9 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
     merged.display_score = Math.max(0, Math.min(100, deferred))
     merged.match_probability = Number.isFinite(aiRecruiter) && aiRecruiter > 0 ? Math.round(aiRecruiter) : merged.display_score
     merged.overall_verdict = merged.display_score >= 75 ? 'likely_passed' : merged.display_score >= 55 ? 'borderline' : 'likely_filtered'
-    // The keyword/missing lists are unreliable, so don't present them as critical gaps.
-    merged.keyword_match = { ...merged.keyword_match, missing_required: [] }
-    merged.keywords_analysis = { ...merged.keywords_analysis, missing_keywords: [] }
-    merged.gaps_to_address = (analysis?.gaps_to_address || []).slice(0, 8)
-    merged.quick_wins = (analysis?.quick_wins || []).slice(0, 6)
+    // Extraction only ever yields recognized canonical skills now, so the missing list
+    // (if any) is clean and genuinely useful guidance — keep it rather than blanking it.
+    // The score is still deferred and confidence lowered because keyword *coverage* is thin.
     if (!Number.isFinite(aiSemantic)) merged.confidence = { ...(merged.confidence || {}), level: 'low' }
   }
 
