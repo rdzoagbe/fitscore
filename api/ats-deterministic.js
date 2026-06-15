@@ -410,6 +410,78 @@ function scoreSeniority(candidateYears, requiredYears) {
   return 25
 }
 
+// Pure scoring math, shared by the live score and the improvement simulator so a
+// "what if I add this skill" projection uses the exact same formula as the real score.
+function computeAtsScores(matchedCount, requiredCount, missingCount, experienceScore, seniorityScore) {
+  const clamp = value => Math.max(0, Math.min(100, Math.round(value)))
+  const keywordScore = requiredCount ? Math.round((matchedCount / requiredCount) * 100) : 50
+  const semanticScore = Math.round((keywordScore * 0.65) + (experienceScore * 0.35))
+  const criticalGapPenalty = Math.min(20, Math.min(Math.max(0, missingCount), 4) * 5)
+  const displayScore = clamp(
+    keywordScore * 0.35 +
+    experienceScore * 0.30 +
+    semanticScore * 0.20 +
+    seniorityScore * 0.10 +
+    70 * 0.05 -
+    criticalGapPenalty
+  )
+  const matchProbability = clamp(
+    keywordScore * 0.20 +
+    experienceScore * 0.30 +
+    semanticScore * 0.25 +
+    seniorityScore * 0.25 -
+    criticalGapPenalty * 0.5
+  )
+  const verdict = displayScore >= 75 ? 'likely_passed' : displayScore >= 55 ? 'borderline' : 'likely_filtered'
+  return { keywordScore, semanticScore, criticalGapPenalty, displayScore, matchProbability, verdict }
+}
+
+// Borderline = considered by an ATS/recruiter; interview = comfortably passes the filter.
+const CONSIDERED_THRESHOLD = 55
+const INTERVIEW_THRESHOLD = 75
+
+// Project how the score would move if the candidate evidenced the missing skills, using
+// the real scoring formula. The engine weights all skills equally, so we don't fake
+// per-skill rankings; instead we report the cumulative path and how many skills are
+// needed to cross each threshold — and honestly flag when skills alone can't get there
+// (because the remaining gap is experience/seniority, not keywords).
+export function simulateImprovements(ats) {
+  const requiredCount = ats.requiredSkills.length
+  const baseMatched = ats.matchedSkills.length
+  const baseMissing = ats.missingSkills.length
+  const current = ats.displayScore
+  if (!requiredCount || baseMissing === 0) {
+    return { current_score: current, addressable_skills: [], per_skill_points: 0, max_projected_score: current, to_considered: null, to_interview: null }
+  }
+
+  // Cumulative path: evidence missing skills one at a time, recomputing each step.
+  const ordered = [...ats.missingSkills]
+  const cumulative = ordered.map((skill, index) => {
+    const added = index + 1
+    const s = computeAtsScores(baseMatched + added, requiredCount, baseMissing - added, ats.experienceScore, ats.seniorityScore)
+    return { skill, skills_addressed: added, projected_score: s.displayScore, verdict: s.verdict }
+  })
+  const maxProjected = cumulative[cumulative.length - 1].projected_score
+  const firstStepGain = Math.max(0, cumulative[0].projected_score - current)
+
+  const reach = threshold => {
+    if (current >= threshold) return null
+    const hit = cumulative.find(step => step.projected_score >= threshold)
+    return hit
+      ? { reachable: true, skills_needed: hit.skills_addressed, projected_score: hit.projected_score, skills: ordered.slice(0, hit.skills_addressed) }
+      : { reachable: false, projected_score: maxProjected }
+  }
+
+  return {
+    current_score: current,
+    addressable_skills: ordered,
+    per_skill_points: firstStepGain,
+    max_projected_score: maxProjected,
+    to_considered: reach(CONSIDERED_THRESHOLD),
+    to_interview: reach(INTERVIEW_THRESHOLD)
+  }
+}
+
 export function buildDeterministicAts(jobText = '', cvText = '') {
   const requiredSkills = extractSkillTerms(jobText, 22)
   const candidateSkills = extractSkillTerms(cvText, 40)
@@ -422,23 +494,12 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
     else missing.push(required)
   }
 
-  const keywordScore = requiredSkills.length ? Math.round((matched.length / requiredSkills.length) * 100) : 50
   const candidateYears = estimateYears(cvText)
   const requiredYears = estimateYears(jobText)
   const experienceScore = scoreExperience(candidateYears, requiredYears)
   const seniorityScore = scoreSeniority(candidateYears, requiredYears)
-  const semanticScore = Math.round((keywordScore * 0.65) + (experienceScore * 0.35))
-  const criticalGapPenalty = Math.min(20, missing.slice(0, 4).length * 5)
-  const displayScore = Math.max(0, Math.min(100, Math.round(
-    keywordScore * 0.35 +
-    experienceScore * 0.30 +
-    semanticScore * 0.20 +
-    seniorityScore * 0.10 +
-    70 * 0.05 -
-    criticalGapPenalty
-  )))
-
-  const verdict = displayScore >= 75 ? 'likely_passed' : displayScore >= 55 ? 'borderline' : 'likely_filtered'
+  const scores = computeAtsScores(matched.length, requiredSkills.length, missing.length, experienceScore, seniorityScore)
+  const { keywordScore, semanticScore, displayScore, verdict } = scores
 
   // Decide whether the keyword overlap is trustworthy enough to drive the headline
   // score. It is NOT when the job and CV are in different languages (literal matching
@@ -457,13 +518,7 @@ export function buildDeterministicAts(jobText = '', cvText = '') {
 
   // match_probability reflects interview chances rather than ATS keyword passthrough,
   // so it leans more on experience/seniority fit and less on raw keyword density.
-  const matchProbability = Math.max(0, Math.min(100, Math.round(
-    keywordScore * 0.20 +
-    experienceScore * 0.30 +
-    semanticScore * 0.25 +
-    seniorityScore * 0.25 -
-    criticalGapPenalty * 0.5
-  )))
+  const matchProbability = scores.matchProbability
 
   return {
     deterministic: true,
@@ -587,6 +642,12 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
     // (if any) is clean and genuinely useful guidance — keep it rather than blanking it.
     // The score is still deferred and confidence lowered because keyword *coverage* is thin.
     if (!Number.isFinite(aiSemantic)) merged.confidence = { ...(merged.confidence || {}), level: 'low' }
+  }
+
+  // Path-to-interview simulator: only attach when the keyword signal is trustworthy, so
+  // the projected scores reflect the same number the user actually sees.
+  if (ats.keywordSignalReliable && ats.missingSkills.length) {
+    merged.improvement_plan = simulateImprovements(ats)
   }
 
   return merged
