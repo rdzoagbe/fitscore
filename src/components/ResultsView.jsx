@@ -104,6 +104,69 @@ function SummaryCard({ title, children }) {
   )
 }
 
+function ImprovementPlanCard({ plan }) {
+  if (!plan || !Array.isArray(plan.addressable_skills) || !plan.addressable_skills.length) return null
+  const current = safeScore(plan.current_score, 0)
+  const considered = plan.to_considered
+  const interview = plan.to_interview
+  const alreadyInterview = !interview // null means already at/above the interview threshold
+
+  const Step = ({ tone, label, target, info }) => (
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0', borderTop: `1px solid ${premium.line}` }}>
+      <div style={{ width: 52, flexShrink: 0, textAlign: 'center' }}>
+        <strong style={{ color: tone, fontSize: 18 }}>{target}</strong>
+        <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: premium.muted }}>target</div>
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: '0 0 3px', color: premium.navy, fontSize: 13, fontWeight: 800 }}>{label}</p>
+        <p style={{ margin: 0, color: premium.muted, fontSize: 12, lineHeight: 1.5 }}>{info}</p>
+      </div>
+    </div>
+  )
+
+  const skillList = skills => skills.map(s => <Tag key={`plan-${s}`} label={s} type="missing" />)
+
+  return (
+    <section style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: 18, background: premium.copperSoft, marginTop: 14 }}>
+      <h3 style={{ margin: '0 0 4px', color: premium.navy, fontSize: 15, fontWeight: 950 }}>Your path to an interview</h3>
+      <p style={{ margin: '0 0 6px', color: premium.muted, fontSize: 12.5, lineHeight: 1.55 }}>
+        You're at <strong style={{ color: premium.navy }}>{current}%</strong> today. Here's what evidencing more of the role's skills on your CV would do to your score — using the same scoring engine, so these projections are real.
+      </p>
+
+      {considered && considered.reachable && (
+        <Step tone={premium.gold} target={`${considered.projected_score}%`}
+          label={`Get considered — evidence ${considered.skills_needed} skill${considered.skills_needed > 1 ? 's' : ''}`}
+          info="Crosses the threshold where an ATS/recruiter is likely to keep reading rather than auto-filter." />
+      )}
+      {interview && interview.reachable && (
+        <Step tone={premium.green} target={`${interview.projected_score}%`}
+          label={`Become interview-likely — evidence ${interview.skills_needed} skill${interview.skills_needed > 1 ? 's' : ''}`}
+          info="Comfortably clears the filter for most ATS-screened roles." />
+      )}
+      {interview && !interview.reachable && (
+        <Step tone={premium.red} target={`~${interview.projected_score}%`}
+          label="Skills alone won't reach interview-likely"
+          info="Even evidencing every missing skill caps out below the interview bar — the remaining gap is depth of experience or seniority for this role, not keywords." />
+      )}
+      {alreadyInterview && (
+        <Step tone={premium.green} target={`${current}%`}
+          label="You're already interview-likely"
+          info="Your score clears the typical ATS filter. Focus on tailoring and interview prep rather than the score." />
+      )}
+
+      <div style={{ marginTop: 12 }}>
+        <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 850, letterSpacing: '0.05em', textTransform: 'uppercase', color: premium.copper }}>
+          Skills to evidence (only if you genuinely have them)
+        </p>
+        <div>{skillList(plan.addressable_skills.slice(0, 10))}</div>
+        <p style={{ margin: '8px 0 0', fontSize: 11.5, color: premium.muted, lineHeight: 1.5, fontStyle: 'italic' }}>
+          Add concrete proof — projects, results, tools used — for any of these you've actually done. Never claim skills you don't have; recruiters verify in interviews.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function ScoreBreakdownCard({ label, score, helper, color }) {
   const s = safeScore(score, 0)
   const tone = color || scoreTone(s)
@@ -295,6 +358,8 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
         <SummaryCard title="Requirements met"><BulletList items={met} tone="good" empty="No met requirements returned." max={5} /></SummaryCard>
         <SummaryCard title="Requirements missing"><BulletList items={unmet} tone="bad" empty="No missing requirements detected." max={5} /></SummaryCard>
       </div>
+
+      <ImprovementPlanCard plan={data.improvement_plan} />
     </section>
   )
 }

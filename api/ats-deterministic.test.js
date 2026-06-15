@@ -6,6 +6,7 @@ import {
   estimateYears,
   buildDeterministicAts,
   applyDeterministicAts,
+  simulateImprovements,
   validateJobTextQuality
 } from './ats-deterministic.js'
 
@@ -124,6 +125,31 @@ test('extractSkillTerms covers additional industries and languages', () => {
   const mktEs = 'Buscamos experiencia en marketing de contenidos, redes sociales, investigacion de mercado y optimizacion de motores de busqueda.'
   for (const expected of ['content marketing', 'social media', 'market research', 'seo']) {
     assert.ok(extractSkillTerms(mktEs).includes(expected), `${expected} in ${JSON.stringify(extractSkillTerms(mktEs))}`)
+  }
+})
+
+test('simulateImprovements projects a higher score as missing skills are addressed', () => {
+  const job = EN_DEVOPS_JOB
+  // A partial CV missing several of the job's skills, leaving headroom to improve.
+  const cv = 'Junior engineer with 5 years experience. I have used AWS and Python and some Docker.'
+  const ats = buildDeterministicAts(job, cv)
+  assert.ok(ats.missingSkills.length > 0)
+  const plan = simulateImprovements(ats)
+  assert.equal(plan.current_score, ats.displayScore)
+  // Evidencing every missing skill should not lower the score, and should raise it.
+  assert.ok(plan.max_projected_score >= plan.current_score)
+  assert.ok(plan.max_projected_score > plan.current_score, 'addressing skills should raise the score')
+  assert.deepEqual(plan.addressable_skills.sort(), [...ats.missingSkills].sort())
+})
+
+test('applyDeterministicAts attaches an improvement plan with a path to interview', () => {
+  const cv = 'Mid-level engineer, 5 years. Worked with AWS, Python, Docker.'
+  const merged = applyDeterministicAts({}, EN_DEVOPS_JOB, cv)
+  assert.ok(merged.improvement_plan, 'improvement_plan should be present when signal is reliable')
+  assert.ok(Array.isArray(merged.improvement_plan.addressable_skills))
+  // to_interview is either a reachable plan or an honest "skills alone are not enough"
+  if (merged.improvement_plan.to_interview) {
+    assert.ok('reachable' in merged.improvement_plan.to_interview)
   }
 })
 
