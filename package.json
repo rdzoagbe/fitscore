@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test api/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

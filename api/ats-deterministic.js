@@ -175,11 +175,20 @@ function canonicalSkill(term = '') {
 // Find which canonical lexicon skills appear in the text, in any supported language.
 // Used alongside TECH_PATTERNS so multilingual business/soft skills extract cleanly
 // instead of leaking through as prose fragments.
+function escapeRegExp(value = '') {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 function lexiconSkillsIn(text = '') {
-  const padded = ` ${normalizeText(text)} `
+  const normalized = normalizeText(text)
   const found = []
   for (const [canonical, forms] of SKILL_LEXICON) {
-    if (forms.some(form => padded.includes(` ${normalizeText(form)} `))) found.push(canonical)
+    // Match on alphanumeric word boundaries so adjacent punctuation (e.g. a trailing
+    // "." that normalizeText keeps for tokens like "node.js") doesn't hide a skill.
+    if (forms.some(form => {
+      const f = normalizeText(form)
+      return f && new RegExp(`(^|[^a-z0-9])${escapeRegExp(f)}([^a-z0-9]|$)`).test(normalized)
+    })) found.push(canonical)
   }
   return found
 }
