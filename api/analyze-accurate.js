@@ -282,15 +282,35 @@ function getAnthropicClient() {
 async function runClaudeAnalysis(jobText, cvText) {
   const client = getAnthropicClient()
   if (!client) return {}
-  const message = await client.messages.create({
-    model: DEFAULT_MODEL,
-    max_tokens: 2200,
-    temperature: 0,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: `[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}` }]
-  })
-  const raw = (message.content || []).map(block => block.text || '').join('').trim()
-  return extractJsonObject(raw)
+  const userContent = `[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}`
+
+  // The AI explanation is the difference between a real analysis and a bare
+  // keyword estimate, so make it resilient: retry transient failures and one
+  // malformed-JSON response before giving up to the deterministic fallback.
+  let lastError = null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const message = await client.messages.create(
+        {
+          model: DEFAULT_MODEL,
+          max_tokens: 2200,
+          temperature: 0,
+          system: SYSTEM,
+          messages: [{ role: 'user', content: userContent }]
+        },
+        { timeout: 45000, maxRetries: 0 }
+      )
+      const raw = (message.content || []).map(block => block.text || '').join('').trim()
+      return extractJsonObject(raw)
+    } catch (error) {
+      lastError = error
+      const status = error?.status || error?.statusCode
+      const retryable = !status || status === 408 || status === 429 || status >= 500 || error?.name === 'APIConnectionError' || /malformed json/i.test(error?.message || '')
+      if (!retryable || attempt === 2) break
+      await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)))
+    }
+  }
+  throw lastError || new Error('AI explanation failed')
 }
 
 function fallbackAnalysis(jobText, cvText, jobUrl, reason) {
@@ -300,7 +320,7 @@ function fallbackAnalysis(jobText, cvText, jobUrl, reason) {
     match_reasoning: reason || 'Deterministic scoring applied.',
     recruiter_shortlist: { probability: 0, verdict: 'possible_shortlist', reason: reason || 'Deterministic ATS scoring used.', top_screening_factors: [], likely_recruiter_concerns: [] },
     next_best_action: { action: 'improve_cv_first', label: 'Improve CV alignment', reason: 'Review missing required keywords and evidence.', steps: ['Add truthful missing keywords', 'Add measurable impact', 'Mirror the job wording'] },
-    confidence: { level: 'medium', score: 60, reasons: [reason || 'Deterministic ATS scoring used.'], job_text_quality: jobText.length > 1800 ? 'strong' : 'partial', cv_text_quality: cvText.length > 1200 ? 'strong' : 'partial' },
+    confidence: { level: 'low', score: 45, reasons: [reason || 'Keyword-only estimate — the AI review did not run.'], job_text_quality: jobText.length > 1800 ? 'strong' : 'partial', cv_text_quality: cvText.length > 1200 ? 'strong' : 'partial' },
     semantic_fit: { score: 0, matched_responsibilities: [], weak_or_missing_responsibilities: [], domain_fit: 'moderate', domain_reason: 'Estimated from ATS overlap.' },
     experience_depth: { score: 0, hands_on: 'unclear', leadership: 'unclear', scale: 'unclear', metrics: 'unclear', ownership: 'unclear', proof_summary: 'Review CV evidence against the job requirements.' },
     proof_gaps: [], hidden_expectations: [], red_flags: [], salary_assessment: { specified: false, assessment: 'unknown', comment: 'Salary not assessed.' }, salary_intelligence: null,
