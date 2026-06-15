@@ -115,6 +115,18 @@ test('applyDeterministicAts gives clean, helpful gaps and quick wins', () => {
   assert.ok(merged.quick_wins.length > 0)
 })
 
+test('extractSkillTerms covers additional industries and languages', () => {
+  const dataEn = 'We need machine learning, data science, statistics, SQL and data visualization skills.'
+  for (const expected of ['machine learning', 'data science', 'statistics', 'sql', 'data visualization']) {
+    assert.ok(extractSkillTerms(dataEn).includes(expected), expected)
+  }
+  // Spanish marketing role resolves to canonical English skills
+  const mktEs = 'Buscamos experiencia en marketing de contenidos, redes sociales, investigacion de mercado y optimizacion de motores de busqueda.'
+  for (const expected of ['content marketing', 'social media', 'market research', 'seo']) {
+    assert.ok(extractSkillTerms(mktEs).includes(expected), `${expected} in ${JSON.stringify(extractSkillTerms(mktEs))}`)
+  }
+})
+
 test('validateJobTextQuality blocks an anti-bot / login wall page', () => {
   const result = validateJobTextQuality('Please enable JavaScript and cookies to continue. Sign in to continue.', { source: 'url', url: 'https://www.linkedin.com/jobs/view/123' })
   assert.equal(result.blocked, true)
