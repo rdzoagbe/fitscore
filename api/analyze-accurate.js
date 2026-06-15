@@ -5,6 +5,13 @@ import { applyDeterministicAts, validateJobTextQuality } from './ats-determinist
 
 export const config = { maxDuration: 60 }
 
+// Time budget so the function always returns before maxDuration (avoids 504s). The AI
+// step gets everything up to AI_BUDGET_MS from request start; each call is capped to the
+// remaining time, and we won't start an attempt with less than MIN_AI_ATTEMPT_MS left.
+const AI_BUDGET_MS = 48000
+const MAX_AI_CALL_MS = 40000
+const MIN_AI_ATTEMPT_MS = 9000
+
 const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
@@ -279,16 +286,21 @@ function getAnthropicClient() {
   return new Anthropic({ apiKey: apiKey.trim() })
 }
 
-async function runClaudeAnalysis(jobText, cvText) {
+async function runClaudeAnalysis(jobText, cvText, deadline = Date.now() + AI_BUDGET_MS) {
   const client = getAnthropicClient()
   if (!client) return {}
   const userContent = `[JOB DESCRIPTION]\n${jobText.slice(0, JOB_TEXT_LIMIT)}\n\n[CANDIDATE RESUME]\n${cvText.slice(0, CV_TEXT_LIMIT)}`
 
-  // The AI explanation is the difference between a real analysis and a bare
-  // keyword estimate, so make it resilient: retry transient failures and one
-  // malformed-JSON response before giving up to the deterministic fallback.
+  // The AI explanation is the difference between a real analysis and a bare keyword
+  // estimate, so make it resilient: retry transient failures and one malformed-JSON
+  // response. But never overrun the serverless deadline — each attempt's timeout is
+  // capped to the remaining budget, and we stop retrying once too little time is left,
+  // so the caller can fall back to the deterministic result instead of 504-ing.
   let lastError = null
   for (let attempt = 0; attempt < 3; attempt++) {
+    const remaining = deadline - Date.now()
+    if (remaining < MIN_AI_ATTEMPT_MS) break
+    const callTimeout = Math.min(MAX_AI_CALL_MS, remaining - 1500)
     try {
       const message = await client.messages.create(
         {
@@ -298,7 +310,7 @@ async function runClaudeAnalysis(jobText, cvText) {
           system: SYSTEM,
           messages: [{ role: 'user', content: userContent }]
         },
-        { timeout: 45000, maxRetries: 0 }
+        { timeout: callTimeout, maxRetries: 0 }
       )
       const raw = (message.content || []).map(block => block.text || '').join('').trim()
       return extractJsonObject(raw)
@@ -307,7 +319,10 @@ async function runClaudeAnalysis(jobText, cvText) {
       const status = error?.status || error?.statusCode
       const retryable = !status || status === 408 || status === 429 || status >= 500 || error?.name === 'APIConnectionError' || /malformed json/i.test(error?.message || '')
       if (!retryable || attempt === 2) break
-      await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)))
+      const backoff = 600 * (attempt + 1)
+      // Only retry if a full attempt would still fit inside the budget.
+      if (deadline - Date.now() < backoff + MIN_AI_ATTEMPT_MS) break
+      await new Promise(resolve => setTimeout(resolve, backoff))
     }
   }
   throw lastError || new Error('AI explanation failed')
@@ -333,6 +348,7 @@ function publicError(error) {
 }
 
 export default async function handler(req, res) {
+  const requestStart = Date.now()
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
@@ -371,7 +387,11 @@ export default async function handler(req, res) {
     let aiResult = {}
     let providerError = null
     if (!skipAi) {
-      try { aiResult = await runClaudeAnalysis(jobText, cvText) }
+      // Stay inside the serverless maxDuration: give the AI step whatever time is
+      // left under a safe budget so we always return a (deterministic) result rather
+      // than letting the platform kill the function with a 504.
+      const aiDeadline = requestStart + AI_BUDGET_MS
+      try { aiResult = await runClaudeAnalysis(jobText, cvText, aiDeadline) }
       catch (error) { providerError = { code: error?.code || error?.type || 'AI_EXPLANATION_FAILED', message: error?.message || 'AI explanation failed' } }
     }
 
