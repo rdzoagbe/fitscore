@@ -5,10 +5,10 @@ import { applyDeterministicAts, validateJobTextQuality } from './ats-determinist
 
 export const config = { maxDuration: 60 }
 
-const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
+const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
 const JOB_TEXT_LIMIT = 6000
 const CV_TEXT_LIMIT = 6000
-const CACHE_VERSION = 'ats-v11-jina-first-restore'
+const CACHE_VERSION = 'ats-v12-sonnet'
 
 const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
