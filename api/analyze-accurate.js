@@ -248,6 +248,26 @@ export function linkedInJobId(url) {
   return null
 }
 
+// Pull just the job description (and title/company) out of the LinkedIn guest fragment,
+// dropping the surrounding "Sign in / Join now" chrome that would otherwise look like an
+// anti-bot wall to the quality validator. Returns null when the real description markup
+// isn't present (e.g. LinkedIn served a login wall because it rate-limited us).
+export function parseLinkedInGuestHtml(html = '') {
+  const startIdx = html.search(/show-more-less-html__markup|description__text/i)
+  if (startIdx === -1) return null
+  // From the description container up to the "see more / set job alerts" footer chrome.
+  let body = html.slice(startIdx)
+  body = body.split(/show-more-less-html__button|jobs?-description__footer|sign in to set job alerts|set job alerts/i)[0]
+  const desc = cleanText(body, JOB_TEXT_LIMIT)
+  if (!desc || desc.length < 200) return null
+
+  const pick = re => { const m = html.match(re); return m ? cleanText(m[1] || '', 300).trim() : '' }
+  const title = pick(/<h2[^>]*class="[^"]*top-card-layout__title[^"]*"[^>]*>([\s\S]*?)<\/h2>/i)
+  const company = pick(/<a[^>]*class="[^"]*topcard__org-name-link[^"]*"[^>]*>([\s\S]*?)<\/a>/i)
+  const header = [title && `Job title: ${title}`, company && `Company: ${company}`].filter(Boolean).join('\n')
+  return (header ? `${header}\n\n` : '') + desc
+}
+
 async function fetchLinkedInGuest(jobId) {
   const guestUrl = `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`
   // The guest endpoint returns a public HTML fragment of the posting; try a direct fetch
@@ -262,13 +282,16 @@ async function fetchLinkedInGuest(jobId) {
       redirect: 'follow'
     }, 9000)
     if (res.ok) {
-      const text = cleanText(await res.text(), JOB_TEXT_LIMIT)
-      if (text.length >= 200) return { text, provider: 'linkedin-guest', jinaTarget: guestUrl }
+      const text = parseLinkedInGuestHtml(await res.text())
+      if (text && text.length >= 200) return { text, provider: 'linkedin-guest', jinaTarget: guestUrl }
     }
   } catch {}
   try {
     const viaJina = await fetchViaJina(guestUrl)
-    if (viaJina?.text && viaJina.text.length >= 200) return { ...viaJina, provider: 'linkedin-guest-jina' }
+    // Only trust the Jina markdown if it carries real posting content rather than a wall.
+    const t = viaJina?.text || ''
+    const wallish = /sign in to (view|continue|set job alerts)|join (now|linkedin) to/i.test(t)
+    if (t.length >= 400 && !wallish) return { ...viaJina, provider: 'linkedin-guest-jina' }
   } catch {}
   return null
 }
