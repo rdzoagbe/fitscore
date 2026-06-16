@@ -235,8 +235,61 @@ async function fetchDirectHtml(url) {
   return { text, provider: 'direct-html' }
 }
 
+// Extract the numeric LinkedIn job id from the various URL shapes LinkedIn uses.
+export function linkedInJobId(url) {
+  const s = String(url || '')
+  if (!/(^|\.)linkedin\.[a-z.]+/i.test(s)) return null
+  let m = s.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d{6,})/i)
+  if (m) return m[1]
+  m = s.match(/[?&](?:currentJobId|jobId|refId)=(\d{6,})/i)
+  if (m) return m[1]
+  m = s.match(/\/jobs-guest\/jobs\/api\/jobPosting\/(\d{6,})/i)
+  if (m) return m[1]
+  return null
+}
+
+async function fetchLinkedInGuest(jobId) {
+  const guestUrl = `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}`
+  // The guest endpoint returns a public HTML fragment of the posting; try a direct fetch
+  // first (fast), then fall back to Jina if LinkedIn rate-limits the direct request.
+  try {
+    const res = await fetchWithTimeout(guestUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8'
+      },
+      redirect: 'follow'
+    }, 9000)
+    if (res.ok) {
+      const text = cleanText(await res.text(), JOB_TEXT_LIMIT)
+      if (text.length >= 200) return { text, provider: 'linkedin-guest', jinaTarget: guestUrl }
+    }
+  } catch {}
+  try {
+    const viaJina = await fetchViaJina(guestUrl)
+    if (viaJina?.text && viaJina.text.length >= 200) return { ...viaJina, provider: 'linkedin-guest-jina' }
+  } catch {}
+  return null
+}
+
 async function fetchJobText(url) {
   const attempts = []
+
+  // LinkedIn /jobs/view/ pages are gated behind a login/anti-bot wall, so generic
+  // extraction returns the wall instead of the posting. LinkedIn does expose a public
+  // "guest" job-posting endpoint, so when we recognize a LinkedIn job URL we extract the
+  // numeric job id and fetch that instead.
+  const liJobId = linkedInJobId(url)
+  if (liJobId) {
+    try {
+      const guest = await fetchLinkedInGuest(liJobId)
+      if (guest) return guest
+      attempts.push({ provider: 'linkedin-guest', code: 'LINKEDIN_GUEST_WEAK' })
+    } catch (error) {
+      attempts.push({ provider: 'linkedin-guest', code: error?.code || 'LINKEDIN_GUEST_FAILED', message: error?.message })
+    }
+  }
 
   try {
     return await fetchViaJina(url)
