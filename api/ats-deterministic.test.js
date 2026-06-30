@@ -176,6 +176,33 @@ test('normalizeAnalysisShape preserves valid AI values', () => {
   assert.equal(a.job_context.company, 'Not specified') // default filled
 })
 
+test('applyDeterministicAts back-fills requirements_coverage from the skill match when AI gives none', () => {
+  const cv = 'Mid-level engineer, 5 years. Worked with AWS, Python, Docker.'
+  const merged = applyDeterministicAts({}, EN_DEVOPS_JOB, cv)
+  assert.ok(Array.isArray(merged.requirements_coverage) && merged.requirements_coverage.length > 0)
+  const statuses = new Set(merged.requirements_coverage.map(r => r.status))
+  assert.ok(statuses.has('met') || statuses.has('missing'))
+  for (const row of merged.requirements_coverage) {
+    assert.equal(typeof row.requirement, 'string')
+    assert.ok(['met', 'partial', 'missing'].includes(row.status))
+    assert.equal(typeof row.suggestion, 'string')
+  }
+  // missing requirements must carry a truthful, non-fabricating suggestion
+  const missing = merged.requirements_coverage.find(r => r.status === 'missing')
+  if (missing) assert.match(missing.suggestion, /if you have it/i)
+})
+
+test('applyDeterministicAts preserves the AI requirements_coverage when present', () => {
+  const ai = { requirements_coverage: [
+    { requirement: 'Lead incident management', status: 'met', evidence: 'Led on-call rotation', suggestion: 'Add MTTR numbers.' },
+    { requirement: 'Kubernetes at scale', status: 'partial', evidence: 'Used k8s', suggestion: 'Quantify cluster size.' }
+  ] }
+  const merged = applyDeterministicAts(ai, EN_DEVOPS_JOB, 'Engineer, AWS, Python, Docker, 5 years.')
+  assert.equal(merged.requirements_coverage.length, 2)
+  assert.equal(merged.requirements_coverage[0].requirement, 'Lead incident management')
+  assert.equal(merged.requirements_coverage[0].status, 'met')
+})
+
 test('applyDeterministicAts exposes a score breakdown that explains the number', () => {
   const cv = 'Senior DevOps engineer, 7 years. AWS, Kubernetes, Docker, Terraform, Python, CI/CD, monitoring, security.'
   const merged = applyDeterministicAts({}, EN_DEVOPS_JOB, cv)

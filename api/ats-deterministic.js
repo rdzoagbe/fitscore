@@ -521,6 +521,7 @@ export function normalizeAnalysisShape(analysis) {
     next_best_action: { action: '', label: '', reason: '', steps: [], ...asObj(a.next_best_action) },
     confidence: { level: 'low', score: 0, reasons: [], job_text_quality: 'partial', cv_text_quality: 'partial', ...asObj(a.confidence) },
     semantic_fit: { score: 0, matched_responsibilities: [], weak_or_missing_responsibilities: [], domain_fit: 'moderate', domain_reason: '', ...asObj(a.semantic_fit) },
+    requirements_coverage: asArr(a.requirements_coverage),
     experience_depth: { score: 0, hands_on: 'unclear', leadership: 'unclear', scale: 'unclear', metrics: 'unclear', ownership: 'unclear', proof_summary: '', ...asObj(a.experience_depth) },
     proof_gaps: asArr(a.proof_gaps),
     hidden_expectations: asArr(a.hidden_expectations),
@@ -693,6 +694,22 @@ export function applyDeterministicAts(analysis, jobText = '', cvText = '') {
   }
   merged.gaps_to_address = unique([...(merged.gaps_to_address || []), ...missingLabels]).slice(0, 8)
   merged.quick_wins = unique([...(merged.quick_wins || []), ...missingLabels.slice(0, 4).map(skill => `Add truthful evidence for ${skill} if you have it.`)]).slice(0, 6)
+
+  // Requirement-by-requirement coverage: prefer the AI's grounded, per-requirement read.
+  // When the AI didn't run (or returned none), synthesize a skill-level coverage map from
+  // the deterministic match so the user still sees, per required skill, whether their CV
+  // shows it and a truthful way to address it.
+  const aiCoverage = Array.isArray(analysis?.requirements_coverage)
+    ? analysis.requirements_coverage.filter(item => item && typeof item === 'object' && asStr(item.requirement))
+    : []
+  if (aiCoverage.length) {
+    merged.requirements_coverage = aiCoverage.slice(0, 10)
+  } else {
+    merged.requirements_coverage = [
+      ...matchedLabels.map(skill => ({ requirement: skill, status: 'met', evidence: 'Found in your CV.', suggestion: 'Keep it — add a concrete result or metric to make it stronger.' })),
+      ...missingLabels.map(skill => ({ requirement: skill, status: 'missing', evidence: '', suggestion: `Add truthful evidence of ${skill} if you have it — a project, tool, or result that shows it.` }))
+    ].slice(0, 12)
+  }
 
   merged.keyword_signal_reliable = ats.keywordSignalReliable
   merged.language_check.mismatch = merged.language_check.mismatch || ats.languageMismatch
