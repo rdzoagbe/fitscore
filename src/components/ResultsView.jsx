@@ -143,6 +143,56 @@ function ScoreMathCard({ breakdown, penalty, explanation, total }) {
   )
 }
 
+function RequirementsCoverageCard({ items, proofGaps }) {
+  const rows = (Array.isArray(items) ? items : [])
+    .filter(r => r && typeof r === 'object' && String(r.requirement || '').trim())
+    .slice(0, 10)
+  if (!rows.length) return null
+
+  const meta = {
+    met: { label: 'Met', color: premium.green, bg: 'rgba(85,124,100,0.10)' },
+    partial: { label: 'Partial', color: premium.gold, bg: 'rgba(185,134,59,0.12)' },
+    missing: { label: 'Missing', color: premium.red, bg: 'rgba(184,92,85,0.10)' }
+  }
+  const proof = (Array.isArray(proofGaps) ? proofGaps : []).map(p => String(p || '').trim()).filter(Boolean).slice(0, 4)
+
+  return (
+    <section style={{ border: `1px solid ${premium.line}`, borderRadius: 20, padding: 18, background: premium.paper, marginTop: 14 }}>
+      <h3 style={{ margin: '0 0 4px', color: premium.navy, fontSize: 15, fontWeight: 950 }}>Requirements coverage</h3>
+      <p style={{ margin: '0 0 12px', color: premium.muted, fontSize: 12.5, lineHeight: 1.55 }}>
+        Each key requirement from the job, whether your CV shows it, and a truthful way to strengthen it — never claim what you haven't done.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {rows.map((r, i) => {
+          const m = meta[String(r.status || '').toLowerCase()] || meta.missing
+          const evidence = String(r.evidence || '').trim()
+          const suggestion = String(r.suggestion || '').trim()
+          return (
+            <div key={`req-${i}`} style={{ borderTop: i ? `1px solid ${premium.line}` : 'none', paddingTop: i ? 10 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', color: m.color, background: m.bg, border: `1px solid ${m.color}40`, borderRadius: 999, padding: '3px 9px', marginTop: 1 }}>{m.label}</span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, color: premium.navy, fontSize: 13, fontWeight: 700, lineHeight: 1.45 }}>{r.requirement}</p>
+                  {evidence && <p style={{ margin: '3px 0 0', color: premium.muted, fontSize: 12, lineHeight: 1.5 }}><strong style={{ color: premium.green }}>Your evidence:</strong> {evidence}</p>}
+                  {suggestion && <p style={{ margin: '3px 0 0', color: premium.muted, fontSize: 12, lineHeight: 1.5 }}><strong style={{ color: premium.copper }}>How to strengthen:</strong> {suggestion}</p>}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      {proof.length > 0 && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${premium.line}` }}>
+          <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 850, letterSpacing: '0.05em', textTransform: 'uppercase', color: premium.copper }}>Proof to add</p>
+          <ul style={{ margin: 0, paddingLeft: 18, color: premium.muted, fontSize: 12, lineHeight: 1.6 }}>
+            {proof.map((p, i) => <li key={`proof-${i}`}>{p}</li>)}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ImprovementPlanCard({ plan }) {
   if (!plan || !Array.isArray(plan.addressable_skills) || !plan.addressable_skills.length) return null
   const current = safeScore(plan.current_score, 0)
@@ -399,6 +449,7 @@ function SelectedAnalysisSummary({ data, savedRow, t }) {
       </div>
 
       <ScoreMathCard breakdown={data.score_breakdown} penalty={data.score_penalty} explanation={data.score_explanation} total={data.display_score} />
+      <RequirementsCoverageCard items={data.requirements_coverage} proofGaps={data.proof_gaps} />
       <ImprovementPlanCard plan={data.improvement_plan} />
     </section>
   )

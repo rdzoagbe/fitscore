@@ -21,6 +21,7 @@ const SYSTEM = `You are Joblytics-AI, a strict ATS analyst and career coach.
 Return ONLY valid JSON. No markdown.
 Do not invent experience. Do not assume a candidate has a tool unless it appears in the CV or is a strict industry synonym.
 The final score will be calculated by the server. Your job is to extract context, explain gaps, and give useful coaching.
+For requirements_coverage: take the 5-8 most important requirements/responsibilities from the job, and for EACH judge whether the candidate's CV clearly meets it (status met), partially/implicitly meets it (partial), or does not show it (missing). evidence must be grounded in the actual CV text. suggestion must be truthful: only propose surfacing or rephrasing things the candidate plausibly did, or learning/acquiring a genuinely missing skill — never instruct them to claim experience they don't have.
 
 Return this JSON shape:
 {
@@ -32,6 +33,7 @@ Return this JSON shape:
   "next_best_action": { "action": "apply_now|improve_cv_first|prepare_interview|ask_recruiter_question|skip_or_low_priority", "label": "string", "reason": "string", "steps": [] },
   "confidence": { "level": "high|medium|low", "score": 0, "reasons": [], "job_text_quality": "strong|partial|thin", "cv_text_quality": "strong|partial|thin" },
   "semantic_fit": { "score": 0, "matched_responsibilities": [], "weak_or_missing_responsibilities": [], "domain_fit": "strong|moderate|weak", "domain_reason": "string" },
+  "requirements_coverage": [{ "requirement": "<a concrete requirement or responsibility from the job>", "status": "met|partial|missing", "evidence": "<short quote/paraphrase of the CV proof, or empty if none>", "suggestion": "<truthful, specific way to address it on the CV WITHOUT inventing anything; if met, say how to make it stronger>" }],
   "experience_depth": { "score": 0, "hands_on": "visible|weak_or_missing|unclear", "leadership": "visible|weak_or_missing|unclear", "scale": "visible|weak_or_missing|unclear", "metrics": "visible|weak_or_missing|unclear", "ownership": "visible|weak_or_missing|unclear", "proof_summary": "string" },
   "proof_gaps": [],
   "hidden_expectations": [],
